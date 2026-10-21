@@ -18,6 +18,6 @@ import { SessionService } from "./session.service.js";
     MeService,
     { provide: GOOGLE_OIDC, useFactory: (env: Env) => new OpenIdGoogleOidc(env), inject: [ENV] },
   ],
-  exports: [SessionService, SessionGuard, OptionalSessionGuard],
+  exports: [SessionService, SessionGuard, OptionalSessionGuard, MeService],
 })
 export class AuthModule {}

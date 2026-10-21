@@ -2,8 +2,10 @@ import type { CharacterDetail } from "@wanderer/shared";
 import { Markdown } from "@/components/markdown";
 import { fileSrc } from "@/lib/api";
 import { chatsLabel, statusLabel } from "@/lib/format";
+import { StartChat } from "./start-chat";
+import { YourChats } from "./your-chats";
 
-/** The character page body in the prototype style: the banner with a blurred copy of the image, then the openings and the definition. */
+/** The character page body in the prototype style. It has the banner, the openings with Start, Your chats, and the definition. */
 export function CharacterView({ detail }: { detail: CharacterDetail }) {
   const image = detail.avatarUrl ? fileSrc(detail.avatarUrl) : null;
 
@@ -64,18 +66,9 @@ export function CharacterView({ detail }: { detail: CharacterDetail }) {
         </div>
       </section>
 
-      <section aria-labelledby="openings-h" className="flex flex-col gap-3">
-        <h2 id="openings-h" className="m-0 text-lg font-bold">
-          How the story starts
-        </h2>
-        <ol className="m-0 flex list-none flex-col gap-2.5 p-0">
-          {detail.openings.map((opening, index) => (
-            <li key={index} className="rounded-[14px] bg-surface px-4 py-3 leading-[1.6] text-[#e4e4e7]">
-              <Markdown text={opening} />
-            </li>
-          ))}
-        </ol>
-      </section>
+      <StartChat characterId={detail.id} openings={detail.openings} />
+
+      <YourChats characterId={detail.id} />
 
       <section aria-labelledby="def-h" className="flex flex-col gap-3">
         <h2 id="def-h" className="m-0 text-lg font-bold">

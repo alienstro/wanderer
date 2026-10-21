@@ -1,11 +1,12 @@
 "use client";
 
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { type CharacterListResponse, TAGS, type TagSlug } from "@wanderer/shared";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { type CharacterCard as CharacterCardData, type CharacterListResponse, TAGS, type TagSlug } from "@wanderer/shared";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CharacterCard } from "@/components/character-card";
+import { ContinueBanner } from "@/components/continue-banner";
 import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/query-provider";
 
@@ -38,6 +39,34 @@ function discoverHref(pathname: string, query: DiscoverQuery): string {
  * The Discover page. The server renders the visitor list into `initial`. In the browser, a logged-in user
  * gets the list again with the session, because the 18+ setting can change it.
  */
+/** For you: characters with the tags of the user's chats. Nothing shows for a visitor or an empty list. */
+function ForYouRow() {
+  const { data: me } = useMe();
+  const list = useQuery({
+    queryKey: ["characters", "for-you", me?.id ?? null],
+    queryFn: () => apiFetch<{ items: CharacterCardData[] }>("/characters/for-you"),
+    enabled: Boolean(me),
+  });
+  const items = list.data?.items ?? [];
+  if (!me || items.length === 0) {
+    return null;
+  }
+  return (
+    <section id="for-you" aria-labelledby="for-you-h" className="flex scroll-mt-6 flex-col gap-4">
+      <h2 id="for-you-h" className="m-0 text-lg font-bold">
+        For you
+      </h2>
+      <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-[18px] gap-y-7 p-0">
+        {items.map((item) => (
+          <li key={item.id} className="flex">
+            <CharacterCard card={item} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function DiscoverView({ initial, q, tag, sort }: DiscoverQuery & { initial: CharacterListResponse }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -118,6 +147,9 @@ export function DiscoverView({ initial, q, tag, sort }: DiscoverQuery & { initia
           <span className="text-[15px] text-muted">{me ? `Welcome back, ${me.name}` : "Welcome to Wanderer"}</span>
           <h1 className="m-0 text-[28px] font-bold tracking-[-0.02em]">Discover</h1>
         </div>
+
+        <ContinueBanner />
+        <ForYouRow />
 
         <section aria-labelledby="grid-h" className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">

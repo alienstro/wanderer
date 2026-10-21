@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ModelCard } from "./model-card";
+import { RecentChats } from "./recent-chats";
 import { SidebarNav } from "./sidebar-nav";
 import { UserRow } from "./user-row";
 
@@ -18,8 +20,35 @@ const me = {
   handle: "tian",
   role: "user",
   showAdult: false,
+  replyChoicesOn: true,
+  activeProxy: { id: "p1", name: "OpenRouter", model: "deepseek/deepseek-chat" } as { id: string; name: string; model: string } | null,
   suggestedHandle: null,
 };
+
+const chats = {
+  items: [
+    {
+      id: "chat1",
+      title: "Onnit",
+      character: { id: "c1", title: "Onnit", chatName: "", avatarUrl: null },
+      lastMessage: "*waves*",
+      lastMessageAt: "2026-10-21T10:00:00.000Z",
+    },
+  ],
+};
+
+/** Answers /me with the user and /chats with the chat list. */
+function stubApi(user: typeof me | null = me) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) => {
+      if (url.endsWith("/me")) {
+        return user ? Response.json(user) : Response.json({ error: "unauthorized" }, { status: 401 });
+      }
+      return url.includes("/chats") ? Response.json(chats) : Response.json({ error: "not_found" }, { status: 404 });
+    }),
+  );
+}
 
 function renderWithClient(ui: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -38,7 +67,8 @@ describe("sidebar", () => {
 
   it("the sidebar shows Create, Discover, and My characters, and marks the current page", () => {
     pathname = "/my-characters";
-    render(<SidebarNav />);
+    stubApi(null);
+    renderWithClient(<SidebarNav />);
     expect(screen.getByRole("link", { name: "Create" })).toHaveAttribute("href", "/create");
     expect(screen.getByRole("link", { name: "Discover" })).not.toHaveAttribute("aria-current");
     expect(screen.getByRole("link", { name: "My characters" })).toHaveAttribute("aria-current", "page");
@@ -65,5 +95,48 @@ describe("sidebar", () => {
 
     expect(await screen.findByRole("link", { name: "Log in" })).toHaveAttribute("href", "/login");
     expect(screen.queryByRole("button", { name: "Account menu" })).not.toBeInTheDocument();
+  });
+
+  it("Recent lists the chats with links to /chats/<id>", async () => {
+    stubApi();
+    renderWithClient(<RecentChats />);
+    expect(await screen.findByRole("link", { name: /Onnit/ })).toHaveAttribute("href", "/chats/chat1");
+    expect(screen.getByRole("heading", { name: "Recent" })).toBeInTheDocument();
+  });
+
+  it("the model card shows the active proxy name and model, and For you shows for a user", async () => {
+    stubApi();
+    renderWithClient(
+      <>
+        <SidebarNav />
+        <ModelCard />
+      </>,
+    );
+    const card = await screen.findByRole("link", { name: /OpenRouter/ });
+    expect(card).toHaveAttribute("href", "/settings/models");
+    expect(card).toHaveTextContent("deepseek/deepseek-chat");
+    expect(screen.getByRole("link", { name: "For you" })).toHaveAttribute("href", "/#for-you");
+  });
+
+  it('the model card shows "Add a model" when activeProxy is null', async () => {
+    stubApi({ ...me, activeProxy: null });
+    renderWithClient(<ModelCard />);
+    expect(await screen.findByRole("link", { name: /Add a model/ })).toHaveAttribute("href", "/settings/models");
+  });
+
+  it("a visitor sees no For you, no Recent, and no model card", async () => {
+    stubApi(null);
+    renderWithClient(
+      <>
+        <SidebarNav />
+        <RecentChats />
+        <ModelCard />
+        <UserRow />
+      </>,
+    );
+    await screen.findByRole("link", { name: "Log in" });
+    expect(screen.queryByRole("link", { name: "For you" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Recent" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Add a model/ })).not.toBeInTheDocument();
   });
 });

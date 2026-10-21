@@ -14,6 +14,7 @@ import {
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import {
+  type CharacterCard,
   type CharacterDetail,
   type CharacterInput,
   type CharacterListResponse,
@@ -47,6 +48,13 @@ export class CharactersController {
       throw new BadRequestException({ error: "invalid_query" });
     }
     return this.lists.discover(parsed.data, viewer);
+  }
+
+  /** This route comes before ":id", so "for-you" is not read as a character ID. */
+  @Get("for-you")
+  @UseGuards(SessionGuard)
+  forYou(@CurrentUser() user: User): Promise<{ items: CharacterCard[] }> {
+    return this.lists.forYou(user);
   }
 
   @Post()

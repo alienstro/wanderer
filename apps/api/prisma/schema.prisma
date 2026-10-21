@@ -26,12 +26,18 @@ model User {
   /// True when the user sees 18+ characters. It can be true only when adultConfirmedAt is set.
   showAdult        Boolean   @default(false) @map("show_adult")
   adultConfirmedAt DateTime? @map("adult_confirmed_at")
+  /// True when the chat page shows four reply choices after each AI reply.
+  replyChoicesOn   Boolean   @default(true) @map("reply_choices_on")
+  activeProxyId    String?   @unique @map("active_proxy_id") @db.Uuid
   createdAt        DateTime  @default(now()) @map("created_at")
 
   sessions         Session[]
   termsAcceptances TermsAcceptance[]
   characters       Character[]
   files            File[]
+  proxies          Proxy[]   @relation("ProxyOwner")
+  activeProxy      Proxy?    @relation("ActiveProxy", fields: [activeProxyId], references: [id], onDelete: SetNull)
+  chats            Chat[]
 
   @@map("users")
 }
@@ -92,6 +98,7 @@ model Character {
   avatar   File?              @relation(fields: [avatarFileId], references: [id], onDelete: SetNull)
   openings CharacterOpening[]
   tags     CharacterTag[]
+  chats    Chat[]
 
   @@unique([creatorId, title])
   @@index([status, isPublic, isAdult, chatCount, createdAt])
@@ -147,4 +154,66 @@ model File {
 
   @@index([ownerId])
   @@map("files")
+}
+
+/// An OpenAI-compatible proxy of a user. The API key is stored only encrypted (AES-256-GCM).
+model Proxy {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  name          String
+  baseUrl       String   @map("base_url")
+  appendPath    Boolean  @default(true) @map("append_path")
+  model         String
+  customPrompt  String   @default("") @map("custom_prompt")
+  keyCiphertext Bytes    @map("key_ciphertext")
+  keyIv         Bytes    @map("key_iv")
+  keyTag        Bytes    @map("key_tag")
+  keyVersion    Int      @map("key_version")
+  keyLast4      String   @map("key_last4")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user     User  @relation("ProxyOwner", fields: [userId], references: [id], onDelete: Cascade)
+  activeOf User? @relation("ActiveProxy")
+
+  @@index([userId])
+  @@map("proxies")
+}
+
+model Chat {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  characterId   String   @map("character_id") @db.Uuid
+  title         String
+  lastMessageAt DateTime @default(now()) @map("last_message_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  @@index([userId, lastMessageAt])
+  @@index([userId, characterId])
+  @@map("chats")
+}
+
+enum MessageRole {
+  user
+  assistant
+}
+
+model Message {
+  id        String      @id @default(uuid()) @db.Uuid
+  chatId    String      @map("chat_id") @db.Uuid
+  role      MessageRole
+  content   String
+  /// The order in the chat. The opening is position 0. Positions can have gaps after a delete.
+  position  Int
+  editedAt  DateTime?   @map("edited_at")
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, position])
+  @@map("messages")
 }

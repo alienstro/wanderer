@@ -54,7 +54,8 @@ describe("character page", () => {
   });
 
   it('the view shows the title, "Chat with" the chat name, @creator, the bio, the tags, and the openings', () => {
-    render(<CharacterView detail={detail} />);
+    stubFetch(() => undefined);
+    withClient(<CharacterView detail={detail} />);
     expect(screen.getByRole("heading", { level: 1, name: "Mira Vale" })).toBeInTheDocument();
     expect(screen.getByText(/Chat with/)).toHaveTextContent("Chat with Mira");
     expect(screen.getByText("@tian")).toBeInTheDocument();
@@ -66,7 +67,8 @@ describe("character page", () => {
   });
 
   it('definition null shows "The creator keeps the definition of this character hidden."', () => {
-    render(<CharacterView detail={{ ...detail, definitionVisible: false, definition: null }} />);
+    stubFetch(() => undefined);
+    withClient(<CharacterView detail={{ ...detail, definitionVisible: false, definition: null }} />);
     expect(screen.getByText("The creator keeps the definition of this character hidden.")).toBeInTheDocument();
   });
 

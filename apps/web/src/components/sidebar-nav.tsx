@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { useMe } from "@/lib/query-provider";
 
 const iconProps = {
   width: 18,
@@ -16,7 +17,7 @@ const iconProps = {
   "aria-hidden": true,
 } as const;
 
-const NAV_ITEMS: { href: string; label: string; icon: ReactNode }[] = [
+const NAV_ITEMS: { href: string; label: string; icon: ReactNode; userOnly?: boolean }[] = [
   {
     href: "/",
     label: "Discover",
@@ -24,6 +25,16 @@ const NAV_ITEMS: { href: string; label: string; icon: ReactNode }[] = [
       <svg {...iconProps}>
         <circle cx="12" cy="12" r="9" />
         <path d="M15.5 8.5l-2 5-5 2 2-5z" />
+      </svg>
+    ),
+  },
+  {
+    href: "/#for-you",
+    label: "For you",
+    userOnly: true,
+    icon: (
+      <svg {...iconProps}>
+        <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />
       </svg>
     ),
   },
@@ -40,9 +51,10 @@ const NAV_ITEMS: { href: string; label: string; icon: ReactNode }[] = [
   },
 ];
 
-/** The Create pill and the main links of the sidebar. Plan 3 adds For you. */
+/** The Create pill and the main links of the sidebar. For you shows only for a logged-in user. */
 export function SidebarNav() {
   const pathname = usePathname();
+  const { data: me } = useMe();
   return (
     <>
       <Link href="/create" className="pill pill-soft justify-start px-3.5">
@@ -52,7 +64,7 @@ export function SidebarNav() {
         Create
       </Link>
       <nav className="side-nav" aria-label="Main">
-        {NAV_ITEMS.map((item) => (
+        {NAV_ITEMS.filter((item) => !item.userOnly || me).map((item) => (
           <Link key={item.href} href={item.href} className="nav" aria-current={pathname === item.href ? "page" : undefined}>
             {item.icon}
             {item.label}

@@ -17,6 +17,11 @@ const envSchema = z.object({
         .map((email) => email.trim().toLowerCase())
         .filter((email) => email.length > 0),
     ),
+  /** The master key for the proxy API keys: the base64 text of 32 random bytes (`openssl rand -base64 32`). */
+  KEY_ENCRYPTION_KEY: z
+    .string()
+    .transform((value) => Buffer.from(value, "base64"))
+    .refine((key) => key.length === 32, "KEY_ENCRYPTION_KEY must be the base64 text of 32 bytes"),
   /** The directory for the uploaded images. In Docker, it is a volume. */
   UPLOAD_DIR: z.string().min(1).default("./uploads"),
   PORT: z.coerce.number().int().positive().default(3001),

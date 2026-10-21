@@ -41,6 +41,10 @@ from the repository root with their own Dockerfile.
 - At each start, the image runs `prisma migrate deploy` before the server starts.
 - Environment variables:
 
+**Caution:** `KEY_ENCRYPTION_KEY` encrypts the API keys of all users. If you lose or change it, no
+saved API key decrypts, and each user must enter their keys again. The Postgres backup does not hold
+this value. Keep a copy in a password manager.
+
 | Variable | Value |
 |---|---|
 | `DATABASE_URL` | The internal Postgres URL from step 2 |
@@ -51,14 +55,13 @@ from the repository root with their own Dockerfile.
 | `WEB_ORIGIN` | `https://wanderer.alienstro.xyz` |
 | `ADMIN_EMAILS` | The owner's Google email. Use commas between more than one address. |
 | `UPLOAD_DIR` | `/data/uploads` (the image sets this value too) |
+| `KEY_ENCRYPTION_KEY` | The base64 text of 32 random bytes, from `openssl rand -base64 32` |
 
 - Volume: in **Advanced → Volumes**, add a volume mount. Type: Volume. Name: `wanderer-uploads`.
   Mount path: `/data/uploads`. The avatar images live there.
 
 **Caution:** without this volume, each new deploy deletes all avatar images, but the database
 still points to them.
-
-Plan 3 adds `KEY_ENCRYPTION_KEY`.
 
 ### Web
 
@@ -121,3 +124,8 @@ Use Access only for the admin tools, such as the Dokploy dashboard and SSH.
 3. Expected: the handle step opens. Pick a handle. Expected: the home page opens.
 4. In the browser developer tools, find the cookie `__Host-wanderer_session` on
    `wanderer-api.alienstro.xyz`. Expected: `HttpOnly`, `Secure`, `SameSite=Lax`, and no `Domain`.
+5. Click the model card at the foot of the sidebar (**Add a model**). Add a proxy with a real API
+   key, then click **Test**.
+   Expected: "The proxy answered" with the time.
+6. Open a character, pick an opening, and click **Start a new chat**. Send a message.
+   Expected: the reply streams in word by word, and four reply choices show above the text box.

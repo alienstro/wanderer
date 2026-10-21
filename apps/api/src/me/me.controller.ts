@@ -3,7 +3,7 @@ import { type MeResponse, updateMeRequestSchema } from "@wanderer/shared";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SessionGuard } from "../auth/session.guard.js";
 import type { User } from "../generated/prisma/client.js";
-import { MeService, toMeResponse } from "./me.service.js";
+import { MeService } from "./me.service.js";
 
 @Controller("me")
 @UseGuards(SessionGuard)
@@ -11,8 +11,8 @@ export class MeController {
   constructor(private readonly me: MeService) {}
 
   @Get()
-  get(@CurrentUser() user: User): MeResponse {
-    return toMeResponse(user);
+  get(@CurrentUser() user: User): Promise<MeResponse> {
+    return this.me.toResponse(user);
   }
 
   @Patch()

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { CharacterCard, CharacterListResponse, TagSlug } from "@wanderer/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -28,6 +28,36 @@ function stubFetch(lists: CharacterListResponse[] = []) {
       return Response.json({ error: "unauthorized" }, { status: 401 });
     }
     return Response.json(lists.shift() ?? { items: [], nextCursor: null });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+const chats = {
+  items: [
+    {
+      id: "chat1",
+      title: "Onnit",
+      character: { id: "c9", title: "Onnit", chatName: "", avatarUrl: null },
+      lastMessage: "*waves* See you soon!",
+      lastMessageAt: "2026-10-21T10:00:00.000Z",
+    },
+  ],
+};
+
+/** A logged-in user: /me gives the user, /chats the chats, /characters/for-you the For you list. */
+function stubUser(options: { chats?: typeof chats; forYou?: CharacterCard[] } = {}) {
+  const fetchMock = vi.fn(async (url: string) => {
+    if (url.endsWith("/me")) {
+      return Response.json({ id: "u1", name: "Robin", handle: "robin", replyChoicesOn: true, activeProxy: null });
+    }
+    if (url.endsWith("/chats")) {
+      return Response.json(options.chats ?? { items: [] });
+    }
+    if (url.endsWith("/characters/for-you")) {
+      return Response.json({ items: options.forYou ?? [] });
+    }
+    return Response.json({ items: [], nextCursor: null });
   });
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
@@ -146,5 +176,39 @@ describe("DiscoverView", () => {
     stubFetch();
     renderView({ items: [], nextCursor: null }, { q: "zzz" });
     expect(screen.getByText("No characters match your search.")).toBeInTheDocument();
+  });
+
+  it("a user with chats sees Welcome back and a banner with the last line that links to the chat", async () => {
+    stubUser({ chats });
+    renderView({ items: [card(1)], nextCursor: null });
+    expect(await screen.findByText("Welcome back, Robin")).toBeInTheDocument();
+    const banner = await screen.findByRole("link", { name: /Continue your chat/ });
+    expect(banner).toHaveAttribute("href", "/chats/chat1");
+    expect(banner).toHaveTextContent("See you soon!");
+  });
+
+  it("the For you row shows the cards from /characters/for-you", async () => {
+    stubUser({ chats, forYou: [{ ...card(7), title: "Haunt" }] });
+    renderView({ items: [card(1)], nextCursor: null });
+    const row = await screen.findByRole("region", { name: "For you" });
+    expect(row).toHaveAttribute("id", "for-you");
+    expect(await within(row).findByText("Haunt")).toBeInTheDocument();
+  });
+
+  it("a user with no chats sees no banner and no For you row", async () => {
+    const fetchMock = stubUser();
+    renderView({ items: [card(1)], nextCursor: null });
+    await screen.findByText("Welcome back, Robin");
+    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/chats"))).toBe(true));
+    expect(screen.queryByRole("link", { name: /Continue your chat/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "For you" })).not.toBeInTheDocument();
+  });
+
+  it("a visitor sees no banner and no For you row", async () => {
+    stubFetch();
+    renderView({ items: [card(1)], nextCursor: null });
+    expect(await screen.findByText("Welcome to Wanderer")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Continue your chat/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "For you" })).not.toBeInTheDocument();
   });
 });

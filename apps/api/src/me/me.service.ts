@@ -3,7 +3,12 @@ import { type MeResponse, suggestHandle, type UpdateMeRequest } from "@wanderer/
 import { Prisma, type User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
-export function toMeResponse(user: User): MeResponse {
+/** The fields of the active proxy that the model card shows. */
+export const activeProxySelect = { select: { id: true, name: true, model: true } } as const;
+
+type ActiveProxy = MeResponse["activeProxy"];
+
+export function toMeResponse(user: User, activeProxy: ActiveProxy): MeResponse {
   return {
     id: user.id,
     name: user.name,
@@ -12,6 +17,8 @@ export function toMeResponse(user: User): MeResponse {
     handle: user.handle,
     role: user.role,
     showAdult: user.showAdult,
+    replyChoicesOn: user.replyChoicesOn,
+    activeProxy,
     suggestedHandle: user.handle === null ? suggestHandle(user.email) : null,
   };
 }
@@ -20,8 +27,16 @@ export function toMeResponse(user: User): MeResponse {
 export class MeService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** The /me answer of the user, with the active proxy for the model card. */
+  async toResponse(user: User): Promise<MeResponse> {
+    const activeProxy = user.activeProxyId
+      ? await this.prisma.proxy.findUnique({ where: { id: user.activeProxyId }, ...activeProxySelect })
+      : null;
+    return toMeResponse(user, activeProxy);
+  }
+
   /**
-   * Saves the handle and "Show 18+". "Show 18+" can turn on only after the 18+ confirm.
+   * Saves the handle, "Show 18+", and the "Reply choices" switch. "Show 18+" can turn on only after the 18+ confirm.
    * The unique index decides a race between two users, so a taken handle gives 409, not 500.
    */
   async update(current: User, request: UpdateMeRequest): Promise<MeResponse> {
@@ -31,9 +46,10 @@ export class MeService {
     try {
       const user = await this.prisma.user.update({
         where: { id: current.id },
-        data: { handle: request.handle, showAdult: request.showAdult },
+        data: { handle: request.handle, showAdult: request.showAdult, replyChoicesOn: request.replyChoicesOn },
+        include: { activeProxy: activeProxySelect },
       });
-      return toMeResponse(user);
+      return toMeResponse(user, user.activeProxy);
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
         throw new ConflictException({ error: "handle_taken" });
@@ -47,7 +63,8 @@ export class MeService {
     const user = await this.prisma.user.update({
       where: { id: current.id },
       data: { showAdult: true, adultConfirmedAt: current.adultConfirmedAt ?? new Date() },
+      include: { activeProxy: activeProxySelect },
     });
-    return toMeResponse(user);
+    return toMeResponse(user, user.activeProxy);
   }
 }

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import type { CharacterListQuery, CharacterListResponse, MyCharacterCard } from "@wanderer/shared";
+import type { CharacterCard, CharacterListQuery, CharacterListResponse, MyCharacterCard } from "@wanderer/shared";
 import { Prisma, type User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { canSeeAdult } from "./adult.js";
@@ -7,6 +7,9 @@ import { type CharacterCardRow, characterCardInclude, toCharacterCard } from "./
 import { type CursorKey, decodeCursor, encodeCursor } from "./cursor.js";
 
 export const PAGE_SIZE = 24;
+/** For you uses the tags that occur most on the characters of the user's chats. */
+const FOR_YOU_TAGS = 3;
+const FOR_YOU_SIZE = 12;
 
 interface KeyRow {
   id: string;
@@ -91,6 +94,38 @@ export class CharacterListService {
         ? encodeCursor({ chatCount: last.chat_count, createdAt: last.created_at.toISOString(), id: last.id } satisfies CursorKey)
         : null;
     return { items, nextCursor };
+  }
+
+  /**
+   * For you: visible characters with one of the 3 tags that occur most in the user's chats. The list has
+   * no own character and no character that the user chats with already. No chats give an empty list.
+   */
+  async forYou(user: User): Promise<{ items: CharacterCard[] }> {
+    const tags = await this.prisma.$queryRaw<Array<{ tag_slug: string }>>`
+      SELECT ct.tag_slug
+      FROM chats ch JOIN character_tags ct ON ct.character_id = ch.character_id
+      WHERE ch.user_id = CAST(${user.id} AS uuid)
+      GROUP BY ct.tag_slug
+      ORDER BY COUNT(*) DESC, ct.tag_slug ASC
+      LIMIT ${FOR_YOU_TAGS}`;
+    if (tags.length === 0) {
+      return { items: [] };
+    }
+    const rows = await this.prisma.character.findMany({
+      where: {
+        // The same visibility rule as Discover.
+        status: "published",
+        isPublic: true,
+        ...(canSeeAdult(user) ? {} : { isAdult: false }),
+        creatorId: { not: user.id },
+        tags: { some: { tagSlug: { in: tags.map((tag) => tag.tag_slug) } } },
+        chats: { none: { userId: user.id } },
+      },
+      include: characterCardInclude,
+      orderBy: [{ chatCount: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+      take: FOR_YOU_SIZE,
+    });
+    return { items: rows.map(toCharacterCard) };
   }
 
   /** All characters of one user, newest first: drafts, private, and hidden too. */

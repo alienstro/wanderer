@@ -32,6 +32,10 @@ export const meResponseSchema = z.object({
   role: z.enum(["user", "admin"]),
   /** True when the user sees 18+ characters. It can be true only after the 18+ confirm. */
   showAdult: z.boolean(),
+  /** True when the chat page shows four reply choices after each AI reply. */
+  replyChoicesOn: z.boolean(),
+  /** The proxy that the chat uses, for the model card. It is null when the user has no active proxy. */
+  activeProxy: z.object({ id: z.string(), name: z.string(), model: z.string() }).nullable(),
   /** A handle suggestion for the handle step. It is null when the user has a handle. */
   suggestedHandle: z.string().nullable(),
 });
@@ -40,6 +44,7 @@ export const meResponseSchema = z.object({
 export const updateMeRequestSchema = z.object({
   handle: handleSchema.optional(),
   showAdult: z.boolean().optional(),
+  replyChoicesOn: z.boolean().optional(),
 });
 
 export type UpdateMeRequest = z.infer<typeof updateMeRequestSchema>;

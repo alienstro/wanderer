@@ -4,13 +4,16 @@ import { ThrottlerModule } from "@nestjs/throttler";
 import { LoggerModule } from "nestjs-pino";
 import { AuthModule } from "./auth/auth.module.js";
 import { CharactersModule } from "./characters/characters.module.js";
+import { ChatsModule } from "./chats/chats.module.js";
 import { ENV, type Env } from "./config/env.js";
 import { serializeRequest } from "./config/logging.js";
 import { FilesModule } from "./files/files.module.js";
 import { HealthController } from "./health/health.controller.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
+import { ProxiesModule } from "./proxies/proxies.module.js";
 import { ClientIpThrottlerGuard } from "./security/client-ip-throttler.guard.js";
 import { OriginGuard } from "./security/origin.guard.js";
+import { USER_THROTTLER } from "./security/user-throttler.guard.js";
 
 @Module({})
 export class AppModule {
@@ -28,11 +31,16 @@ export class AppModule {
           },
         }),
         // No global limit. A route sets its own limit with @Throttle().
-        ThrottlerModule.forRoot([{ name: "default", ttl: 60_000, limit: Number.MAX_SAFE_INTEGER }]),
+        ThrottlerModule.forRoot([
+          { name: "default", ttl: 60_000, limit: Number.MAX_SAFE_INTEGER },
+          { name: USER_THROTTLER, ttl: 60_000, limit: Number.MAX_SAFE_INTEGER },
+        ]),
         PrismaModule,
         AuthModule,
         FilesModule,
         CharactersModule,
+        ProxiesModule,
+        ChatsModule,
       ],
       controllers: [HealthController],
       providers: [

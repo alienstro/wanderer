@@ -37,7 +37,13 @@ describe("health, CORS, and env", () => {
   it("loadEnv throws when COOKIE_SECRET is shorter than 32 characters", () => {
     const valid = testEnv();
     expect(() =>
-      loadEnv({ ...valid, ADMIN_EMAILS: "", PORT: "3001", COOKIE_SECRET: "too-short" }),
+      loadEnv({
+        ...valid,
+        ADMIN_EMAILS: "",
+        PORT: "3001",
+        KEY_ENCRYPTION_KEY: valid.KEY_ENCRYPTION_KEY.toString("base64"),
+        COOKIE_SECRET: "too-short",
+      }),
     ).toThrow(/COOKIE_SECRET/);
   });
 
