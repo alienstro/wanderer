@@ -5,6 +5,7 @@ import { LoggerModule } from "nestjs-pino";
 import { AuthModule } from "./auth/auth.module.js";
 import { ENV, type Env } from "./config/env.js";
 import { serializeRequest } from "./config/logging.js";
+import { FilesModule } from "./files/files.module.js";
 import { HealthController } from "./health/health.controller.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { ClientIpThrottlerGuard } from "./security/client-ip-throttler.guard.js";
@@ -29,6 +30,7 @@ export class AppModule {
         ThrottlerModule.forRoot([{ name: "default", ttl: 60_000, limit: Number.MAX_SAFE_INTEGER }]),
         PrismaModule,
         AuthModule,
+        FilesModule,
       ],
       controllers: [HealthController],
       providers: [

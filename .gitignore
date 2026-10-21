@@ -10,3 +10,5 @@ dist/
 !.env*.example
 apps/api/src/generated/
 next-env.d.ts
+apps/api/uploads/
+.vitest/

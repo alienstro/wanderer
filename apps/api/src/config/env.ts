@@ -17,6 +17,8 @@ const envSchema = z.object({
         .map((email) => email.trim().toLowerCase())
         .filter((email) => email.length > 0),
     ),
+  /** The directory for the uploaded images. In Docker, it is a volume. */
+  UPLOAD_DIR: z.string().min(1).default("./uploads"),
   PORT: z.coerce.number().int().positive().default(3001),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 });
