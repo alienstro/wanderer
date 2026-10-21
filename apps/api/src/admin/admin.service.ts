@@ -88,6 +88,11 @@ export class AdminService {
         return null;
       }
       await tx.report.updateMany({ where: { characterId, status: "open" }, data: closed });
+      if (action === "banned") {
+        const character = await tx.character.findUniqueOrThrow({ where: { id: characterId } });
+        await this.banInTransaction(tx, character.creatorId);
+        return null;
+      }
       if (action === "hidden") {
         await tx.character.update({ where: { id: characterId }, data: { status: "hidden" } });
         return null;
@@ -100,5 +105,27 @@ export class AdminService {
     }
     const row = await this.prisma.report.findUniqueOrThrow({ where: { id: report.id }, include: reportInclude });
     return toAdminReport(row);
+  }
+
+  /** Bans a user. The ban ends their sessions at once and hides their published characters. */
+  async ban(userId: string): Promise<void> {
+    if (!isUuid(userId)) {
+      throw new NotFoundException({ error: "not_found" });
+    }
+    await this.prisma.$transaction((tx) => this.banInTransaction(tx, userId));
+  }
+
+  /** A second ban keeps the time of the first ban. An admin cannot be banned. */
+  private async banInTransaction(tx: Prisma.TransactionClient, userId: string): Promise<void> {
+    const user = await tx.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException({ error: "not_found" });
+    }
+    if (user.role === "admin") {
+      throw new BadRequestException({ error: "cannot_ban_admin" });
+    }
+    await tx.user.updateMany({ where: { id: userId, bannedAt: null }, data: { bannedAt: new Date() } });
+    await tx.session.deleteMany({ where: { userId } });
+    await tx.character.updateMany({ where: { creatorId: userId, status: "published" }, data: { status: "hidden" } });
   }
 }

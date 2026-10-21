@@ -21,4 +21,11 @@ export class AdminController {
   resolve(@CurrentUser() admin: User, @Param("id") id: string, @Body() body: unknown): Promise<AdminReport> {
     return this.admin.resolve(admin, id, body);
   }
+
+  @Post("users/:id/ban")
+  @HttpCode(200)
+  async ban(@Param("id") id: string): Promise<{ ok: true }> {
+    await this.admin.ban(id);
+    return { ok: true };
+  }
 }
