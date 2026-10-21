@@ -1,0 +1,43 @@
+/** An answer from the API with a status that is not 2xx. code is the "error" value of the body, when it has one. */
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string | null,
+  ) {
+    super(code ? `API error ${status}: ${code}` : `API error ${status}`);
+    this.name = "ApiError";
+  }
+}
+
+function apiUrl(): string {
+  // Next.js puts the value of NEXT_PUBLIC_API_URL into the browser code at build time.
+  return process.env.NEXT_PUBLIC_API_URL ?? "";
+}
+
+async function errorCode(res: Response): Promise<string | null> {
+  try {
+    const body: unknown = await res.json();
+    if (typeof body === "object" && body !== null && "error" in body && typeof body.error === "string") {
+      return body.error;
+    }
+  } catch {
+    // The body is not JSON.
+  }
+  return null;
+}
+
+/** Calls the API from the browser with the session cookie. */
+export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers);
+  if (init.body !== undefined && init.body !== null && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const res = await fetch(`${apiUrl()}${path}`, { ...init, headers, credentials: "include" });
+  if (!res.ok) {
+    throw new ApiError(res.status, await errorCode(res));
+  }
+  if (res.status === 204) {
+    return undefined as T;
+  }
+  return (await res.json()) as T;
+}
