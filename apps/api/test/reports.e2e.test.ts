@@ -89,6 +89,18 @@ describe("POST /characters/:id/report", () => {
     expect(res.body).toEqual({ error: "report_limit" });
   });
 
+  it("lets only one of 5 reports at the same time pass when 9 reports are already saved", async () => {
+    await prisma.report.createMany({
+      data: Array.from({ length: 9 }, () => ({ characterTitle: "Gone", reporterId: reporter.user.id, reason: "other" as const })),
+    });
+    const ids = await Promise.all(
+      [1, 2, 3, 4, 5].map((n) => createCharacter(app, creator.cookie, { title: `Race ${n}` })),
+    );
+    const results = await Promise.all(ids.map((id) => report(id, reporter.cookie)));
+    expect(results.filter((res) => res.status === 201)).toHaveLength(1);
+    expect(results.filter((res) => res.status === 429)).toHaveLength(4);
+  });
+
   it("counts only the reports of the last 24 hours for the limit", async () => {
     const old = new Date(Date.now() - 25 * 60 * 60 * 1000);
     await prisma.report.createMany({

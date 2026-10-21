@@ -38,24 +38,28 @@ export class ReportsService {
     if (character.creatorId === user.id) {
       throw new BadRequestException({ error: "own_character" });
     }
-    const today = await this.prisma.report.count({
-      where: { reporterId: user.id, createdAt: { gte: new Date(Date.now() - DAY_MS) } },
-    });
-    if (today >= REPORTS_EACH_DAY) {
-      throw new HttpException({ error: "report_limit" }, HttpStatus.TOO_MANY_REQUESTS);
-    }
     try {
-      const report = await this.prisma.report.create({
-        data: {
-          characterId: character.id,
-          characterTitle: character.title,
-          reporterId: user.id,
-          reason: parsed.data.reason,
-          note: parsed.data.note,
-        },
-        select: { id: true },
+      return await this.prisma.$transaction(async (tx) => {
+        // The lock holds until the end of the transaction, so two reports at the same time cannot both
+        // pass the count. It locks only the reports of this user.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`report:${user.id}`}))`;
+        const today = await tx.report.count({
+          where: { reporterId: user.id, createdAt: { gte: new Date(Date.now() - DAY_MS) } },
+        });
+        if (today >= REPORTS_EACH_DAY) {
+          throw new HttpException({ error: "report_limit" }, HttpStatus.TOO_MANY_REQUESTS);
+        }
+        return tx.report.create({
+          data: {
+            characterId: character.id,
+            characterTitle: character.title,
+            reporterId: user.id,
+            reason: parsed.data.reason,
+            note: parsed.data.note,
+          },
+          select: { id: true },
+        });
       });
-      return report;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
         throw new ConflictException({ error: "already_reported" });
