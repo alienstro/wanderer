@@ -23,5 +23,8 @@ WORKDIR /app
 COPY --from=build --chown=node:node /out ./
 USER node
 EXPOSE 3001
+# The slim image has no curl, so Node makes the request. /health does not call Postgres.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:3001/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
 # Apply the migrations, then start the API.
 CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && exec node dist/main.js"]

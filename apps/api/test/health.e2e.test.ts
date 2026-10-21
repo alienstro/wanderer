@@ -1,8 +1,9 @@
 import type { INestApplication } from "@nestjs/common";
 import request from "supertest";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.js";
 import { loadEnv } from "../src/config/env.js";
+import { PrismaService } from "../src/prisma/prisma.service.js";
 import { testEnv, WEB_ORIGIN } from "./support/env.js";
 
 describe("health, CORS, and env", () => {
@@ -17,7 +18,35 @@ describe("health, CORS, and env", () => {
     await app.close();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function failDatabase(): void {
+    vi.spyOn(app.get(PrismaService), "$queryRaw").mockRejectedValue(new Error("connect ECONNREFUSED"));
+  }
+
   it('GET /health returns 200 and {"status":"ok"}', async () => {
+    const res = await request(app.getHttpServer()).get("/health");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ status: "ok" });
+  });
+
+  it('GET /health/ready returns 200 and {"status":"ok"} when Postgres answers', async () => {
+    const res = await request(app.getHttpServer()).get("/health/ready");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ status: "ok" });
+  });
+
+  it('GET /health/ready returns 503 and only {"status":"unavailable"} when the database query fails', async () => {
+    failDatabase();
+    const res = await request(app.getHttpServer()).get("/health/ready");
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({ status: "unavailable" });
+  });
+
+  it("GET /health returns 200 when the database query fails", async () => {
+    failDatabase();
     const res = await request(app.getHttpServer()).get("/health");
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ status: "ok" });
