@@ -10,6 +10,7 @@ import { ENV, type Env } from "./config/env.js";
 import { serializeRequest } from "./config/logging.js";
 import { FilesModule } from "./files/files.module.js";
 import { HealthController } from "./health/health.controller.js";
+import { MeModule } from "./me/me.module.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { ProxiesModule } from "./proxies/proxies.module.js";
 import { ReportsModule } from "./reports/reports.module.js";
@@ -42,6 +43,7 @@ export class AppModule {
         FilesModule,
         CharactersModule,
         AdminModule,
+        MeModule,
         ProxiesModule,
         ReportsModule,
         ChatsModule,

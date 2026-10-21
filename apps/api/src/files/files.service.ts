@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { isUuid } from "../common/uuid.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { FILE_STORAGE, type FileStorage } from "./file-storage.js";
@@ -11,6 +11,8 @@ export function fileUrl(id: string): string {
 
 @Injectable()
 export class FilesService {
+  private readonly logger = new Logger(FilesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject(FILE_STORAGE) private readonly storage: FileStorage,
@@ -50,6 +52,26 @@ export class FilesService {
         return null;
       }
       throw error;
+    }
+  }
+
+  /** Gives the stored paths of all files of the owner. */
+  async pathsOf(ownerId: string): Promise<string[]> {
+    const files = await this.prisma.file.findMany({ where: { ownerId }, select: { path: true } });
+    return files.map((file) => file.path);
+  }
+
+  /**
+   * Removes the bytes after the rows are gone. A storage error goes to the log and does not stop the
+   * other removals, because the rows are already deleted.
+   */
+  async removeBytes(paths: string[]): Promise<void> {
+    for (const path of paths) {
+      try {
+        await this.storage.remove(path);
+      } catch (error) {
+        this.logger.warn(`The file ${path} was not removed: ${String(error)}`);
+      }
     }
   }
 

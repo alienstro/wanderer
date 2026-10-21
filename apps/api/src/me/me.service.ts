@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
 import { type MeResponse, suggestHandle, type UpdateMeRequest } from "@wanderer/shared";
 import { Prisma, type User } from "../generated/prisma/client.js";
+import { FilesService } from "../files/files.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 /** The fields of the active proxy that the model card shows. */
@@ -25,7 +26,20 @@ export function toMeResponse(user: User, activeProxy: ActiveProxy): MeResponse {
 
 @Injectable()
 export class MeService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly files: FilesService,
+  ) {}
+
+  /**
+   * Deletes the account. The cascades remove the characters, chats, proxies, sessions, and file rows.
+   * Reports by the user and about their characters stay without the link. The file bytes go last.
+   */
+  async remove(user: User): Promise<void> {
+    const paths = await this.files.pathsOf(user.id);
+    await this.prisma.user.delete({ where: { id: user.id } });
+    await this.files.removeBytes(paths);
+  }
 
   /** The /me answer of the user, with the active proxy for the model card. */
   async toResponse(user: User): Promise<MeResponse> {

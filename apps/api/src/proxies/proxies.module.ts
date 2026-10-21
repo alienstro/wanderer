@@ -1,13 +1,14 @@
 import { Module } from "@nestjs/common";
 import { AI_CLIENT_FACTORY, GuardedAiClientFactory } from "../ai/ai-client.js";
 import { AuthModule } from "../auth/auth.module.js";
+import { MeModule } from "../me/me.module.js";
 import { ENV, type Env } from "../config/env.js";
 import { KEY_CIPHER, KeyCipher } from "./key-cipher.js";
 import { ProxiesController } from "./proxies.controller.js";
 import { ProxiesService } from "./proxies.service.js";
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, MeModule],
   controllers: [ProxiesController],
   providers: [
     ProxiesService,
