@@ -147,4 +147,15 @@ describe("admin access to characters", () => {
     const res = await get(admin.cookie).expect(200);
     expect((res.body as { title: string }).title).toBe("Mira");
   });
+
+  it("the admin reads a definition that the creator hides, and another user does not", async () => {
+    const creator = await userWithSession(app, 1);
+    const user = await userWithSession(app, 2);
+    const admin = await userWithSession(app, 3, { role: "admin" });
+    const id = await createCharacter(app, creator.cookie, { definitionVisible: false });
+    const get = (cookie: string) => request(app.getHttpServer()).get(`/characters/${id}`).set("Cookie", cookie);
+    expect((await get(user.cookie).expect(200)).body).toMatchObject({ definition: null });
+    const res = await get(admin.cookie).expect(200);
+    expect((res.body as { definition: { personality: string } | null }).definition?.personality).toBe("Calm, dry, and loyal.");
+  });
 });

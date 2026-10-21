@@ -36,7 +36,10 @@ export function toCharacterCard(row: CharacterCardRow): CharacterCard {
   };
 }
 
-/** The definition is null when the creator hides it and the viewer is not the creator. */
+/**
+ * The definition is null when the creator hides it and the viewer is not the creator. The admin always gets it,
+ * because a report can be about the definition.
+ */
 export function toCharacterDetail(row: CharacterDetailRow, viewer: User | null): CharacterDetail {
   const isOwner = viewer?.id === row.creatorId;
   return {
@@ -47,7 +50,7 @@ export function toCharacterDetail(row: CharacterDetailRow, viewer: User | null):
     definitionVisible: row.definitionVisible,
     openings: row.openings.map((opening) => opening.text),
     definition:
-      row.definitionVisible || isOwner
+      row.definitionVisible || isOwner || viewer?.role === "admin"
         ? { personality: row.personality, scenario: row.scenario, exampleDialogs: row.exampleDialogs }
         : null,
     isOwner,
