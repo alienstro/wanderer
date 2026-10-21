@@ -11,6 +11,7 @@ export function toMeResponse(user: User): MeResponse {
     pictureUrl: user.pictureUrl,
     handle: user.handle,
     role: user.role,
+    showAdult: user.showAdult,
     suggestedHandle: user.handle === null ? suggestHandle(user.email) : null,
   };
 }
