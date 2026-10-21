@@ -20,6 +20,7 @@
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
     "@wanderer/shared": "workspace:*",
+    "cookie-parser": "^1.4.7",
     "ipaddr.js": "^2.5.0",
     "nestjs-pino": "^5.3.1",
     "pino": "^10.0.0",
@@ -31,6 +32,7 @@
   "devDependencies": {
     "@nestjs/testing": "^12.2.0",
     "@swc/core": "^1.16.18",
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
     "@types/supertest": "^7.2.1",
     "prisma": "7.10.1",
