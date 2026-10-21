@@ -1,8 +1,10 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import type { MeResponse, ProxyTestResult, ProxyView } from "@wanderer/shared";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SessionGuard } from "../auth/session.guard.js";
 import type { User } from "../generated/prisma/client.js";
+import { perUserLimit, UserThrottlerGuard } from "../security/user-throttler.guard.js";
 import { ProxiesService } from "./proxies.service.js";
 
 /** The proxies of the user. Each query filters by the user ID, so another user gets 404. */
@@ -39,6 +41,8 @@ export class ProxiesController {
 
   @Post(":id/test")
   @HttpCode(200)
+  @UseGuards(UserThrottlerGuard)
+  @Throttle(perUserLimit(10))
   test(@CurrentUser() user: User, @Param("id") id: string): Promise<ProxyTestResult> {
     return this.proxies.test(user, id);
   }
