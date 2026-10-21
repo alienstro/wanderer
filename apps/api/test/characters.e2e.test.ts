@@ -133,6 +133,23 @@ describe("character create, read, update, and delete", () => {
     expect(await prisma.file.findUnique({ where: { id: first.id } })).toBeNull();
   });
 
+  it("PATCH with only { isPublic: false } changes that field and keeps the others", async () => {
+    const file = await app.get(FilesService).saveAvatar(owner.user.id, await pngImage());
+    const id = await createCharacter(app, owner.cookie, { avatarFileId: file.id, openings: ["one", "two"], tags: ["noir"] });
+
+    const res = await patch(id, owner.cookie, { isPublic: false }).expect(200);
+
+    expect(res.body).toMatchObject({
+      isPublic: false,
+      status: "published",
+      title: "Mira",
+      avatarUrl: `/files/${file.id}`,
+      openings: ["one", "two"],
+      tags: [{ slug: "noir", label: "Noir" }],
+    });
+    expect(storage.files.size).toBe(1);
+  });
+
   it("POST without the web Origin gives 403", async () => {
     await http().post("/characters").set("Cookie", owner.cookie).send(characterInput()).expect(403);
     expect(await prisma.character.count()).toBe(0);

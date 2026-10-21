@@ -18,7 +18,6 @@ import {
   type CharacterInput,
   type CharacterListResponse,
   type MyCharacterCard,
-  characterInputSchema,
   characterListQuerySchema,
 } from "@wanderer/shared";
 import { CurrentUser, OptionalUser } from "../auth/current-user.decorator.js";
@@ -27,19 +26,10 @@ import { ImageUpload, withImageCheck } from "../files/files.controller.js";
 import { FilesService } from "../files/files.service.js";
 import type { User } from "../generated/prisma/client.js";
 import { AllowMultipart } from "../security/origin.guard.js";
+import { parseCharacterInput } from "./character-input.js";
 import { CharacterListService } from "./character-list.service.js";
 import { CharactersService } from "./characters.service.js";
 import { readTavernCard } from "./tavern-card.js";
-
-/** Checks the form fields. A bad body gives 400 with the names of the bad fields. */
-export function parseCharacterInput(body: unknown): CharacterInput {
-  const parsed = characterInputSchema.safeParse(body);
-  if (!parsed.success) {
-    const fields = [...new Set(parsed.error.issues.map((issue) => String(issue.path[0] ?? "")))];
-    throw new BadRequestException({ error: "invalid_character", fields });
-  }
-  return parsed.data;
-}
 
 @Controller("characters")
 export class CharactersController {
@@ -93,7 +83,7 @@ export class CharactersController {
   @Patch(":id")
   @UseGuards(SessionGuard)
   update(@CurrentUser() user: User, @Param("id") id: string, @Body() body: unknown): Promise<CharacterDetail> {
-    return this.characters.update(id, user, parseCharacterInput(body));
+    return this.characters.update(id, user, body);
   }
 
   @Delete(":id")

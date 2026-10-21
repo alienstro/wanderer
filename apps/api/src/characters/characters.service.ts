@@ -11,6 +11,7 @@ import { type CharacterStatus, Prisma, type User } from "../generated/prisma/cli
 import { FilesService } from "../files/files.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { canSeeAdult } from "./adult.js";
+import { mergeCharacterInput } from "./character-input.js";
 import { type CharacterDetailRow, characterDetailInclude, toCharacterDetail } from "./character-mapper.js";
 
 const NOT_FOUND = { error: "not_found" };
@@ -86,8 +87,10 @@ export class CharactersService {
     return toCharacterDetail(row, viewer);
   }
 
-  async update(id: string, user: User, input: CharacterInput): Promise<CharacterDetail> {
+  /** Changes the fields that the body sends. The other fields keep their saved values. */
+  async update(id: string, user: User, body: unknown): Promise<CharacterDetail> {
     const current = await this.findOwnRow(id, user);
+    const input = mergeCharacterInput(current, body);
     await this.assertOwnAvatar(user, input.avatarFileId);
     // A hidden character stays hidden. Only an admin can show it again.
     const status: CharacterStatus = current.status === "hidden" ? "hidden" : input.publish ? "published" : "draft";
