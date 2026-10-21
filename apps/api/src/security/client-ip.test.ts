@@ -24,4 +24,15 @@ describe("clientIp", () => {
   it("returns req.ip when no CF-Connecting-IP header exists", () => {
     expect(clientIp(fakeRequest({}))).toBe("172.18.0.5");
   });
+
+  it("gives all addresses in one IPv6 /64 block the same key", () => {
+    const a = clientIp(fakeRequest({ "cf-connecting-ip": "2001:db8:1:2:aaaa::1" }));
+    const b = clientIp(fakeRequest({ "cf-connecting-ip": "2001:db8:1:2:bbbb::9" }));
+    expect(a).toBe("2001:db8:1:2::/64");
+    expect(b).toBe(a);
+  });
+
+  it("changes an IPv4-mapped IPv6 address to IPv4", () => {
+    expect(clientIp(fakeRequest({}, "::ffff:203.0.113.7"))).toBe("203.0.113.7");
+  });
 });
