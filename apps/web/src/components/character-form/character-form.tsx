@@ -145,7 +145,7 @@ export interface CharacterFormProps {
 /** The live preview: the Discover card as it looks with the current values. */
 function PreviewCard({ state, creatorHandle }: { state: FormState; creatorHandle: string }) {
   return (
-    <section aria-label="Preview" className="flex flex-[0_1_260px] flex-col gap-3 max-[760px]:flex-[1_1_100%]">
+    <section aria-label="Preview" className="top-6 flex flex-[0_1_260px] flex-col gap-3 min-[761px]:sticky max-[760px]:flex-[1_1_100%]">
       <h2 className="m-0 text-base font-bold">Preview</h2>
       <CharacterCard
         linked={false}
