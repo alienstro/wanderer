@@ -33,6 +33,7 @@ export default function EditCharacterPage() {
     <div className="flex flex-col gap-[22px] px-7 pt-7 pb-20 max-[760px]:px-4">
       <h1 className="m-0 text-[28px] font-bold tracking-[-0.02em]">Edit {query.data.title}</h1>
       <CharacterForm
+        creatorHandle={me.handle ?? "you"}
         key={query.data.id}
         initial={query.data}
         onSaved={(detail) => {

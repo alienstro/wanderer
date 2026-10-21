@@ -20,6 +20,7 @@ export default function CreatePage() {
         <p className="m-0 text-muted">Set up how your character looks, speaks, and behaves in chat.</p>
       </div>
       <CharacterForm
+        creatorHandle={me.handle ?? "you"}
         onSaved={(detail) => {
           void queryClient.invalidateQueries({ queryKey: ["characters"] });
           router.push(`/characters/${detail.id}`);

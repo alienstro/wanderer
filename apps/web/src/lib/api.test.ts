@@ -17,6 +17,14 @@ describe("apiFetch", () => {
     vi.unstubAllEnvs();
   });
 
+  it("a FormData body gets no JSON Content-Type, so the browser sets the multipart boundary", async () => {
+    const fetchMock = fakeFetch(Response.json({ ok: true }));
+    const body = new FormData();
+    body.append("file", new Blob(["x"]), "a.png");
+    await apiFetch("/files", { method: "POST", body });
+    expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).has("Content-Type")).toBe(false);
+  });
+
   it("sends credentials include", async () => {
     const fetchMock = fakeFetch(Response.json({ ok: true }));
     await apiFetch("/me");

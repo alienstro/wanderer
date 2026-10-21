@@ -9,10 +9,11 @@ const BADGE = "inline-flex items-center gap-[5px] rounded-full bg-[rgba(10,10,12
 /**
  * A Discover card in the StoryEngine style: a tall 3:4 image, the chat count, the title, the tags, and the creator.
  * The whole card links to the character page. `extraBadge` puts one more badge at the top right, such as "Draft".
+ * `linked={false}` shows the card with no link, for the form preview.
  */
-export function CharacterCard({ card, extraBadge }: { card: Card; extraBadge?: ReactNode }) {
-  return (
-    <Link href={`/characters/${card.id}`} className="se-card">
+export function CharacterCard({ card, extraBadge, linked = true }: { card: Card; extraBadge?: ReactNode; linked?: boolean }) {
+  const body = (
+    <>
       <span className="shot">
         {card.avatarUrl ? (
           <img src={fileSrc(card.avatarUrl)} alt={card.title} loading="lazy" />
@@ -45,6 +46,13 @@ export function CharacterCard({ card, extraBadge }: { card: Card; extraBadge?: R
         )}
         <span className="text-xs text-subtle">@{card.creatorHandle}</span>
       </span>
+    </>
+  );
+  return linked ? (
+    <Link href={`/characters/${card.id}`} className="se-card">
+      {body}
     </Link>
+  ) : (
+    <div className="se-card">{body}</div>
   );
 }

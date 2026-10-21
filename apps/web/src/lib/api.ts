@@ -34,7 +34,8 @@ async function errorCode(res: Response): Promise<string | null> {
 /** Calls the API from the browser with the session cookie. */
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
-  if (init.body !== undefined && init.body !== null && !headers.has("Content-Type")) {
+  // A string body is JSON. The browser sets the Content-Type of FormData itself, with the multipart boundary.
+  if (typeof init.body === "string" && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
   const res = await fetch(`${apiUrl()}${path}`, { ...init, headers, credentials: "include" });

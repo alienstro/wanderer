@@ -11,9 +11,13 @@ import {
   TITLE_MAX,
   type TagSlug,
 } from "@wanderer/shared";
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useId, useRef, useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
+import { CharacterCard } from "../character-card";
+import { AvatarField } from "./avatar-field";
+import { BioToolbar } from "./bio-toolbar";
 import { OpeningsEditor } from "./openings-editor";
+import { TavernImport } from "./tavern-import";
 
 export type FormState = Omit<CharacterInput, "publish">;
 type FieldName = keyof FormState;
@@ -134,17 +138,36 @@ export interface CharacterFormProps {
   /** The saved character for the edit form. A new character has no initial value. */
   initial?: CharacterDetail;
   onSaved: (detail: CharacterDetail) => void;
-  /** The avatar field. It can change all fields, for the Tavern import. */
-  avatarSlot?: (state: FormState, set: (change: Partial<FormState>) => void) => ReactNode;
-  /** The bio editor. The default is a plain textarea. */
-  bioSlot?: (input: { id: string; describedBy: string | undefined; value: string; onChange: (value: string) => void }) => ReactNode;
-  /** A panel next to the form, such as the live preview. */
-  aside?: (state: FormState) => ReactNode;
+  /** The handle on the preview card. */
+  creatorHandle?: string;
+}
+
+/** The live preview: the Discover card as it looks with the current values. */
+function PreviewCard({ state, creatorHandle }: { state: FormState; creatorHandle: string }) {
+  return (
+    <section aria-label="Preview" className="flex flex-[0_1_260px] flex-col gap-3 max-[760px]:flex-[1_1_100%]">
+      <h2 className="m-0 text-base font-bold">Preview</h2>
+      <CharacterCard
+        linked={false}
+        card={{
+          id: "preview",
+          title: state.title.trim() || "Untitled",
+          chatName: state.chatName,
+          avatarUrl: state.avatarFileId ? `/files/${state.avatarFileId}` : null,
+          isAdult: state.isAdult,
+          tags: TAGS.filter((tag) => state.tags.includes(tag.slug)),
+          chatCount: 0,
+          creatorHandle,
+        }}
+      />
+    </section>
+  );
 }
 
 /** The create and edit form, in the order of spec section 4.4. The same schema checks it here and in the API. */
-export function CharacterForm({ initial, onSaved, avatarSlot, bioSlot, aside }: CharacterFormProps) {
+export function CharacterForm({ initial, onSaved, creatorHandle = "you" }: CharacterFormProps) {
   const [state, setState] = useState<FormState>(() => initialFormState(initial));
+  const bioRef = useRef<HTMLTextAreaElement>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -191,7 +214,11 @@ export function CharacterForm({ initial, onSaved, avatarSlot, bioSlot, aside }: 
   return (
     <div className="flex flex-wrap items-start gap-9">
       <form className="flex min-w-0 flex-[1_1_520px] flex-col gap-[22px]" onSubmit={(event) => event.preventDefault()} noValidate>
-        <div data-field="avatar">{avatarSlot?.(state, set)}</div>
+        <div data-field="avatar" className="flex flex-col gap-3">
+          <AvatarField value={state.avatarFileId} onChange={(avatarFileId) => set({ avatarFileId })} />
+          {/* A card fills only the fields that it has. The other fields keep what the user typed. */}
+          <TavernImport onImported={(draft, avatarFileId) => set({ ...draft, avatarFileId })} />
+        </div>
 
         <Field name="title" label="Title" required error={errors.title} hint={`${state.title.length}/${TITLE_MAX}`}>
           {({ inputId, describedBy }) => (
@@ -222,22 +249,22 @@ export function CharacterForm({ initial, onSaved, avatarSlot, bioSlot, aside }: 
           )}
         </Field>
 
-        <Field name="bio" label="Bio" required error={errors.bio} hint={`${estimateTokens(state.bio)} tokens. Markdown works here.`}>
-          {({ inputId, describedBy }) =>
-            bioSlot ? (
-              bioSlot({ id: inputId, describedBy, value: state.bio, onChange: (bio) => set({ bio }) })
-            ) : (
+        <Field name="bio" label="Bio" required error={errors.bio} hint={`${estimateTokens(state.bio)} tokens. Select text, then use the buttons to add Markdown.`}>
+          {({ inputId, describedBy }) => (
+            <div className="rounded-xl border border-field-line bg-surface focus-within:border-accent">
+              <BioToolbar textareaRef={bioRef} value={state.bio} onChange={(bio) => set({ bio })} />
               <textarea
                 id={inputId}
-                className="field"
+                ref={bioRef}
+                className="field border-0 bg-transparent shadow-none focus:shadow-none"
                 rows={5}
                 value={state.bio}
                 aria-describedby={describedBy}
                 placeholder="Who is this character, and what do they want?"
                 onChange={(event) => set({ bio: event.target.value })}
               />
-            )
-          }
+            </div>
+          )}
         </Field>
 
         <div data-field="tags" className="flex flex-col gap-2">
@@ -348,7 +375,7 @@ export function CharacterForm({ initial, onSaved, avatarSlot, bioSlot, aside }: 
           </button>
         </div>
       </form>
-      {aside?.(state)}
+      <PreviewCard state={state} creatorHandle={creatorHandle} />
     </div>
   );
 }
