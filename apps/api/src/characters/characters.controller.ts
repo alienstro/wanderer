@@ -8,12 +8,21 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
-import { type CharacterDetail, type CharacterInput, characterInputSchema } from "@wanderer/shared";
+import {
+  type CharacterDetail,
+  type CharacterInput,
+  type CharacterListResponse,
+  type MyCharacterCard,
+  characterInputSchema,
+  characterListQuerySchema,
+} from "@wanderer/shared";
 import { CurrentUser, OptionalUser } from "../auth/current-user.decorator.js";
 import { OptionalSessionGuard, SessionGuard } from "../auth/session.guard.js";
 import type { User } from "../generated/prisma/client.js";
+import { CharacterListService } from "./character-list.service.js";
 import { CharactersService } from "./characters.service.js";
 
 /** Checks the form fields. A bad body gives 400 with the names of the bad fields. */
@@ -28,7 +37,20 @@ export function parseCharacterInput(body: unknown): CharacterInput {
 
 @Controller("characters")
 export class CharactersController {
-  constructor(private readonly characters: CharactersService) {}
+  constructor(
+    private readonly characters: CharactersService,
+    private readonly lists: CharacterListService,
+  ) {}
+
+  @Get()
+  @UseGuards(OptionalSessionGuard)
+  list(@OptionalUser() viewer: User | null, @Query() query: unknown): Promise<CharacterListResponse> {
+    const parsed = characterListQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: "invalid_query" });
+    }
+    return this.lists.discover(parsed.data, viewer);
+  }
 
   @Post()
   @UseGuards(SessionGuard)
@@ -53,5 +75,16 @@ export class CharactersController {
   @UseGuards(SessionGuard)
   remove(@CurrentUser() user: User, @Param("id") id: string): Promise<void> {
     return this.characters.remove(id, user);
+  }
+}
+
+@Controller("me/characters")
+@UseGuards(SessionGuard)
+export class MyCharactersController {
+  constructor(private readonly lists: CharacterListService) {}
+
+  @Get()
+  list(@CurrentUser() user: User): Promise<MyCharacterCard[]> {
+    return this.lists.mine(user);
   }
 }
