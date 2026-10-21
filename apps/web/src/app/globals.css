@@ -299,8 +299,56 @@
     color: var(--color-text);
   }
 
+  .switch {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 0 6px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .switch .track {
+    position: relative;
+    width: 34px;
+    height: 20px;
+    border-radius: 999px;
+    background: #3a3a42;
+    transition: background 0.15s;
+  }
+
+  .switch .knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: #e4e4e7;
+    transition: transform 0.15s;
+  }
+
+  .switch[aria-checked="true"] .track {
+    background: var(--color-accent);
+  }
+
+  .switch[aria-checked="true"] .knob {
+    transform: translateX(14px);
+    background: #ffffff;
+  }
+
+  textarea.field {
+    line-height: 1.6;
+    resize: vertical;
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .se-card .shot img {
+    .se-card .shot img,
+    .switch .track,
+    .switch .knob {
       transition: none;
     }
   }
