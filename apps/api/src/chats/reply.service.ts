@@ -58,6 +58,7 @@ export class ReplyService {
     const { user, res, mode } = input;
     const content = mode.kind === "send" ? this.parseContent(mode.body) : null;
     const { chat, character, history } = await this.chats.loadForReply(input.chatId, user);
+    const replaced = mode.kind === "regenerate" ? regenerateTarget(history) : null;
     const { target, customPrompt } = await this.proxies.loadTarget(user);
     if (this.busy.has(chat.id)) {
       throw new ConflictException({ error: "chat_busy" });
@@ -69,12 +70,17 @@ export class ReplyService {
       if (userMessage) {
         history.push(userMessage);
       }
+      // A regenerate sends the history without the reply that it replaces.
+      const promptHistory = replaced ? history.filter((message) => message.id !== replaced.id) : history;
       sse = openSse(res, this.timing.heartbeatMs);
       sse.send({ type: "start", userMessage: userMessage && toMessageView(userMessage) });
-      const prompt = buildReplyPrompt({ character, customPrompt, userName: user.name, history });
+      const prompt = buildReplyPrompt({ character, customPrompt, userName: user.name, history: promptHistory });
       const result = await this.generate(target, prompt, res, sse);
+      // An empty result keeps the old reply. Only a reply with text replaces it.
       const reply = result.text.trim()
-        ? await this.saveMessage(chat.id, "assistant", result.text, nextPosition(history))
+        ? replaced
+          ? await this.replaceMessage(chat.id, replaced.id, result.text)
+          : await this.saveMessage(chat.id, "assistant", result.text, nextPosition(history))
         : null;
       if (result.clientGone) {
         return;
@@ -159,6 +165,14 @@ export class ReplyService {
     return { text, error, clientGone: reason === "client" };
   }
 
+  private async replaceMessage(chatId: string, messageId: string, content: string) {
+    const [message] = await this.prisma.$transaction([
+      this.prisma.message.update({ where: { id: messageId }, data: { content } }),
+      this.prisma.chat.update({ where: { id: chatId }, data: { lastMessageAt: new Date() } }),
+    ]);
+    return message;
+  }
+
   private async saveMessage(chatId: string, role: "user" | "assistant", content: string, position: number) {
     const [message] = await this.prisma.$transaction([
       this.prisma.message.create({ data: { chatId, role, content, position } }),
@@ -166,6 +180,21 @@ export class ReplyService {
     ]);
     return message;
   }
+}
+
+/**
+ * The reply that a regenerate replaces: the last message when it is an AI reply after the opening.
+ * After a user message with no reply, a regenerate makes a new reply, so the result is null.
+ */
+function regenerateTarget(history: Message[]): Message | null {
+  const last = history.at(-1);
+  if (last?.role === "assistant" && last.position > 0) {
+    return last;
+  }
+  if (last?.role === "user") {
+    return null;
+  }
+  throw new ConflictException({ error: "nothing_to_regenerate" });
 }
 
 function nextPosition(history: Message[]): number {

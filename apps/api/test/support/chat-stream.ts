@@ -85,3 +85,24 @@ export async function waitFor(check: () => Promise<boolean>, timeoutMs = 2000): 
   }
   throw new Error("waitFor: the time limit ended");
 }
+
+/** Saves a proxy for the user. The first proxy becomes the active proxy. */
+export async function addProxy(app: NestExpressApplication, user: TestUser): Promise<void> {
+  await request(app.getHttpServer())
+    .post("/proxies")
+    .set("Origin", WEB_ORIGIN)
+    .set("Cookie", user.cookie)
+    .send({ name: "Main", baseUrl: "https://api.example.com/v1", model: "fake-model", apiKey: "sk-test-3f9a" })
+    .expect(201);
+}
+
+/** Starts a chat from the first opening and gives the chat ID. */
+export async function startChat(app: NestExpressApplication, user: TestUser, characterId: string): Promise<string> {
+  const res = await request(app.getHttpServer())
+    .post("/chats")
+    .set("Origin", WEB_ORIGIN)
+    .set("Cookie", user.cookie)
+    .send({ characterId, openingIndex: 0 })
+    .expect(201);
+  return (res.body as { chat: { id: string } }).chat.id;
+}

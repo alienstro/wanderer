@@ -46,6 +46,12 @@ export class ChatsController {
   ): Promise<void> {
     return this.replies.stream({ user, chatId: id, res, mode: { kind: "send", body } });
   }
+
+  /** Streams a new AI reply in place of the last reply, or a reply after a user message with no reply. */
+  @Post(":id/regenerate")
+  regenerate(@CurrentUser() user: User, @Param("id") id: string, @Res() res: Response): Promise<void> {
+    return this.replies.stream({ user, chatId: id, res, mode: { kind: "regenerate" } });
+  }
 }
 
 /** The edit and the delete of the user's own messages. */

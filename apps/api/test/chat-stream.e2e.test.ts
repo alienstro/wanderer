@@ -1,13 +1,11 @@
 import type { NestExpressApplication } from "@nestjs/platform-express";
-import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AI_CLIENT_FACTORY } from "../src/ai/ai-client.js";
 import { REPLY_TIMING } from "../src/chats/reply.service.js";
 import { PrismaService } from "../src/prisma/prisma.service.js";
 import { createTestApp } from "./support/app.js";
 import { createCharacter } from "./support/characters.js";
-import { listen, openStream, parseEvents, postStream, waitFor } from "./support/chat-stream.js";
-import { WEB_ORIGIN } from "./support/env.js";
+import { addProxy, listen, openStream, parseEvents, postStream, startChat, waitFor } from "./support/chat-stream.js";
 import { type FakeAiServer, startFakeAiServer, UnguardedAiClientFactory } from "./support/fake-ai-server.js";
 import { type TestUser, userWithSession } from "./support/users.js";
 
@@ -21,15 +19,6 @@ describe("streamed replies", () => {
 
   const sendPath = () => `/chats/${chatId}/messages`;
   const messages = () => prisma.message.findMany({ where: { chatId }, orderBy: { position: "asc" } });
-
-  async function addProxy(owner: TestUser) {
-    await request(app.getHttpServer())
-      .post("/proxies")
-      .set("Origin", WEB_ORIGIN)
-      .set("Cookie", owner.cookie)
-      .send({ name: "Main", baseUrl: "https://api.example.com/v1", model: "fake-model", apiKey: "sk-test-3f9a" })
-      .expect(201);
-  }
 
   beforeAll(async () => {
     fake = await startFakeAiServer();
@@ -47,14 +36,8 @@ describe("streamed replies", () => {
     await prisma.user.deleteMany();
     user = await userWithSession(app, 1);
     const characterId = await createCharacter(app, user.cookie, { title: "Onnit", openings: ["*waves* Hi!"] });
-    const chat = await request(app.getHttpServer())
-      .post("/chats")
-      .set("Origin", WEB_ORIGIN)
-      .set("Cookie", user.cookie)
-      .send({ characterId, openingIndex: 0 })
-      .expect(201);
-    chatId = chat.body.chat.id;
-    await addProxy(user);
+    chatId = await startChat(app, user, characterId);
+    await addProxy(app, user);
   });
 
   afterAll(async () => {
@@ -136,7 +119,7 @@ describe("streamed replies", () => {
 
   it("another user gets 404 for a send", async () => {
     const other = await userWithSession(app, 2);
-    await addProxy(other);
+    await addProxy(app, other);
     await postStream(app, other, sendPath(), { content: "Hi" }).expect(404);
     expect(await messages()).toHaveLength(1);
   });
