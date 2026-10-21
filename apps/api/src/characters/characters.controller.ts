@@ -9,8 +9,10 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
 } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import {
   type CharacterDetail,
   type CharacterInput,
@@ -21,9 +23,13 @@ import {
 } from "@wanderer/shared";
 import { CurrentUser, OptionalUser } from "../auth/current-user.decorator.js";
 import { OptionalSessionGuard, SessionGuard } from "../auth/session.guard.js";
+import { ImageUpload, withImageCheck } from "../files/files.controller.js";
+import { FilesService } from "../files/files.service.js";
 import type { User } from "../generated/prisma/client.js";
+import { AllowMultipart } from "../security/origin.guard.js";
 import { CharacterListService } from "./character-list.service.js";
 import { CharactersService } from "./characters.service.js";
+import { readTavernCard } from "./tavern-card.js";
 
 /** Checks the form fields. A bad body gives 400 with the names of the bad fields. */
 export function parseCharacterInput(body: unknown): CharacterInput {
@@ -40,6 +46,7 @@ export class CharactersController {
   constructor(
     private readonly characters: CharactersService,
     private readonly lists: CharacterListService,
+    private readonly files: FilesService,
   ) {}
 
   @Get()
@@ -56,6 +63,25 @@ export class CharactersController {
   @UseGuards(SessionGuard)
   create(@CurrentUser() user: User, @Body() body: unknown): Promise<CharacterDetail> {
     return this.characters.create(user, parseCharacterInput(body));
+  }
+
+  /** Reads a Tavern PNG into a form draft and stores the image as the avatar. It creates no character. */
+  @Post("import-png")
+  @HttpCode(200)
+  @AllowMultipart()
+  @UseGuards(SessionGuard)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @ImageUpload()
+  async importPng(
+    @CurrentUser() user: User,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ): Promise<{ draft: Partial<CharacterInput>; avatarFileId: string }> {
+    const draft = file ? readTavernCard(file.buffer) : null;
+    if (!file || !draft) {
+      throw new BadRequestException({ error: "no_character_card" });
+    }
+    const avatar = await withImageCheck(() => this.files.saveAvatar(user.id, file.buffer));
+    return { draft, avatarFileId: avatar.id };
   }
 
   @Get(":id")

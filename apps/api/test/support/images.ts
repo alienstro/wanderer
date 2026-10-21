@@ -28,3 +28,21 @@ export async function pngWithFakeSize(width: number, height: number): Promise<Bu
   png.writeUInt32BE(crc32(png.subarray(12, 29)), 29);
   return png;
 }
+
+/** Puts a tEXt chunk with the keyword and the text directly after the IHDR chunk, as a Tavern card does. */
+export function withTextChunk(png: Buffer, keyword: string, text: string): Buffer {
+  const type = Buffer.from("tEXt", "latin1");
+  const data = Buffer.concat([Buffer.from(keyword, "latin1"), Buffer.from([0]), Buffer.from(text, "latin1")]);
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.length);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(Buffer.concat([type, data])));
+  // The signature has 8 bytes, and the IHDR chunk has 25 bytes.
+  const afterIhdr = 8 + 25;
+  return Buffer.concat([png.subarray(0, afterIhdr), length, type, data, crc, png.subarray(afterIhdr)]);
+}
+
+/** Encodes a card object as the base64 JSON that a Tavern PNG keeps. */
+export function cardText(card: unknown): string {
+  return Buffer.from(JSON.stringify(card), "utf8").toString("base64");
+}
