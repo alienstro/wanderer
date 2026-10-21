@@ -12,3 +12,6 @@ apps/api/src/generated/
 next-env.d.ts
 apps/api/uploads/
 .vitest/
+e2e/.tmp/
+e2e/test-results/
+e2e/playwright-report/

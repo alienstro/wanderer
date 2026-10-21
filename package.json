@@ -8,7 +8,8 @@
   "scripts": {
     "postinstall": "pnpm --filter @wanderer/shared build",
     "typecheck": "pnpm -r --workspace-concurrency=1 typecheck",
-    "lint": "pnpm -r --workspace-concurrency=1 lint"
+    "lint": "pnpm -r --workspace-concurrency=1 lint",
+    "e2e": "pnpm --filter @wanderer/e2e build && pnpm --filter @wanderer/e2e e2e"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
