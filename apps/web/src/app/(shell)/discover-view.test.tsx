@@ -75,6 +75,24 @@ describe("DiscoverView", () => {
     expect(replace).toHaveBeenCalledTimes(1);
   });
 
+  it("a new q from outside, such as the Discover link, replaces the search text and does not put the old q back", async () => {
+    stubFetch();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const view = (q: string) => (
+      <QueryClientProvider client={client}>
+        <DiscoverView initial={{ items: [card(1)], nextCursor: null }} q={q} tag={null} sort="most_chats" />
+      </QueryClientProvider>
+    );
+    const { rerender } = render(view("noir"));
+    expect(screen.getByRole("searchbox", { name: "Search characters" })).toHaveValue("noir");
+
+    rerender(view(""));
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    expect(screen.getByRole("searchbox", { name: "Search characters" })).toHaveValue("");
+    expect(replace).not.toHaveBeenCalled();
+  });
+
   it("Load more asks for the next cursor and adds the cards", async () => {
     const fetchMock = stubFetch([{ items: [card(2)], nextCursor: null }]);
     renderView({ items: [card(1)], nextCursor: "cursor-1" });

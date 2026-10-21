@@ -44,6 +44,17 @@ export function DiscoverView({ initial, q, tag, sort }: DiscoverQuery & { initia
   const { data: me, isPending: mePending } = useMe();
   const viewer = me?.id ?? null;
   const [text, setText] = useState(q);
+  // The q of the URL that the view shows now, and the q that the search field put into the URL.
+  const [shownQ, setShownQ] = useState(q);
+  const [pushedQ, setPushedQ] = useState<string | null>(null);
+  if (q !== shownQ) {
+    setShownQ(q);
+    setPushedQ(null);
+    // A q that the search field did not put into the URL comes from outside, such as the Discover link or the back button.
+    if (q !== pushedQ) {
+      setText(q);
+    }
+  }
 
   function go(next: DiscoverQuery) {
     router.replace(discoverHref(pathname, next), { scroll: false });
@@ -55,7 +66,10 @@ export function DiscoverView({ initial, q, tag, sort }: DiscoverQuery & { initia
     if (wanted === q) {
       return;
     }
-    const timer = setTimeout(() => router.replace(discoverHref(pathname, { q: wanted, tag, sort }), { scroll: false }), SEARCH_PAUSE_MS);
+    const timer = setTimeout(() => {
+      setPushedQ(wanted);
+      router.replace(discoverHref(pathname, { q: wanted, tag, sort }), { scroll: false });
+    }, SEARCH_PAUSE_MS);
     return () => clearTimeout(timer);
   }, [text, q, tag, sort, router, pathname]);
 
