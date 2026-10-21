@@ -1,10 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
+import { isUuid } from "../common/uuid.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { FILE_STORAGE, type FileStorage } from "./file-storage.js";
 import { toAvatarWebp } from "./image.js";
-
-export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function fileUrl(id: string): string {
   return `/files/${id}`;
@@ -36,10 +35,20 @@ export class FilesService {
 
   /** Gives the bytes of a file, or null for an unknown ID. */
   async read(id: string): Promise<Buffer | null> {
-    if (!UUID_PATTERN.test(id)) {
+    if (!isUuid(id)) {
       return null;
     }
     const file = await this.prisma.file.findUnique({ where: { id } });
     return file ? this.storage.read(file.path) : null;
+  }
+
+  /** Deletes a file row and its bytes. It does nothing for an unknown ID. */
+  async remove(id: string): Promise<void> {
+    const file = await this.prisma.file.findUnique({ where: { id } });
+    if (!file) {
+      return;
+    }
+    await this.prisma.file.delete({ where: { id } });
+    await this.storage.remove(file.path);
   }
 }

@@ -3,6 +3,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { LoggerModule } from "nestjs-pino";
 import { AuthModule } from "./auth/auth.module.js";
+import { CharactersModule } from "./characters/characters.module.js";
 import { ENV, type Env } from "./config/env.js";
 import { serializeRequest } from "./config/logging.js";
 import { FilesModule } from "./files/files.module.js";
@@ -31,6 +32,7 @@ export class AppModule {
         PrismaModule,
         AuthModule,
         FilesModule,
+        CharactersModule,
       ],
       controllers: [HealthController],
       providers: [
