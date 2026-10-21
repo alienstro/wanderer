@@ -38,6 +38,8 @@ model User {
   proxies          Proxy[]   @relation("ProxyOwner")
   activeProxy      Proxy?    @relation("ActiveProxy", fields: [activeProxyId], references: [id], onDelete: SetNull)
   chats            Chat[]
+  reports          Report[]  @relation("Reporter")
+  resolvedReports  Report[]  @relation("ResolvedBy")
 
   @@map("users")
 }
@@ -99,6 +101,7 @@ model Character {
   openings CharacterOpening[]
   tags     CharacterTag[]
   chats    Chat[]
+  reports  Report[]
 
   @@unique([creatorId, title])
   @@index([status, isPublic, isAdult, chatCount, createdAt])
@@ -216,4 +219,49 @@ model Message {
 
   @@unique([chatId, position])
   @@map("messages")
+}
+
+enum ReportReason {
+  minors
+  wrong_rating
+  hate
+  copied
+  other
+}
+
+enum ReportStatus {
+  open
+  closed
+}
+
+enum ReportAction {
+  none
+  hidden
+  deleted
+  banned
+}
+
+/// A report about a character. It stays for the admin after a delete of the character or of the reporter.
+model Report {
+  id             String        @id @default(uuid()) @db.Uuid
+  characterId    String?       @map("character_id") @db.Uuid
+  /// The title when the user sent the report, so the admin history keeps it after a delete.
+  characterTitle String        @map("character_title")
+  reporterId     String?       @map("reporter_id") @db.Uuid
+  reason         ReportReason
+  note           String        @default("")
+  status         ReportStatus  @default(open)
+  action         ReportAction?
+  resolvedById   String?       @map("resolved_by") @db.Uuid
+  resolvedAt     DateTime?     @map("resolved_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  character  Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  reporter   User?      @relation("Reporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  resolvedBy User?      @relation("ResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@unique([characterId, reporterId])
+  @@index([status, createdAt])
+  @@index([reporterId, createdAt])
+  @@map("reports")
 }

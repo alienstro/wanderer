@@ -89,6 +89,21 @@ describe("sidebar", () => {
     expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/auth\/logout$/), expect.objectContaining({ method: "POST" }));
   });
 
+  it("the account menu links to Settings, and shows Admin only to the admin", async () => {
+    stubApi();
+    renderWithClient(<UserRow />);
+    await userEvent.click(await screen.findByRole("button", { name: "Account menu" }));
+    expect(screen.getByRole("menuitem", { name: "Settings" })).toHaveAttribute("href", "/settings");
+    expect(screen.queryByRole("menuitem", { name: "Admin" })).not.toBeInTheDocument();
+  });
+
+  it("the account menu shows Admin with a link to /admin to the admin", async () => {
+    stubApi({ ...me, role: "admin" });
+    renderWithClient(<UserRow />);
+    await userEvent.click(await screen.findByRole("button", { name: "Account menu" }));
+    expect(screen.getByRole("menuitem", { name: "Admin" })).toHaveAttribute("href", "/admin");
+  });
+
   it("a visitor sees a Log in link to /login and no user row", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ error: "unauthorized" }, { status: 401 })));
     renderWithClient(<UserRow />);

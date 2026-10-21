@@ -1,6 +1,8 @@
-import { BadRequestException, Body, Controller, Get, Patch, Post, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Patch, Post, Res, UseGuards } from "@nestjs/common";
 import { type MeResponse, updateMeRequestSchema } from "@wanderer/shared";
+import type { Response } from "express";
 import { CurrentUser } from "../auth/current-user.decorator.js";
+import { clearSessionCookieOptions, SESSION_COOKIE } from "../auth/session-cookie.js";
 import { SessionGuard } from "../auth/session.guard.js";
 import type { User } from "../generated/prisma/client.js";
 import { MeService } from "./me.service.js";
@@ -29,5 +31,13 @@ export class MeController {
   @Post("adult-confirm")
   confirmAdult(@CurrentUser() user: User): Promise<MeResponse> {
     return this.me.confirmAdult(user);
+  }
+
+  /** Deletes the account and ends the session in this browser. */
+  @Delete()
+  @HttpCode(204)
+  async remove(@CurrentUser() user: User, @Res({ passthrough: true }) res: Response): Promise<void> {
+    await this.me.remove(user);
+    res.clearCookie(SESSION_COOKIE, clearSessionCookieOptions);
   }
 }
