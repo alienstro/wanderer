@@ -1,3 +1,7 @@
 packages:
   - apps/*
   - packages/*
+
+# pnpm runs install scripts only for the packages in this list.
+allowBuilds:
+  "@swc/core": true
