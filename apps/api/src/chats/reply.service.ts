@@ -46,7 +46,7 @@ interface Generated {
 @Injectable()
 export class ReplyService {
   private readonly logger = new Logger(ReplyService.name);
-  /** The chats with a running stream. The API runs as one container, so a set in memory is enough. */
+  /** The "<user ID>:<chat ID>" keys of the running streams. The API runs as one container, so memory is enough. */
   private readonly busy = new Set<string>();
 
   constructor(
@@ -64,14 +64,16 @@ export class ReplyService {
   async stream(input: ReplyInput): Promise<void> {
     const content = input.mode.kind === "send" ? this.parseContent(input.mode.body) : null;
     // The busy mark comes before the loads, so a second request never reads a history that a first one still changes.
-    if (this.busy.has(input.chatId)) {
+    // The key holds the user ID, so another user never meets the owner's mark and gets 404 from the load.
+    const busyKey = `${input.user.id}:${input.chatId}`;
+    if (this.busy.has(busyKey)) {
       throw new ConflictException({ error: "chat_busy" });
     }
-    this.busy.add(input.chatId);
+    this.busy.add(busyKey);
     try {
       await this.streamOwned(input, content);
     } finally {
-      this.busy.delete(input.chatId);
+      this.busy.delete(busyKey);
     }
   }
 

@@ -134,4 +134,14 @@ describe("streamed replies", () => {
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
   });
+
+  it("another user gets 404, not 409, while the owner's stream runs", async () => {
+    const other = await userWithSession(app, 2);
+    await addProxy(app, other);
+    fake.next({ pieces: ["a", "b", "c", "d"], delayMs: 100 });
+    const first = openStream(baseUrl, user, sendPath(), { content: "Mine" });
+    await waitFor(async () => (await messages()).length === 2);
+    await postStream(app, other, sendPath(), { content: "Theirs" }).expect(404);
+    await first;
+  });
 });
