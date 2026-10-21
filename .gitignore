@@ -5,3 +5,7 @@ dist/
 .next/
 *.tsbuildinfo
 .superpowers/
+.env
+.env.*
+!.env*.example
+apps/api/src/generated/

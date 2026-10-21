@@ -7,5 +7,6 @@ export default defineConfig({
   test: {
     include: ["test/**/*.test.ts", "src/**/*.test.ts"],
     setupFiles: ["reflect-metadata"],
+    globalSetup: ["test/support/global-setup.ts"],
   },
 });

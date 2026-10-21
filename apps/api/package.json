@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "postinstall": "prisma generate",
+    "generate": "prisma generate",
+    "build": "prisma generate && tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

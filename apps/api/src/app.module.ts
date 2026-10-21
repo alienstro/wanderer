@@ -4,6 +4,7 @@ import { ThrottlerModule } from "@nestjs/throttler";
 import { LoggerModule } from "nestjs-pino";
 import { ENV, type Env } from "./config/env.js";
 import { HealthController } from "./health/health.controller.js";
+import { PrismaModule } from "./prisma/prisma.module.js";
 import { ClientIpThrottlerGuard } from "./security/client-ip-throttler.guard.js";
 
 @Module({})
@@ -22,6 +23,7 @@ export class AppModule {
         }),
         // No global limit. A route sets its own limit with @Throttle().
         ThrottlerModule.forRoot([{ name: "default", ttl: 60_000, limit: Number.MAX_SAFE_INTEGER }]),
+        PrismaModule,
       ],
       controllers: [HealthController],
       providers: [

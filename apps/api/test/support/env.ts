@@ -2,11 +2,13 @@ import { loadEnv, type Env } from "../../src/config/env.js";
 
 export const WEB_ORIGIN = "https://wanderer.alienstro.xyz";
 
+export const testDatabaseUrl =
+  process.env.DATABASE_URL_TEST ?? "postgresql://wanderer:wanderer@localhost:5433/wanderer_test";
+
 /** Returns a valid environment for tests. A test can replace single values. */
 export function testEnv(overrides: Record<string, string> = {}): Env {
   return loadEnv({
-    DATABASE_URL:
-      process.env.DATABASE_URL_TEST ?? "postgresql://wanderer:wanderer@localhost:5432/wanderer_test",
+    DATABASE_URL: testDatabaseUrl,
     GOOGLE_CLIENT_ID: "test-client-id",
     GOOGLE_CLIENT_SECRET: "test-client-secret",
     GOOGLE_CALLBACK_URL: "https://wanderer-api.alienstro.xyz/auth/google/callback",
