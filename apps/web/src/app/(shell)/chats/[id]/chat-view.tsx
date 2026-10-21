@@ -10,6 +10,7 @@ import { streamChat } from "@/lib/chat-stream";
 import { useRequireLogin } from "@/lib/use-require-login";
 import { Composer } from "./composer";
 import { MessageItem } from "./message-item";
+import { ReplyChoices, ReplyChoicesSwitch } from "./reply-choices";
 
 /** The reply that streams now. replaceId is the reply that a Regenerate replaces. */
 interface LiveReply {
@@ -45,6 +46,8 @@ export function ChatView({ chatId }: { chatId: string }) {
   const [text, setText] = useState("");
   const [live, setLive] = useState<LiveReply | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Goes up after each full reply, so the reply choices ask for a new set.
+  const [replyRound, setReplyRound] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
   function patchChat(change: (detail: ChatDetail) => ChatDetail) {
@@ -80,6 +83,7 @@ export function ChatView({ chatId }: { chatId: string }) {
           } else if (event.type === "done") {
             ended = true;
             upsert(event.message);
+            setReplyRound((round) => round + 1);
           } else {
             ended = true;
             if (event.message) {
@@ -136,6 +140,7 @@ export function ChatView({ chatId }: { chatId: string }) {
   const last = messages.at(-1);
   const idle = live === null;
   const regenerate = () => void run(`/chats/${chatId}/regenerate`, {}, last?.role === "assistant" ? last.id : null);
+  const send = (content: string) => void run(`/chats/${chatId}/messages`, { content }, null);
 
   return (
     <div className="flex h-screen flex-col max-[760px]:h-[85dvh]">
@@ -190,13 +195,15 @@ export function ChatView({ chatId }: { chatId: string }) {
                 to start chatting.
               </p>
             )}
+            <ReplyChoices chatId={chatId} round={replyRound} visible={me.replyChoicesOn && idle && Boolean(me.activeProxy)} onPick={send} />
             <Composer
               value={text}
               onChange={setText}
               disabled={!me.activeProxy}
               streaming={!idle}
-              onSend={(content) => void run(`/chats/${chatId}/messages`, { content }, null)}
+              onSend={send}
               onStop={() => abortRef.current?.abort()}
+              toolbar={<ReplyChoicesSwitch me={me} />}
             />
           </>
         ) : (
