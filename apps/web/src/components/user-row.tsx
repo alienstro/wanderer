@@ -57,6 +57,14 @@ export function UserRow() {
           <Link role="menuitem" href="/my-characters" className="nav" onClick={() => setOpen(false)}>
             My characters
           </Link>
+          <Link role="menuitem" href="/settings" className="nav" onClick={() => setOpen(false)}>
+            Settings
+          </Link>
+          {me.role === "admin" && (
+            <Link role="menuitem" href="/admin" className="nav" onClick={() => setOpen(false)}>
+              Admin
+            </Link>
+          )}
           <button type="button" role="menuitem" className="nav" onClick={() => void logOut()}>
             Log out
           </button>
