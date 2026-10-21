@@ -14,7 +14,8 @@ test.describe("as the creator", () => {
 
   test("a logged-in user sees their handle in the sidebar", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByText("@e2e_creator")).toBeVisible();
+    // The Discover cards can show the handle too, so look only in the sidebar.
+    await expect(page.getByRole("complementary").getByText("@e2e_creator")).toBeVisible();
   });
 });
 
