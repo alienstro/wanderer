@@ -15,8 +15,12 @@ export default function TermsPage() {
         <li>Hate and harassment.</li>
         <li>Characters copied from other people without permission.</li>
       </ul>
-      <h2>Moderation</h2>
-      <p className="m-0">The owner can hide or delete characters and ban accounts.</p>
+      <h2>Reports and moderation</h2>
+      <p className="m-0">
+        You can report a character that breaks these rules. Each user can report a character one time, and send 10
+        reports each day. The owner reads the reports and can hide or delete characters and ban accounts. A banned
+        account cannot log in.
+      </p>
       <h2>Your proxy</h2>
       <p className="m-0">
         You are responsible for your own proxy, your API key, and the rules of your AI provider.

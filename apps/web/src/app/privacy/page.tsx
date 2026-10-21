@@ -17,8 +17,15 @@ export default function PrivacyPage() {
       <p className="m-0">
         Wanderer does not sell or share your data. Your chat text goes only to the proxy that you pick.
       </p>
+      <h2>Reports</h2>
+      <p className="m-0">
+        When you report a character, Wanderer stores the reason, your note, and your account. Only the admin sees them.
+      </p>
       <h2>Deletion</h2>
-      <p className="m-0">You can delete your account and all your data in the settings.</p>
+      <p className="m-0">
+        You can delete your account in Settings. Wanderer then removes your account, your characters, your chats, your
+        proxies, and your uploads. Your reports stay for the admin, without your name or your account.
+      </p>
     </LegalPage>
   );
 }
