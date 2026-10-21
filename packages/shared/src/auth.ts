@@ -30,6 +30,8 @@ export const meResponseSchema = z.object({
   pictureUrl: z.string().nullable(),
   handle: z.string().nullable(),
   role: z.enum(["user", "admin"]),
+  /** True when the user sees 18+ characters. It can be true only after the 18+ confirm. */
+  showAdult: z.boolean(),
   /** A handle suggestion for the handle step. It is null when the user has a handle. */
   suggestedHandle: z.string().nullable(),
 });
