@@ -1,0 +1,163 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import type { ChatDetail, ChatStreamEvent, MessageView } from "@wanderer/shared";
+import type { ReactNode } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ChatView } from "./chat-view";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/chats/chat1" }));
+
+type StreamOptions = { signal: AbortSignal; onEvent: (event: ChatStreamEvent) => void };
+const streamMock = vi.fn<(path: string, body: unknown, options: StreamOptions) => Promise<void>>();
+vi.mock("@/lib/chat-stream", () => ({
+  streamChat: (path: string, body: unknown, options: StreamOptions) => streamMock(path, body, options),
+}));
+
+const me = {
+  id: "u1",
+  name: "Robin",
+  pictureUrl: null,
+  handle: "robin",
+  replyChoicesOn: false,
+  activeProxy: { id: "p1", name: "OpenRouter", model: "m" },
+};
+
+function message(id: string, role: MessageView["role"], content: string, position: number): MessageView {
+  return { id, role, content, position, editedAt: null, createdAt: "2026-10-21T00:00:00.000Z" };
+}
+
+const detail: ChatDetail = {
+  chat: {
+    id: "chat1",
+    title: "Onnit",
+    character: { id: "c1", title: "Onnit", chatName: "", avatarUrl: null },
+    lastMessage: "Hello",
+    lastMessageAt: "2026-10-21T00:00:00.000Z",
+  },
+  messages: [message("m0", "assistant", "*waves* Hi!", 0), message("m1", "user", "Hello", 1)],
+  canSend: true,
+};
+
+function stubApi(chat: ChatDetail = detail) {
+  const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith("/me")) {
+      return Response.json(me);
+    }
+    if (url.includes("/messages/") && init?.method === "PATCH") {
+      const body = JSON.parse(String(init.body)) as { content: string };
+      return Response.json({ ...message("m1", "user", body.content, 1), editedAt: "2026-10-21T01:00:00.000Z" });
+    }
+    return url.endsWith("/chats/chat1") ? Response.json(chat) : Response.json({ error: "not_found" }, { status: 404 });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+function withClient(ui: ReactNode) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
+
+async function typeAndSend(text: string) {
+  await userEvent.type(await screen.findByRole("textbox", { name: "Message" }), text);
+  await userEvent.click(screen.getByRole("button", { name: "Send" }));
+}
+
+describe("chat page", () => {
+  beforeEach(() => {
+    streamMock.mockReset();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("the messages show in order, and *waves* shows as an em element", async () => {
+    stubApi();
+    withClient(<ChatView chatId="chat1" />);
+    const log = await screen.findByRole("log");
+    const texts = within(log)
+      .getAllByRole("article")
+      .map((node) => node.textContent);
+    expect(texts[0]).toContain("waves Hi!");
+    expect(texts[1]).toContain("Hello");
+    expect(within(log).getByText("waves").tagName).toBe("EM");
+    expect(screen.getByRole("heading", { name: "Onnit" })).toBeInTheDocument();
+  });
+
+  it("a send shows the user message, then the reply grows with each delta", async () => {
+    stubApi();
+    let release = () => {};
+    streamMock.mockImplementation(async (_path, _body, { onEvent }) => {
+      onEvent({ type: "start", userMessage: message("m2", "user", "How are you?", 2) });
+      onEvent({ type: "delta", text: "Fine" });
+      await new Promise<void>((resolve) => (release = resolve));
+      onEvent({ type: "delta", text: ", thanks" });
+      onEvent({ type: "done", message: message("m3", "assistant", "Fine, thanks", 3) });
+    });
+    withClient(<ChatView chatId="chat1" />);
+    await typeAndSend("How are you?");
+    expect(streamMock).toHaveBeenCalledWith("/chats/chat1/messages", { content: "How are you?" }, expect.anything());
+    expect(await screen.findByText("How are you?")).toBeInTheDocument();
+    expect(await screen.findByText("Fine")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue("");
+    release();
+    expect(await screen.findByText("Fine, thanks")).toBeInTheDocument();
+  });
+
+  it("Stop calls abort on the signal", async () => {
+    stubApi();
+    let signal: AbortSignal | undefined;
+    streamMock.mockImplementation(
+      (_path, _body, options) =>
+        new Promise<void>((resolve) => {
+          signal = options.signal;
+          options.signal.addEventListener("abort", () => resolve());
+        }),
+    );
+    withClient(<ChatView chatId="chat1" />);
+    await typeAndSend("Hi");
+    await userEvent.click(await screen.findByRole("button", { name: "Stop" }));
+    expect(signal?.aborted).toBe(true);
+    expect(await screen.findByRole("button", { name: "Send" })).toBeInTheDocument();
+  });
+
+  it('an error event invalid_key shows "The proxy refused the API key."', async () => {
+    stubApi();
+    streamMock.mockImplementation(async (_path, _body, { onEvent }) => {
+      onEvent({ type: "start", userMessage: message("m2", "user", "Hi", 2) });
+      onEvent({ type: "error", error: "invalid_key", message: null });
+    });
+    withClient(<ChatView chatId="chat1" />);
+    await typeAndSend("Hi");
+    expect(await screen.findByText("The proxy refused the API key.")).toBeInTheDocument();
+  });
+
+  it("Edit, then Save, sends PATCH with the new text, and an assistant message has no Edit", async () => {
+    const fetchMock = stubApi();
+    withClient(<ChatView chatId="chat1" />);
+    const log = await screen.findByRole("log");
+    const [opening, mine] = within(log).getAllByRole("article");
+    expect(within(opening!).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+    await userEvent.click(within(mine!).getByRole("button", { name: "Edit" }));
+    const editor = within(mine!).getByRole("textbox", { name: "Edit message" });
+    await userEvent.clear(editor);
+    await userEvent.type(editor, "Hello again");
+    await userEvent.click(within(mine!).getByRole("button", { name: "Save" }));
+    await vi.waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringMatching(/\/messages\/m1$/),
+        expect.objectContaining({ method: "PATCH", body: JSON.stringify({ content: "Hello again" }) }),
+      ),
+    );
+    expect(await within(log).findByText("Hello again")).toBeInTheDocument();
+  });
+
+  it('canSend false shows "This character is no longer available." and no text box', async () => {
+    stubApi({ ...detail, canSend: false });
+    withClient(<ChatView chatId="chat1" />);
+    expect(await screen.findByText("This character is no longer available.")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Message" })).not.toBeInTheDocument();
+  });
+});
