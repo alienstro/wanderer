@@ -36,7 +36,7 @@ export class MeService {
   }
 
   /**
-   * Saves the handle and "Show 18+". "Show 18+" can turn on only after the 18+ confirm.
+   * Saves the handle, "Show 18+", and the "Reply choices" switch. "Show 18+" can turn on only after the 18+ confirm.
    * The unique index decides a race between two users, so a taken handle gives 409, not 500.
    */
   async update(current: User, request: UpdateMeRequest): Promise<MeResponse> {
@@ -46,7 +46,7 @@ export class MeService {
     try {
       const user = await this.prisma.user.update({
         where: { id: current.id },
-        data: { handle: request.handle, showAdult: request.showAdult },
+        data: { handle: request.handle, showAdult: request.showAdult, replyChoicesOn: request.replyChoicesOn },
         include: { activeProxy: activeProxySelect },
       });
       return toMeResponse(user, user.activeProxy);

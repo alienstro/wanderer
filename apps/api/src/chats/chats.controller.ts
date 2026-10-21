@@ -1,10 +1,11 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Res, UseGuards } from "@nestjs/common";
-import type { ChatDetail, ChatListResponse, MessageView } from "@wanderer/shared";
+import type { ChatDetail, ChatListResponse, ChoicesResponse, MessageView } from "@wanderer/shared";
 import type { Response } from "express";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SessionGuard } from "../auth/session.guard.js";
 import type { User } from "../generated/prisma/client.js";
 import { ChatsService } from "./chats.service.js";
+import { ChoicesService } from "./choices.service.js";
 import { ReplyService } from "./reply.service.js";
 
 @Controller("chats")
@@ -13,6 +14,7 @@ export class ChatsController {
   constructor(
     private readonly chats: ChatsService,
     private readonly replies: ReplyService,
+    private readonly choices: ChoicesService,
   ) {}
 
   @Get()
@@ -51,6 +53,13 @@ export class ChatsController {
   @Post(":id/regenerate")
   regenerate(@CurrentUser() user: User, @Param("id") id: string, @Res() res: Response): Promise<void> {
     return this.replies.stream({ user, chatId: id, res, mode: { kind: "regenerate" } });
+  }
+
+  /** Four short replies that the user can send. The web asks only when the "Reply choices" switch is on. */
+  @Post(":id/choices")
+  @HttpCode(200)
+  makeChoices(@CurrentUser() user: User, @Param("id") id: string): Promise<ChoicesResponse> {
+    return this.choices.make(user, id);
   }
 }
 
