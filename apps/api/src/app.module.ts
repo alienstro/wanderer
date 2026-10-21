@@ -9,6 +9,7 @@ import { serializeRequest } from "./config/logging.js";
 import { FilesModule } from "./files/files.module.js";
 import { HealthController } from "./health/health.controller.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
+import { ProxiesModule } from "./proxies/proxies.module.js";
 import { ClientIpThrottlerGuard } from "./security/client-ip-throttler.guard.js";
 import { OriginGuard } from "./security/origin.guard.js";
 
@@ -33,6 +34,7 @@ export class AppModule {
         AuthModule,
         FilesModule,
         CharactersModule,
+        ProxiesModule,
       ],
       controllers: [HealthController],
       providers: [

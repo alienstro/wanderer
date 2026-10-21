@@ -8,9 +8,9 @@ const KEY_VERSION = 1;
 export const KEY_CIPHER = Symbol("KEY_CIPHER");
 
 export interface SealedKey {
-  ciphertext: Buffer;
-  iv: Buffer;
-  tag: Buffer;
+  ciphertext: Uint8Array;
+  iv: Uint8Array;
+  tag: Uint8Array;
   version: number;
 }
 
@@ -29,7 +29,7 @@ export class KeyDecryptError extends Error {
 export class KeyCipher {
   constructor(private readonly masterKey: Buffer) {}
 
-  encrypt(plain: string, proxyId: string): SealedKey {
+  encrypt(plain: string, proxyId: string): SealedKey & { ciphertext: Buffer; iv: Buffer; tag: Buffer } {
     const iv = randomBytes(IV_BYTES);
     const cipher = createCipheriv(ALGORITHM, this.masterKey, iv);
     cipher.setAAD(aad(proxyId));

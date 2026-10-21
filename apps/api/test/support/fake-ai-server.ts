@@ -104,9 +104,19 @@ export async function startFakeAiServer(): Promise<FakeAiServer> {
   };
 }
 
-/** The AI client factory with no SSRF guard, so e2e tests can reach the fake server. Use it only in tests. */
+/**
+ * The AI client factory with no SSRF guard, so e2e tests can reach the fake server. Use it only in tests.
+ * With `sendTo`, each call goes to that URL, so a saved https proxy reaches the http fake server.
+ */
 export class UnguardedAiClientFactory implements AiClientFactory {
+  /** The targets of the calls, with the endpoint and the key that the API gave. */
+  readonly targets: AiTarget[] = [];
+
+  constructor(private readonly sendTo?: string) {}
+
   create(target: AiTarget) {
-    return createOpenAiClient(target, { fetch: undiciFetch });
+    this.targets.push(target);
+    const endpoint = this.sendTo ? `${this.sendTo}/chat/completions` : target.endpoint;
+    return createOpenAiClient({ ...target, endpoint }, { fetch: undiciFetch });
   }
 }
