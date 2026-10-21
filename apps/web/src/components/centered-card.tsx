@@ -2,7 +2,7 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 
 /** A centered card with the large logo, for the pages outside the app shell. */
-export function CenteredCard({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
+export function CenteredCard({ title, subtitle, children }: { title: string; subtitle?: string; children?: ReactNode }) {
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="flex w-full max-w-[400px] flex-col gap-6 rounded-[20px] border border-line bg-surface p-7">
