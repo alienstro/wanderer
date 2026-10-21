@@ -31,8 +31,8 @@ async function errorCode(res: Response): Promise<string | null> {
   return null;
 }
 
-/** Calls the API from the browser with the session cookie. */
-export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+/** Sends a request to the API with the session cookie. It throws ApiError for a status that is not 2xx. */
+export async function apiResponse(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   // A string body is JSON. The browser sets the Content-Type of FormData itself, with the multipart boundary.
   if (typeof init.body === "string" && !headers.has("Content-Type")) {
@@ -42,6 +42,12 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   if (!res.ok) {
     throw new ApiError(res.status, await errorCode(res));
   }
+  return res;
+}
+
+/** Calls the API from the browser with the session cookie, and reads the JSON answer. */
+export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await apiResponse(path, init);
   if (res.status === 204) {
     return undefined as T;
   }
