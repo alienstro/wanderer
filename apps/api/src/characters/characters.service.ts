@@ -11,9 +11,9 @@ import { isUuid } from "../common/uuid.js";
 import { type CharacterStatus, Prisma, type User } from "../generated/prisma/client.js";
 import { FilesService } from "../files/files.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-import { canSeeAdult } from "./adult.js";
 import { mergeCharacterInput } from "./character-input.js";
 import { type CharacterDetailRow, characterDetailInclude, toCharacterDetail } from "./character-mapper.js";
+import { characterAccess } from "./visibility.js";
 
 const NOT_FOUND = { error: "not_found" };
 
@@ -84,10 +84,11 @@ export class CharactersService {
    */
   async findVisible(id: string, viewer: User | null): Promise<CharacterDetail> {
     const row = await this.findRow(id);
-    if (!row || !this.canView(row, viewer)) {
+    const access = row ? characterAccess(row, viewer) : "not_found";
+    if (!row || access === "not_found") {
       throw new NotFoundException(NOT_FOUND);
     }
-    if (row.isAdult && viewer?.id !== row.creatorId && !canSeeAdult(viewer)) {
+    if (access === "adult_content") {
       throw new ForbiddenException({ error: "adult_content" });
     }
     return toCharacterDetail(row, viewer);
@@ -126,13 +127,6 @@ export class CharactersService {
     if (current.avatarFileId) {
       await this.removeAvatarFile(current.avatarFileId);
     }
-  }
-
-  private canView(row: CharacterDetailRow, viewer: User | null): boolean {
-    if (viewer?.id === row.creatorId) {
-      return true;
-    }
-    return row.status === "published" && row.isPublic;
   }
 
   private findRow(id: string): Promise<CharacterDetailRow | null> {
