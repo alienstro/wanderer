@@ -133,4 +133,12 @@ describe("proxies", () => {
     expect((await get(two, "/proxies").expect(200)).body).toEqual([]);
     await post(two, "/proxies/not-a-uuid/test").expect(404);
   });
+
+  it("Test of a proxy whose key does not decrypt gives invalid_key", async () => {
+    const created = await post(one, "/proxies", proxyBody).expect(201);
+    // A changed master key looks like a wrong tag: the saved key does not decrypt.
+    await prisma.proxy.update({ where: { id: created.body.id }, data: { keyTag: new Uint8Array(16) } });
+    const res = await post(one, `/proxies/${created.body.id}/test`).expect(200);
+    expect(res.body).toEqual({ ok: false, error: "invalid_key", message: "The proxy refused the API key." });
+  });
 });

@@ -27,6 +27,13 @@ export const DEFAULT_REPLY_TIMING: ReplyTiming = { firstPieceMs: 30_000, totalMs
 /** A send has the request body with the message text. A regenerate has no body. */
 export type ReplyMode = { kind: "send"; body: unknown } | { kind: "regenerate" };
 
+interface ReplyInput {
+  user: User;
+  chatId: string;
+  res: Response;
+  mode: ReplyMode;
+}
+
 interface Generated {
   text: string;
   /** The error code, or null when the reply came in full. */
@@ -54,16 +61,26 @@ export class ReplyService {
    * Checks the request, then streams a reply. The checks come before the SSE headers, so their errors
    * stay JSON. After the headers, each error is an SSE error event.
    */
-  async stream(input: { user: User; chatId: string; res: Response; mode: ReplyMode }): Promise<void> {
+  async stream(input: ReplyInput): Promise<void> {
+    const content = input.mode.kind === "send" ? this.parseContent(input.mode.body) : null;
+    // The busy mark comes before the loads, so a second request never reads a history that a first one still changes.
+    if (this.busy.has(input.chatId)) {
+      throw new ConflictException({ error: "chat_busy" });
+    }
+    this.busy.add(input.chatId);
+    try {
+      await this.streamOwned(input, content);
+    } finally {
+      this.busy.delete(input.chatId);
+    }
+  }
+
+  /** Loads the chat and the proxy, then streams the reply. The caller holds the busy mark of the chat. */
+  private async streamOwned(input: ReplyInput, content: string | null): Promise<void> {
     const { user, res, mode } = input;
-    const content = mode.kind === "send" ? this.parseContent(mode.body) : null;
     const { chat, character, history } = await this.chats.loadForReply(input.chatId, user);
     const replaced = mode.kind === "regenerate" ? regenerateTarget(history) : null;
     const { target, customPrompt } = await this.proxies.loadTarget(user);
-    if (this.busy.has(chat.id)) {
-      throw new ConflictException({ error: "chat_busy" });
-    }
-    this.busy.add(chat.id);
     let sse: SseWriter | null = null;
     try {
       const userMessage = content === null ? null : await this.saveMessage(chat.id, "user", content, nextPosition(history));
@@ -98,7 +115,6 @@ export class ReplyService {
       sse.send({ type: "error", error: "provider_error", message: null });
     } finally {
       sse?.end();
-      this.busy.delete(chat.id);
     }
   }
 

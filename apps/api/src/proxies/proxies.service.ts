@@ -119,10 +119,19 @@ export class ProxiesService {
   /** Sends one small request to the proxy and gives the result. A failed call is a result, not an error. */
   async test(user: User, id: string): Promise<ProxyTestResult> {
     const row = await this.findOwn(user, id);
+    let target: AiTarget;
+    try {
+      target = this.target(row);
+    } catch (error) {
+      if (error instanceof KeyDecryptError) {
+        return { ok: false, error: "invalid_key", message: AI_ERROR_TEXT.invalid_key };
+      }
+      throw error;
+    }
     const started = Date.now();
     try {
       const completion = await this.clients
-        .create(this.target(row))
+        .create(target)
         .chat.completions.create(
           { model: row.model, messages: [{ role: "user", content: TEST_MESSAGE }], max_tokens: 5 },
           { timeout: TEST_TIMEOUT_MS },
@@ -144,16 +153,8 @@ export class ProxiesService {
     if (!row) {
       throw new ConflictException({ error: "no_active_proxy" });
     }
-    return { target: this.target(row), customPrompt: row.customPrompt };
-  }
-
-  private target(row: Proxy): AiTarget {
-    let apiKey: string;
     try {
-      apiKey = this.cipher.decrypt(
-        { ciphertext: row.keyCiphertext, iv: row.keyIv, tag: row.keyTag, version: row.keyVersion },
-        row.id,
-      );
+      return { target: this.target(row), customPrompt: row.customPrompt };
     } catch (error) {
       if (error instanceof KeyDecryptError) {
         // The master key changed. The user must enter the API key again.
@@ -161,6 +162,14 @@ export class ProxiesService {
       }
       throw error;
     }
+  }
+
+  /** The decrypted target for one call. It throws KeyDecryptError when the saved key does not decrypt. */
+  private target(row: Proxy): AiTarget {
+    const apiKey = this.cipher.decrypt(
+      { ciphertext: row.keyCiphertext, iv: row.keyIv, tag: row.keyTag, version: row.keyVersion },
+      row.id,
+    );
     return { endpoint: proxyEndpoint(row.baseUrl, row.appendPath), apiKey, model: row.model };
   }
 

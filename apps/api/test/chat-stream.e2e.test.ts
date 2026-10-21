@@ -123,4 +123,15 @@ describe("streamed replies", () => {
     await postStream(app, other, sendPath(), { content: "Hi" }).expect(404);
     expect(await messages()).toHaveLength(1);
   });
+
+  it("a send at once after a client abort never gives a 500", async () => {
+    for (let round = 0; round < 10; round++) {
+      fake.next({ pieces: ["One ", "two ", "three"], delayMs: 40 }, { pieces: ["Next"] });
+      await openStream(baseUrl, user, sendPath(), { content: `Stop ${round}` }, 1);
+      const res = await postStream(app, user, sendPath(), { content: `Again ${round}` });
+      expect([200, 409]).toContain(res.status);
+      // Let the first stream end before the next round.
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  });
 });

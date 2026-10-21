@@ -16,7 +16,12 @@ import { ReplyChoices, ReplyChoicesSwitch } from "./reply-choices";
 interface LiveReply {
   replaceId: string | null;
   text: string;
+  /** True after a Stop, while the page waits for the API to save the part that came. */
+  stopped?: boolean;
 }
+
+/** The API saves the part of a stopped reply after it sees the closed connection, so wait this long first. */
+const STOP_SETTLE_MS = 500;
 
 /** The text for an error before the stream starts, such as a busy chat or no active proxy. */
 function sendErrorText(error: unknown): string {
@@ -96,12 +101,16 @@ export function ChatView({ chatId }: { chatId: string }) {
     } catch (caught) {
       setError(sendErrorText(caught));
     } finally {
-      setLive(null);
       abortRef.current = null;
-      // After a Stop, the API saved the part that came, so load the chat again.
-      if (!ended) {
+      if (!ended && controller.signal.aborted) {
+        // Keep the part that came on the page until the chat loads again with the saved part.
+        setLive((current) => current && { ...current, stopped: true });
+        await new Promise((resolve) => setTimeout(resolve, STOP_SETTLE_MS));
+        await queryClient.invalidateQueries({ queryKey });
+      } else if (!ended) {
         void queryClient.invalidateQueries({ queryKey });
       }
+      setLive(null);
       void queryClient.invalidateQueries({ queryKey: ["chats"] });
     }
   }
@@ -195,12 +204,18 @@ export function ChatView({ chatId }: { chatId: string }) {
                 to start chatting.
               </p>
             )}
-            <ReplyChoices chatId={chatId} round={replyRound} visible={me.replyChoicesOn && idle && Boolean(me.activeProxy)} onPick={send} />
+            {/* The choices answer the last AI reply, so they hide when the last message is the user's. */}
+            <ReplyChoices
+              chatId={chatId}
+              round={replyRound}
+              visible={me.replyChoicesOn && idle && Boolean(me.activeProxy) && last?.role === "assistant" && last.position > 0}
+              onPick={send}
+            />
             <Composer
               value={text}
               onChange={setText}
-              disabled={!me.activeProxy}
-              streaming={!idle}
+              disabled={!me.activeProxy || Boolean(live?.stopped)}
+              streaming={live !== null && !live.stopped}
               onSend={send}
               onStop={() => abortRef.current?.abort()}
               toolbar={<ReplyChoicesSwitch me={me} />}

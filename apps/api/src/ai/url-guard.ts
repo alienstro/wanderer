@@ -19,9 +19,9 @@ const systemResolve: Resolver = async (host) =>
   }));
 
 /**
- * True when the address is not a public unicast address: loopback, private, link-local (with the cloud
- * metadata address), CGNAT, unique local, multicast, and the other special ranges. An IPv4-mapped IPv6
- * address gets the IPv4 check. A text that is not an IP address is blocked too.
+ * True when the address is not a public unicast address. The blocked ranges include loopback, private,
+ * link-local, CGNAT, unique local, and multicast. Link-local holds the cloud metadata address.
+ * An IPv4-mapped IPv6 address gets the IPv4 check. A text that is not an IP address is blocked too.
  */
 export function isBlockedAddress(ip: string): boolean {
   if (!ipaddr.isValid(ip)) {

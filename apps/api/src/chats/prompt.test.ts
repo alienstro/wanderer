@@ -47,6 +47,14 @@ describe("buildReplyPrompt", () => {
     expect(text(named[2]?.content)).toBe("Hello Onni.");
   });
 
+  it("a $ in a name stays as text, because the name is not a replacement pattern", () => {
+    const messages = buildReplyPrompt(input({ userName: "Ann$'", character: { ...input().character, chatName: "$$Bot" } }));
+    expect(messages.slice(1)).toEqual([
+      { role: "assistant", content: "*waves* Hi, Ann$'!" },
+      { role: "user", content: "Hello $$Bot." },
+    ]);
+  });
+
   it("old messages drop out when the history is over 16,000 tokens, and the newest message stays", () => {
     // Each message is about 5,000 tokens, so only the newest messages fit in the budget.
     const history = Array.from({ length: 6 }, (_, n) => ({

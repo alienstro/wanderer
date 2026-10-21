@@ -31,7 +31,8 @@ export interface PromptInput {
 
 function fill(text: string, input: PromptInput): string {
   const charName = input.character.chatName || input.character.title;
-  return text.replaceAll("{{char}}", charName).replaceAll("{{user}}", input.userName);
+  // A function replacement keeps "$" in a name as text. A string replacement reads "$&" and "$'" as patterns.
+  return text.replaceAll("{{char}}", () => charName).replaceAll("{{user}}", () => input.userName);
 }
 
 function systemText(input: PromptInput): string {

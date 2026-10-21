@@ -156,4 +156,21 @@ describe("reply choices", () => {
     expect(choicesCalls(fetchMock)).toBe(0);
     expect(screen.getByRole("switch", { name: "Reply choices" })).toHaveAttribute("aria-checked", "false");
   });
+
+  it("after a send that fails, the old choices do not show again", async () => {
+    stubApi();
+    replyWith("Nice to meet you.");
+    withClient(<ChatView chatId="chat1" />);
+    await send("Hi");
+    await userEvent.click(await screen.findByRole("button", { name: "Who are you?" }));
+    // The second send keeps the user message, but the proxy gives an error.
+    streamMock.mockImplementation(async (_path, body, { onEvent }) => {
+      onEvent({ type: "start", userMessage: message("u20", "user", (body as { content: string }).content, 20) });
+      onEvent({ type: "error", error: "rate_limited", message: null });
+    });
+    await send("Still there?");
+    expect(await screen.findByText("The proxy has too many requests. Try again soon.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Bye." })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New choices" })).not.toBeInTheDocument();
+  });
 });

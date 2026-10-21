@@ -160,4 +160,36 @@ describe("chat page", () => {
     expect(await screen.findByText("This character is no longer available.")).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: "Message" })).not.toBeInTheDocument();
   });
+
+  it("after Stop, the part that came stays on the page, and the chat loads again with the saved part", async () => {
+    let saved = false;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith("/me")) {
+        return Response.json(me);
+      }
+      const messages = saved ? [...detail.messages, message("m3", "assistant", "Half a reply", 3)] : detail.messages;
+      return Response.json({ ...detail, messages });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    streamMock.mockImplementation(
+      (_path, _body, options) =>
+        new Promise<void>((resolve) => {
+          options.onEvent({ type: "start", userMessage: message("m2", "user", "Hi", 2) });
+          options.onEvent({ type: "delta", text: "Half a reply" });
+          options.signal.addEventListener("abort", () => {
+            // The API saves the part after it sees the closed connection, a short time after the Stop.
+            setTimeout(() => (saved = true), 100);
+            resolve();
+          });
+        }),
+    );
+    withClient(<ChatView chatId="chat1" />);
+    await typeAndSend("Hi");
+    await userEvent.click(await screen.findByRole("button", { name: "Stop" }));
+    expect(screen.getByText("Half a reply")).toBeInTheDocument();
+    const chatLoads = () => fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/chats/chat1")).length;
+    await vi.waitFor(() => expect(chatLoads()).toBe(2), { timeout: 2000 });
+    expect(await screen.findByText("Half a reply")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send" })).toBeInTheDocument();
+  });
 });

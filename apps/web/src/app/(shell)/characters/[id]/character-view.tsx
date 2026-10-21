@@ -5,7 +5,7 @@ import { chatsLabel, statusLabel } from "@/lib/format";
 import { StartChat } from "./start-chat";
 import { YourChats } from "./your-chats";
 
-/** The character page body in the prototype style: the banner with a blurred copy of the image, the openings with Start, Your chats, and the definition. */
+/** The character page body in the prototype style. It has the banner, the openings with Start, Your chats, and the definition. */
 export function CharacterView({ detail }: { detail: CharacterDetail }) {
   const image = detail.avatarUrl ? fileSrc(detail.avatarUrl) : null;
 
