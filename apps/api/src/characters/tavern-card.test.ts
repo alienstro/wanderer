@@ -67,6 +67,12 @@ describe("readTavernCard", () => {
     expect(readTavernCard(file)?.title).toBe("First");
   });
 
+  it("a chara chunk that fails to inflate stops the read of all later chara chunks", () => {
+    // 3 MB of text inflates past the 2 MB cap, so the first chunk fails.
+    const file = withCompressedItxtChunk(withCompressedItxtChunk(png, "chara", cardText(v2Card)), "chara", "x".repeat(3 * 1024 * 1024));
+    expect(readTavernCard(file)).toBeNull();
+  });
+
   it("a text over a field limit is cut to the limit", () => {
     const card = { ...v2Card, data: { ...v2Card.data, name: "x".repeat(100) } };
     expect(readTavernCard(withTextChunk(png, "chara", cardText(card)))?.title).toHaveLength(60);

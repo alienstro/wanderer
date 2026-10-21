@@ -23,17 +23,18 @@ const CARD_KEYWORDS = new Set(["ccv3", "chara"]);
 
 /**
  * Reads the card text chunks (tEXt and iTXt) of a PNG into a map from keyword to text.
- * It keeps only the first chunk of each card keyword and skips all other chunks without a decode,
- * so a file can make the API inflate no more than two chunks.
+ * It tries only the first chunk of each card keyword, also when that decode fails, and skips all other
+ * chunks without a decode. So a file can make the API inflate no more than two chunks.
  */
 function readCardChunks(png: Buffer): Map<string, string> {
   const texts = new Map<string, string>();
+  const tried = new Set<string>();
   if (png.length < PNG_SIGNATURE.length || !png.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE)) {
     return texts;
   }
   let offset = PNG_SIGNATURE.length;
   // Each chunk has a length (4 bytes), a type (4), the data, and a CRC (4).
-  while (offset + 12 <= png.length && texts.size < CARD_KEYWORDS.size) {
+  while (offset + 12 <= png.length && tried.size < CARD_KEYWORDS.size) {
     const length = png.readUInt32BE(offset);
     const type = png.toString("latin1", offset + 4, offset + 8);
     const start = offset + 8;
@@ -45,7 +46,8 @@ function readCardChunks(png: Buffer): Map<string, string> {
       const data = png.subarray(start, end);
       const zero = data.indexOf(0);
       const keyword = zero > 0 ? data.toString("latin1", 0, zero) : "";
-      if (CARD_KEYWORDS.has(keyword) && !texts.has(keyword)) {
+      if (CARD_KEYWORDS.has(keyword) && !tried.has(keyword)) {
+        tried.add(keyword);
         const text = type === "tEXt" ? data.toString("latin1", zero + 1) : readItxtText(data, zero);
         if (text !== null) {
           texts.set(keyword, text);
