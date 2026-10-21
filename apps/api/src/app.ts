@@ -10,7 +10,7 @@ export async function createApp(env: Env): Promise<NestExpressApplication> {
     bufferLogs: true,
   });
   app.useLogger(app.get(Logger));
-  // The Cloudflare tunnel and Traefik are one proxy hop in front of the API.
+  // Traefik is the proxy hop in front of the API. Rate limits use clientIp(), not req.ip.
   app.set("trust proxy", 1);
   // A list makes cors compare the Origin header. A plain string goes to every caller.
   app.enableCors({ origin: [env.WEB_ORIGIN], credentials: true });

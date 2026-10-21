@@ -4,4 +4,6 @@ packages:
 
 # pnpm runs install scripts only for the packages in this list.
 allowBuilds:
+  "@prisma/engines": true
   "@swc/core": true
+  prisma: true

@@ -1,9 +1,10 @@
 import { type DynamicModule, Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
-import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { ThrottlerModule } from "@nestjs/throttler";
 import { LoggerModule } from "nestjs-pino";
 import { ENV, type Env } from "./config/env.js";
 import { HealthController } from "./health/health.controller.js";
+import { ClientIpThrottlerGuard } from "./security/client-ip-throttler.guard.js";
 
 @Module({})
 export class AppModule {
@@ -25,7 +26,7 @@ export class AppModule {
       controllers: [HealthController],
       providers: [
         { provide: ENV, useValue: env },
-        { provide: APP_GUARD, useClass: ThrottlerGuard },
+        { provide: APP_GUARD, useClass: ClientIpThrottlerGuard },
       ],
       exports: [ENV],
     };
