@@ -1,0 +1,15 @@
+# Local Postgres for development and tests, on host port 5433. Prisma makes the wanderer_test database.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: wanderer
+      POSTGRES_PASSWORD: wanderer
+      POSTGRES_DB: wanderer
+    ports:
+      - "5433:5432"
+    volumes:
+      - wanderer-pg:/var/lib/postgresql/data
+
+volumes:
+  wanderer-pg:

@@ -1,2 +1,12 @@
 .archify/
 .DS_Store
+node_modules/
+dist/
+.next/
+*.tsbuildinfo
+.superpowers/
+.env
+.env.*
+!.env*.example
+apps/api/src/generated/
+next-env.d.ts
