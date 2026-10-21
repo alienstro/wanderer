@@ -72,6 +72,32 @@ describe("character page", () => {
     expect(screen.getByText("The creator keeps the definition of this character hidden.")).toBeInTheDocument();
   });
 
+  it("a logged-in user who is not the creator sees Report, and the owner and a visitor do not", async () => {
+    stubFetch((url) => {
+      if (url.endsWith("/me")) return Response.json(me);
+      if (url.endsWith("/characters/c1")) return Response.json(detail);
+      return undefined;
+    });
+    const { unmount } = withClient(<CharacterPage id="c1" initial={detail} initialError={null} />);
+    expect(await screen.findByRole("button", { name: "Report" })).toBeInTheDocument();
+    unmount();
+
+    stubFetch((url) => {
+      if (url.endsWith("/me")) return Response.json(me);
+      if (url.endsWith("/characters/c1")) return Response.json({ ...detail, isOwner: true });
+      return undefined;
+    });
+    const owner = withClient(<CharacterPage id="c1" initial={detail} initialError={null} />);
+    expect(await screen.findByRole("heading", { name: "Character settings" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Report" })).not.toBeInTheDocument();
+    owner.unmount();
+
+    stubFetch((url) => (url.endsWith("/me") ? Response.json({ error: "unauthorized" }, { status: 401 }) : undefined));
+    withClient(<CharacterPage id="c1" initial={detail} initialError={null} />);
+    expect(await screen.findByRole("heading", { name: "Mira Vale" })).toBeInTheDocument();
+    await vi.waitFor(() => expect(screen.queryByRole("button", { name: "Report" })).not.toBeInTheDocument());
+  });
+
   it("the owner panel shows only for the owner, and the Public switch sends PATCH { isPublic: false }", async () => {
     const owned = { ...detail, isOwner: true };
     const fetchMock = stubFetch((url, init) => {
