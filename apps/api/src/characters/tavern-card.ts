@@ -18,35 +18,39 @@ const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0
 const MAX_TEXT_BYTES = 2 * 1024 * 1024;
 const BASE64_PATTERN = /^[A-Za-z0-9+/]+={0,2}$/;
 
-/** Reads the tEXt and iTXt chunks of a PNG into a map from keyword to text. */
-function readTextChunks(png: Buffer): Map<string, string> {
+/** The keywords of a Tavern card. The reader skips all other text chunks. */
+const CARD_KEYWORDS = new Set(["ccv3", "chara"]);
+
+/**
+ * Reads the card text chunks (tEXt and iTXt) of a PNG into a map from keyword to text.
+ * It keeps only the first chunk of each card keyword and skips all other chunks without a decode,
+ * so a file can make the API inflate no more than two chunks.
+ */
+function readCardChunks(png: Buffer): Map<string, string> {
   const texts = new Map<string, string>();
   if (png.length < PNG_SIGNATURE.length || !png.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE)) {
     return texts;
   }
   let offset = PNG_SIGNATURE.length;
   // Each chunk has a length (4 bytes), a type (4), the data, and a CRC (4).
-  while (offset + 12 <= png.length) {
+  while (offset + 12 <= png.length && texts.size < CARD_KEYWORDS.size) {
     const length = png.readUInt32BE(offset);
     const type = png.toString("latin1", offset + 4, offset + 8);
     const start = offset + 8;
     const end = start + length;
-    if (end + 4 > png.length) {
+    if (end + 4 > png.length || type === "IEND") {
       break;
     }
-    const data = png.subarray(start, end);
-    if (type === "tEXt") {
+    if (type === "tEXt" || type === "iTXt") {
+      const data = png.subarray(start, end);
       const zero = data.indexOf(0);
-      if (zero > 0) {
-        texts.set(data.toString("latin1", 0, zero), data.toString("latin1", zero + 1));
+      const keyword = zero > 0 ? data.toString("latin1", 0, zero) : "";
+      if (CARD_KEYWORDS.has(keyword) && !texts.has(keyword)) {
+        const text = type === "tEXt" ? data.toString("latin1", zero + 1) : readItxtText(data, zero);
+        if (text !== null) {
+          texts.set(keyword, text);
+        }
       }
-    } else if (type === "iTXt") {
-      const text = readItxt(data);
-      if (text) {
-        texts.set(text.keyword, text.text);
-      }
-    } else if (type === "IEND") {
-      break;
     }
     offset = end + 4;
   }
@@ -54,9 +58,8 @@ function readTextChunks(png: Buffer): Map<string, string> {
 }
 
 /** iTXt: keyword, 0, compression flag, compression method, language, 0, translated keyword, 0, text. */
-function readItxt(data: Buffer): { keyword: string; text: string } | null {
-  const keywordEnd = data.indexOf(0);
-  if (keywordEnd <= 0 || keywordEnd + 3 > data.length) {
+function readItxtText(data: Buffer, keywordEnd: number): string | null {
+  if (keywordEnd + 3 > data.length) {
     return null;
   }
   const compressed = data[keywordEnd + 1] === 1;
@@ -67,8 +70,7 @@ function readItxt(data: Buffer): { keyword: string; text: string } | null {
   }
   const body = data.subarray(translatedEnd + 1);
   try {
-    const text = compressed ? inflateSync(body, { maxOutputLength: MAX_TEXT_BYTES }) : body;
-    return { keyword: data.toString("latin1", 0, keywordEnd), text: text.toString("utf8") };
+    return (compressed ? inflateSync(body, { maxOutputLength: MAX_TEXT_BYTES }) : body).toString("utf8");
   } catch {
     return null;
   }
@@ -111,7 +113,7 @@ function toTagSlugs(value: unknown): TagSlug[] {
  * It gives the form fields that the card fills, cut to the field limits, or null when the PNG has no valid card.
  */
 export function readTavernCard(png: Buffer): Partial<CharacterInput> | null {
-  const texts = readTextChunks(png);
+  const texts = readCardChunks(png);
   const card = decodeCard(texts.get("ccv3")) ?? decodeCard(texts.get("chara"));
   if (!card) {
     return null;

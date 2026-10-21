@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { cardText, pngImage, withTextChunk } from "../../test/support/images.js";
+import { cardText, pngImage, withCompressedItxtChunk, withTextChunk } from "../../test/support/images.js";
 import { readTavernCard } from "./tavern-card.js";
 
 const v2Card = {
@@ -51,6 +51,20 @@ describe("readTavernCard", () => {
     expect(draft?.openings?.[0]).toBe("The engine coughs.");
     expect(draft?.openings?.[1]).toBe("Greeting 2");
     expect(draft?.tags).toEqual(["horror", "noir"]);
+  });
+
+  it("a compressed iTXt ccv3 chunk is read, and a compressed chunk with another keyword is skipped", () => {
+    const v3 = { spec: "chara_card_v3", data: { ...v2Card.data, name: "Mira iTXt" } };
+    const file = withCompressedItxtChunk(withCompressedItxtChunk(png, "ccv3", cardText(v3)), "comment", "x".repeat(10_000));
+    expect(readTavernCard(file)?.title).toBe("Mira iTXt");
+  });
+
+  it("only the first chara chunk is read, so that a file cannot make the API inflate many chunks", () => {
+    const first = { ...v2Card, data: { ...v2Card.data, name: "First" } };
+    const second = { ...v2Card, data: { ...v2Card.data, name: "Second" } };
+    // Each helper call puts its chunk directly after IHDR, so the last call gives the first chunk.
+    const file = withCompressedItxtChunk(withCompressedItxtChunk(png, "chara", cardText(second)), "chara", cardText(first));
+    expect(readTavernCard(file)?.title).toBe("First");
   });
 
   it("a text over a field limit is cut to the limit", () => {

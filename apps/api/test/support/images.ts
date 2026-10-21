@@ -1,4 +1,4 @@
-import { crc32 } from "node:zlib";
+import { crc32, deflateSync } from "node:zlib";
 import sharp from "sharp";
 
 /** Makes a small PNG in one color. */
@@ -31,8 +31,23 @@ export async function pngWithFakeSize(width: number, height: number): Promise<Bu
 
 /** Puts a tEXt chunk with the keyword and the text directly after the IHDR chunk, as a Tavern card does. */
 export function withTextChunk(png: Buffer, keyword: string, text: string): Buffer {
-  const type = Buffer.from("tEXt", "latin1");
   const data = Buffer.concat([Buffer.from(keyword, "latin1"), Buffer.from([0]), Buffer.from(text, "latin1")]);
+  return withChunk(png, "tEXt", data);
+}
+
+/** Puts a compressed iTXt chunk directly after the IHDR chunk. */
+export function withCompressedItxtChunk(png: Buffer, keyword: string, text: string): Buffer {
+  const data = Buffer.concat([
+    Buffer.from(keyword, "latin1"),
+    // The null after the keyword, the compression flag 1, the method 0, an empty language, and an empty translated keyword.
+    Buffer.from([0, 1, 0, 0, 0]),
+    deflateSync(Buffer.from(text, "utf8")),
+  ]);
+  return withChunk(png, "iTXt", data);
+}
+
+function withChunk(png: Buffer, chunkType: string, data: Buffer): Buffer {
+  const type = Buffer.from(chunkType, "latin1");
   const length = Buffer.alloc(4);
   length.writeUInt32BE(data.length);
   const crc = Buffer.alloc(4);
