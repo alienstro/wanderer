@@ -4,13 +4,14 @@ import { TERMS_VERSION } from "@wanderer/shared";
 import Link from "next/link";
 import { useId, useState } from "react";
 
-export type LoginError = "terms" | "cancelled" | "banned" | "email";
+export type LoginError = "terms" | "cancelled" | "banned" | "email" | "account";
 
 const ERROR_TEXT: Record<LoginError, string> = {
   terms: "Please accept the current Terms of Service and Privacy Policy.",
   cancelled: "Google login was cancelled.",
   banned: "This account is banned.",
   email: "Your Google email address is not verified.",
+  account: "This Google email address belongs to another Wanderer account.",
 };
 
 function GoogleIcon() {

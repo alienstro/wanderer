@@ -41,6 +41,7 @@ describe("OriginGuard", () => {
   it("POST without an Origin header returns 403", async () => {
     const res = await request(app.getHttpServer()).post("/__test/echo").send({ hello: "world" });
     expect(res.status).toBe(403);
+    expect(res.body).toEqual({ error: "origin_not_allowed" });
   });
 
   it("POST from https://other.alienstro.xyz returns 403", async () => {
@@ -58,6 +59,7 @@ describe("OriginGuard", () => {
       .set("Content-Type", "text/plain")
       .send('{"hello":"world"}');
     expect(res.status).toBe(403);
+    expect(res.body).toEqual({ error: "json_required" });
   });
 
   it("GET without an Origin header passes", async () => {

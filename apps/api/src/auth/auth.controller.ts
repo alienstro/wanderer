@@ -1,6 +1,5 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import {
-  BadRequestException,
   Controller,
   Get,
   HttpCode,
@@ -34,6 +33,18 @@ const oauthCookieSchema = z.object({ state: z.string(), codeVerifier: z.string()
 
 /** Login is 10 requests each minute for each client IP (spec section 10). */
 const LOGIN_LIMIT = { default: { limit: 10, ttl: 60_000 } };
+
+/**
+ * The browser shows the callback answer, so a failed callback gives a small HTML page
+ * with a link back to the login page, and not a raw JSON error.
+ */
+function loginFailedPage(loginUrl: string): string {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Login failed · Wanderer</title></head>
+<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#0e0e10;color:#f4f4f5;font:15px/1.5 system-ui,sans-serif">
+<main style="max-width:360px;padding:24px;text-align:center"><h1 style="font-size:20px">The login did not finish</h1>
+<p style="color:#a1a1aa">The login link expired, or you started a login in another tab. Log in again.</p>
+<p><a href="${loginUrl}" style="color:#b9a4ff">Back to the login page</a></p></main></body></html>`;
+}
 
 function sameText(a: string, b: string): boolean {
   const left = Buffer.from(a);
@@ -82,7 +93,7 @@ export class AuthController {
       return res.redirect(302, this.webUrl("/login?error=cancelled"));
     }
     if (!stored.success || typeof state !== "string" || typeof code !== "string" || !sameText(state, stored.data.state)) {
-      throw new BadRequestException("invalid_oauth_state");
+      return this.loginFailed(res);
     }
 
     const callbackUrl = new URL(this.env.GOOGLE_CALLBACK_URL);
@@ -93,7 +104,7 @@ export class AuthController {
     } catch (exchangeError) {
       // The message of the error has no code or token.
       this.logger.warn(`Google code exchange failed: ${(exchangeError as Error).name}`);
-      throw new BadRequestException("oauth_exchange_failed");
+      return this.loginFailed(res);
     }
     if (!profile.emailVerified) {
       return res.redirect(302, this.webUrl("/login?error=email"));
@@ -102,6 +113,9 @@ export class AuthController {
     const result = await this.auth.loginWithGoogle(profile, stored.data.terms);
     if (result.kind === "banned") {
       return res.redirect(302, this.webUrl("/login?error=banned"));
+    }
+    if (result.kind === "email_taken") {
+      return res.redirect(302, this.webUrl("/login?error=account"));
     }
     res.cookie(SESSION_COOKIE, result.token, sessionCookieOptions(result.expiresAt));
     res.redirect(302, this.webUrl(result.hasHandle ? "/" : "/onboarding"));
@@ -116,6 +130,10 @@ export class AuthController {
       await this.sessions.revoke(token);
     }
     res.clearCookie(SESSION_COOKIE, clearSessionCookieOptions);
+  }
+
+  private loginFailed(res: Response): void {
+    res.status(400).type("html").send(loginFailedPage(this.webUrl("/login")));
   }
 
   private webUrl(path: string): string {

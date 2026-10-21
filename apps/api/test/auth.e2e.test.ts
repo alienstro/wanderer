@@ -149,6 +149,9 @@ describe("Google login", () => {
     const { oauthCookie } = await startLogin();
     const wrongState = await finishLogin("code=good-code&state=wrong", oauthCookie);
     expect(wrongState.status).toBe(400);
+    // The browser shows this page, so it is HTML with a way back to the login page.
+    expect(wrongState.headers["content-type"]).toMatch(/text\/html/);
+    expect(wrongState.text).toContain(`href="${WEB_ORIGIN}/login"`);
     expect(cookieFrom(wrongState.headers["set-cookie"] as unknown as string[], SESSION_COOKIE)).toBeUndefined();
 
     const { state } = await startLogin();
@@ -165,6 +168,14 @@ describe("Google login", () => {
     const res = await login();
     expect(res.headers.location).toBe(`${WEB_ORIGIN}/login?error=banned`);
     expect(cookieFrom(res.headers["set-cookie"] as unknown as string[], SESSION_COOKIE)).toBeUndefined();
+    expect(await prisma.session.count()).toBe(0);
+  });
+
+  it("a Google account whose email belongs to another user goes to /login?error=account, not a 500", async () => {
+    await prisma.user.create({ data: { email: "tian@example.com", googleSub: "old-google-sub", name: "Old Tian" } });
+    const res = await login();
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toBe(`${WEB_ORIGIN}/login?error=account`);
     expect(await prisma.session.count()).toBe(0);
   });
 
@@ -194,6 +205,7 @@ describe("Google login", () => {
   it("GET /me without a cookie returns 401", async () => {
     const res = await request(app.getHttpServer()).get("/me");
     expect(res.status).toBe(401);
+    expect(res.body).toEqual({ error: "unauthorized" });
   });
 
   it("POST /auth/logout ends the session", async () => {

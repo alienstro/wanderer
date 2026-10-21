@@ -4,7 +4,7 @@ import { type LoginError, LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Log in · Wanderer" };
 
-const LOGIN_ERRORS: readonly LoginError[] = ["terms", "cancelled", "banned", "email"];
+const LOGIN_ERRORS: readonly LoginError[] = ["terms", "cancelled", "banned", "email", "account"];
 
 function toLoginError(value: string | string[] | undefined): LoginError | undefined {
   return LOGIN_ERRORS.find((error) => error === value);

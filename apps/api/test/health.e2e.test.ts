@@ -40,4 +40,8 @@ describe("health, CORS, and env", () => {
       loadEnv({ ...valid, ADMIN_EMAILS: "", PORT: "3001", COOKIE_SECRET: "too-short" }),
     ).toThrow(/COOKIE_SECRET/);
   });
+
+  it("loadEnv keeps only the origin of WEB_ORIGIN, so a trailing slash does not break CORS", () => {
+    expect(testEnv({ WEB_ORIGIN: "https://wanderer.alienstro.xyz/" }).WEB_ORIGIN).toBe(WEB_ORIGIN);
+  });
 });

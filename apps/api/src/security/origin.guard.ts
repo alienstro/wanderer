@@ -49,10 +49,10 @@ export class OriginGuard implements CanActivate {
       return true;
     }
     if (req.headers.origin !== this.env.WEB_ORIGIN) {
-      throw new ForbiddenException("origin_not_allowed");
+      throw new ForbiddenException({ error: "origin_not_allowed" });
     }
     if (hasBody(req) && !req.is("application/json")) {
-      throw new ForbiddenException("json_required");
+      throw new ForbiddenException({ error: "json_required" });
     }
     return true;
   }

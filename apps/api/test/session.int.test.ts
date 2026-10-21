@@ -74,4 +74,24 @@ describe("SessionService", () => {
 
     expect(await sessions.validate(token)).toBeNull();
   });
+
+  it("validate returns null, not an error, when a logout deletes the session during a renewal", async () => {
+    const user = await makeUser();
+    const { token } = await sessions.create(user.id);
+    await prisma.session.updateMany({ data: { expiresAt: new Date(Date.now() + 28 * DAY_MS) } });
+    // The row goes away after the read and before the renewal write, as with a logout in another tab.
+    const racingPrisma = {
+      session: {
+        findUnique: async (args: Parameters<typeof prisma.session.findUnique>[0]) => {
+          const found = await prisma.session.findUnique(args);
+          await prisma.session.deleteMany({ where: { userId: user.id } });
+          return found;
+        },
+        update: (args: Parameters<typeof prisma.session.update>[0]) => prisma.session.update(args),
+        updateMany: (args: Parameters<typeof prisma.session.updateMany>[0]) => prisma.session.updateMany(args),
+      },
+    } as unknown as PrismaService;
+
+    expect(await new SessionService(racingPrisma).validate(token)).toBeNull();
+  });
 });

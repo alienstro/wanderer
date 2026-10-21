@@ -49,10 +49,14 @@ export class SessionService {
       return { user: session.user, expiresAt: session.expiresAt, renewed: false };
     }
     const expiresAt = new Date(now + SESSION_LIFETIME_MS);
-    await this.prisma.session.update({
+    // updateMany does not throw when a logout deleted the row after the read. No row means no session.
+    const { count } = await this.prisma.session.updateMany({
       where: { id: session.id },
       data: { expiresAt, lastSeenAt: new Date(now) },
     });
+    if (count === 0) {
+      return null;
+    }
     return { user: session.user, expiresAt, renewed: true };
   }
 

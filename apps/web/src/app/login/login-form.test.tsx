@@ -43,4 +43,11 @@ describe("LoginForm", () => {
     render(<LoginForm error="banned" />);
     expect(screen.getByRole("alert")).toHaveTextContent("This account is banned.");
   });
+
+  it('error="account" says that the email belongs to another account', () => {
+    render(<LoginForm error="account" />);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "This Google email address belongs to another Wanderer account.",
+    );
+  });
 });

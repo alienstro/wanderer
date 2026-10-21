@@ -1,11 +1,13 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { ENV, type Env } from "../config/env.js";
+import { Prisma } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { GoogleProfile } from "./google-oidc.js";
 import { SessionService } from "./session.service.js";
 
 export type LoginResult =
   | { kind: "banned" }
+  | { kind: "email_taken" }
   | { kind: "ok"; token: string; expiresAt: Date; hasHandle: boolean };
 
 @Injectable()
@@ -24,11 +26,21 @@ export class AuthService {
     const email = profile.email.toLowerCase();
     const role = this.env.ADMIN_EMAILS.includes(email) ? "admin" : "user";
     const fields = { email, name: profile.name, pictureUrl: profile.picture, role } as const;
-    const user = await this.prisma.user.upsert({
-      where: { googleSub: profile.sub },
-      create: { googleSub: profile.sub, ...fields },
-      update: fields,
-    });
+    let user;
+    try {
+      user = await this.prisma.user.upsert({
+        where: { googleSub: profile.sub },
+        create: { googleSub: profile.sub, ...fields },
+        update: fields,
+      });
+    } catch (error) {
+      // Another user row has this email, for example after Google gave the email to a new account.
+      // The Google sub is the identity, so the API does not join the two accounts.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        return { kind: "email_taken" };
+      }
+      throw error;
+    }
     if (user.bannedAt) {
       return { kind: "banned" };
     }

@@ -6,7 +6,8 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   GOOGLE_CALLBACK_URL: z.url(),
   COOKIE_SECRET: z.string().min(32, "COOKIE_SECRET must have 32 or more characters"),
-  WEB_ORIGIN: z.url(),
+  // The Origin header of a browser has no path and no trailing slash, so keep only the origin.
+  WEB_ORIGIN: z.url().transform((value) => new URL(value).origin),
   ADMIN_EMAILS: z
     .string()
     .default("")
