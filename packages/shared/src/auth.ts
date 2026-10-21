@@ -30,6 +30,12 @@ export const meResponseSchema = z.object({
   pictureUrl: z.string().nullable(),
   handle: z.string().nullable(),
   role: z.enum(["user", "admin"]),
+  /** A handle suggestion for the handle step. It is null when the user has a handle. */
+  suggestedHandle: z.string().nullable(),
 });
+
+export const updateMeRequestSchema = z.object({ handle: handleSchema });
+
+export type UpdateMeRequest = z.infer<typeof updateMeRequestSchema>;
 
 export type MeResponse = z.infer<typeof meResponseSchema>;
