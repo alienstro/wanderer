@@ -7,6 +7,7 @@ import { ENV, type Env } from "./config/env.js";
 import { HealthController } from "./health/health.controller.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { ClientIpThrottlerGuard } from "./security/client-ip-throttler.guard.js";
+import { OriginGuard } from "./security/origin.guard.js";
 
 @Module({})
 export class AppModule {
@@ -31,6 +32,7 @@ export class AppModule {
       providers: [
         { provide: ENV, useValue: env },
         { provide: APP_GUARD, useClass: ClientIpThrottlerGuard },
+        { provide: APP_GUARD, useClass: OriginGuard },
       ],
       exports: [ENV],
     };
