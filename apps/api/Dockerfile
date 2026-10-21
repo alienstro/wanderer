@@ -16,6 +16,9 @@ RUN pnpm deploy --filter @wanderer/api --prod --legacy /out
 FROM base AS run
 ENV NODE_ENV=production
 ENV PORT=3001
+# The avatar images. Mount a volume here, so that they stay after a new deploy.
+ENV UPLOAD_DIR=/data/uploads
+RUN mkdir -p /data/uploads && chown node:node /data/uploads
 WORKDIR /app
 COPY --from=build --chown=node:node /out ./
 USER node
