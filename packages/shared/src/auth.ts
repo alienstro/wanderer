@@ -36,7 +36,11 @@ export const meResponseSchema = z.object({
   suggestedHandle: z.string().nullable(),
 });
 
-export const updateMeRequestSchema = z.object({ handle: handleSchema });
+/** PATCH /me changes the handle, "Show 18+", or both. */
+export const updateMeRequestSchema = z.object({
+  handle: handleSchema.optional(),
+  showAdult: z.boolean().optional(),
+});
 
 export type UpdateMeRequest = z.infer<typeof updateMeRequestSchema>;
 

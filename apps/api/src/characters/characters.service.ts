@@ -1,9 +1,16 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import type { CharacterDetail, CharacterInput } from "@wanderer/shared";
 import { isUuid } from "../common/uuid.js";
 import { type CharacterStatus, Prisma, type User } from "../generated/prisma/client.js";
 import { FilesService } from "../files/files.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { canSeeAdult } from "./adult.js";
 import { type CharacterDetailRow, characterDetailInclude, toCharacterDetail } from "./character-mapper.js";
 
 const NOT_FOUND = { error: "not_found" };
@@ -64,11 +71,17 @@ export class CharactersService {
     return toCharacterDetail(row, user);
   }
 
-  /** Gives the character when the viewer can see it. Another user gets 404, so a private character stays secret. */
+  /**
+   * Gives the character when the viewer can see it. Another user gets 404, so a private character stays secret.
+   * An 18+ character gives 403 with only the error code, so that the web can show the 18+ warning.
+   */
   async findVisible(id: string, viewer: User | null): Promise<CharacterDetail> {
     const row = await this.findRow(id);
     if (!row || !this.canView(row, viewer)) {
       throw new NotFoundException(NOT_FOUND);
+    }
+    if (row.isAdult && viewer?.id !== row.creatorId && !canSeeAdult(viewer)) {
+      throw new ForbiddenException({ error: "adult_content" });
     }
     return toCharacterDetail(row, viewer);
   }

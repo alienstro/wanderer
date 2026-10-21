@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import type { CharacterListQuery, CharacterListResponse, MyCharacterCard } from "@wanderer/shared";
 import { Prisma, type User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { canSeeAdult } from "./adult.js";
 import { type CharacterCardRow, characterCardInclude, toCharacterCard } from "./character-mapper.js";
 import { type CursorKey, decodeCursor, encodeCursor } from "./cursor.js";
 
@@ -16,11 +17,6 @@ interface KeyRow {
 /** Escapes the LIKE wildcards, so that "%" and "_" match only themselves. The query uses ESCAPE '\'. */
 export function likePattern(text: string): string {
   return `%${text.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
-}
-
-/** A user sees 18+ characters only after the 18+ confirm and with "Show 18+" on. */
-export function canSeeAdult(viewer: User | null): boolean {
-  return viewer !== null && viewer.showAdult && viewer.adultConfirmedAt !== null;
 }
 
 @Injectable()
