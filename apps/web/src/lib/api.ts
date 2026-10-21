@@ -14,6 +14,11 @@ function apiUrl(): string {
   return process.env.NEXT_PUBLIC_API_URL ?? "";
 }
 
+/** Gives the full address of an API file path such as `/files/<id>`. */
+export function fileSrc(path: string): string {
+  return `${apiUrl()}${path}`;
+}
+
 async function errorCode(res: Response): Promise<string | null> {
   try {
     const body: unknown = await res.json();

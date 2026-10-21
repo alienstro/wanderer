@@ -1,0 +1,95 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import type { CharacterCard, CharacterListResponse, TagSlug } from "@wanderer/shared";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DiscoverView } from "./discover-view";
+
+const replace = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }), usePathname: () => "/" }));
+
+function card(n: number): CharacterCard {
+  return {
+    id: `c${n}`,
+    title: `Character ${n}`,
+    chatName: "",
+    avatarUrl: null,
+    isAdult: false,
+    tags: [],
+    chatCount: 0,
+    creatorHandle: "tian",
+  };
+}
+
+/** A visitor: /me gives 401. Other calls give the next answer of the list. */
+function stubFetch(lists: CharacterListResponse[] = []) {
+  const fetchMock = vi.fn(async (url: string) => {
+    if (url.endsWith("/me")) {
+      return Response.json({ error: "unauthorized" }, { status: 401 });
+    }
+    return Response.json(lists.shift() ?? { items: [], nextCursor: null });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+function renderView(initial: CharacterListResponse, query: { q?: string; tag?: TagSlug; sort?: string } = {}) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <DiscoverView initial={initial} q={query.q ?? ""} tag={query.tag ?? null} sort={query.sort === "newest" ? "newest" : "most_chats"} />
+    </QueryClientProvider>,
+  );
+}
+
+describe("DiscoverView", () => {
+  beforeEach(() => {
+    replace.mockReset();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("a click on the Noir chip puts tag=noir in the URL", async () => {
+    stubFetch();
+    renderView({ items: [card(1)], nextCursor: null });
+    await userEvent.click(screen.getByRole("button", { name: "Noir" }));
+    expect(replace).toHaveBeenCalledWith("/?tag=noir", { scroll: false });
+  });
+
+  it("a second click goes back to All", async () => {
+    stubFetch();
+    renderView({ items: [card(1)], nextCursor: null }, { tag: "noir" });
+    expect(screen.getByRole("button", { name: "Noir" })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(screen.getByRole("button", { name: "Noir" }));
+    expect(replace).toHaveBeenCalledWith("/", { scroll: false });
+  });
+
+  it("a search text puts q in the URL after a 300 ms pause", async () => {
+    stubFetch();
+    renderView({ items: [card(1)], nextCursor: null });
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search characters" }), "mira");
+    expect(replace).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(replace).toHaveBeenCalledWith("/?q=mira", { scroll: false }), { timeout: 1000 });
+    expect(replace).toHaveBeenCalledTimes(1);
+  });
+
+  it("Load more asks for the next cursor and adds the cards", async () => {
+    const fetchMock = stubFetch([{ items: [card(2)], nextCursor: null }]);
+    renderView({ items: [card(1)], nextCursor: "cursor-1" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Load more" }));
+
+    expect(await screen.findByText("Character 2")).toBeInTheDocument();
+    expect(screen.getByText("Character 1")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("cursor=cursor-1"), expect.anything());
+    expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
+  });
+
+  it('an empty list shows "No characters match your search."', () => {
+    stubFetch();
+    renderView({ items: [], nextCursor: null }, { q: "zzz" });
+    expect(screen.getByText("No characters match your search.")).toBeInTheDocument();
+  });
+});
