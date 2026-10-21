@@ -44,14 +44,18 @@ export function DiscoverView({ initial, q, tag, sort }: DiscoverQuery & { initia
   const { data: me, isPending: mePending } = useMe();
   const viewer = me?.id ?? null;
   const [text, setText] = useState(q);
-  // The q of the URL that the view shows now, and the q that the search field put into the URL.
+  // The q of the URL that the view shows now, and the values that the search field put into the URL, oldest first.
   const [shownQ, setShownQ] = useState(q);
-  const [pushedQ, setPushedQ] = useState<string | null>(null);
+  const [pushed, setPushed] = useState<string[]>([]);
   if (q !== shownQ) {
     setShownQ(q);
-    setPushedQ(null);
-    // A q that the search field did not put into the URL comes from outside, such as the Discover link or the back button.
-    if (q !== pushedQ) {
+    const at = pushed.indexOf(q);
+    if (at >= 0) {
+      // A late answer for a search of this field. The user can still type, so the text stays.
+      setPushed(pushed.slice(at + 1));
+    } else {
+      // A q from outside, such as the Discover link or the back button.
+      setPushed([]);
       setText(q);
     }
   }
@@ -63,15 +67,15 @@ export function DiscoverView({ initial, q, tag, sort }: DiscoverQuery & { initia
   // The search starts after a pause in the typing, so each key does not load a new page.
   useEffect(() => {
     const wanted = text.trim();
-    if (wanted === q) {
+    if (wanted === q || pushed.at(-1) === wanted) {
       return;
     }
     const timer = setTimeout(() => {
-      setPushedQ(wanted);
+      setPushed((values) => [...values, wanted]);
       router.replace(discoverHref(pathname, { q: wanted, tag, sort }), { scroll: false });
     }, SEARCH_PAUSE_MS);
     return () => clearTimeout(timer);
-  }, [text, q, tag, sort, router, pathname]);
+  }, [text, q, tag, sort, router, pathname, pushed]);
 
   const list = useInfiniteQuery({
     queryKey: ["characters", q, tag, sort, viewer],
@@ -84,7 +88,9 @@ export function DiscoverView({ initial, q, tag, sort }: DiscoverQuery & { initia
     staleTime: 30_000,
     enabled: !mePending,
   });
-  const pages = list.data?.pages ?? [initial];
+  // A user list that failed must not show the visitor list in its place.
+  const failed = viewer !== null && list.isError;
+  const pages = list.data?.pages ?? (failed ? [] : [initial]);
   const items = pages.flatMap((page) => page.items);
 
   return (
@@ -145,7 +151,11 @@ export function DiscoverView({ initial, q, tag, sort }: DiscoverQuery & { initia
             ))}
           </div>
 
-          {items.length > 0 ? (
+          {failed ? (
+            <p role="alert" className="m-0 rounded-[18px] bg-surface px-6 py-14 text-center text-error">
+              The characters did not load. Reload the page to try again.
+            </p>
+          ) : items.length > 0 ? (
             <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-[18px] gap-y-7 p-0">
               {items.map((card) => (
                 <li key={card.id} className="flex">

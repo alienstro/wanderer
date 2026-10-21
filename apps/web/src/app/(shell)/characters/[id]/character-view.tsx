@@ -1,12 +1,11 @@
 import type { CharacterDetail } from "@wanderer/shared";
 import { Markdown } from "@/components/markdown";
 import { fileSrc } from "@/lib/api";
-import { chatsLabel } from "@/lib/format";
+import { chatsLabel, statusLabel } from "@/lib/format";
 
 /** The character page body in the prototype style: the banner with a blurred copy of the image, then the openings and the definition. */
 export function CharacterView({ detail }: { detail: CharacterDetail }) {
   const image = detail.avatarUrl ? fileSrc(detail.avatarUrl) : null;
-  const statusLabel = detail.status === "draft" ? "Draft" : detail.status === "hidden" ? "Hidden" : detail.isPublic ? "Public" : "Private";
 
   return (
     <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-8">
@@ -47,7 +46,7 @@ export function CharacterView({ detail }: { detail: CharacterDetail }) {
               </span>
               <span>{chatsLabel(detail.chatCount)}</span>
               {detail.isAdult && <span className="tag bg-[rgba(194,65,75,0.9)] text-white">18+</span>}
-              {detail.isOwner && <span className="tag">{statusLabel}</span>}
+              {detail.isOwner && <span className="tag">{statusLabel(detail)}</span>}
             </div>
             <div className="max-w-[64ch] text-[15px] leading-[1.6] text-[#e4e4e7]">
               <Markdown text={detail.bio} />

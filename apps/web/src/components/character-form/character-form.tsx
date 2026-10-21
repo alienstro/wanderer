@@ -4,8 +4,10 @@ import {
   type CharacterDetail,
   type CharacterInput,
   characterInputSchema,
+  CHAT_NAME_MAX,
   characterTokenCounts,
   estimateTokens,
+  OPENINGS_MAX,
   TAGS,
   TAGS_MAX,
   TITLE_MAX,
@@ -172,6 +174,7 @@ export function CharacterForm({ initial, onSaved, creatorHandle = "you" }: Chara
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const counts = characterTokenCounts(state);
+  const isLive = initial !== undefined && initial.status !== "draft";
 
   function set(change: Partial<FormState>) {
     setState((current) => ({ ...current, ...change }));
@@ -241,7 +244,7 @@ export function CharacterForm({ initial, onSaved, creatorHandle = "you" }: Chara
               id={inputId}
               className="field"
               value={state.chatName}
-              maxLength={60}
+              maxLength={CHAT_NAME_MAX}
               aria-describedby={describedBy}
               placeholder="The name shown in chat"
               onChange={(event) => set({ chatName: event.target.value })}
@@ -327,7 +330,9 @@ export function CharacterForm({ initial, onSaved, creatorHandle = "you" }: Chara
                 *
               </span>
             </span>
-            <span className="hint">{state.openings.length} of 10</span>
+            <span className="hint">
+              {state.openings.length} of {OPENINGS_MAX}
+            </span>
           </div>
           <span className="hint">Players pick one of these to start a chat. Put actions in *asterisks*.</span>
           <OpeningsEditor value={state.openings} onChange={(openings) => set({ openings })} />
@@ -367,11 +372,12 @@ export function CharacterForm({ initial, onSaved, creatorHandle = "you" }: Chara
           <span className="hint flex-auto text-[13px]">
             Total: {counts.total} tokens. Permanent: {counts.permanent} tokens.
           </span>
+          {/* A saved character that is not a draft keeps its status on "Save". Only "Move to drafts" takes it off Discover. */}
           <button type="button" className="pill pill-soft" disabled={saving} onClick={() => void save(false)}>
-            Save draft
+            {isLive ? "Move to drafts" : "Save draft"}
           </button>
           <button type="button" className="pill pill-accent" disabled={saving} onClick={() => void save(true)}>
-            Publish
+            {isLive ? "Save" : "Publish"}
           </button>
         </div>
       </form>

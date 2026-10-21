@@ -85,6 +85,15 @@ describe("form extras", () => {
     expect(await screen.findByText("This PNG has no character card.")).toBeInTheDocument();
   });
 
+  it("a 400 invalid_image import answer shows the image message", async () => {
+    stubFetch(() => Response.json({ error: "invalid_image" }, { status: 400 }));
+    render(<CharacterForm onSaved={vi.fn()} />);
+
+    await userEvent.upload(screen.getByLabelText("Import a Tavern PNG"), pngFile(100, "broken.png"));
+
+    expect(await screen.findByText("Use a PNG, JPEG, or WebP image of 5 MB or less.")).toBeInTheDocument();
+  });
+
   it("the preview card shows the new title while the user types", async () => {
     render(<CharacterForm onSaved={vi.fn()} creatorHandle="tian" />);
     const preview = screen.getByRole("region", { name: "Preview" });

@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import type { CharacterDetail, CharacterInput } from "@wanderer/shared";
@@ -40,9 +41,12 @@ function tagRows(tags: string[]) {
   return tags.map((tagSlug) => ({ tagSlug }));
 }
 
-/** Changes a duplicate title into 409, because the unique index decides a race. */
-function rethrowTitleTaken(error: unknown): never {
+/** Changes a unique index error into 400 or 409, because the unique indexes decide a race. */
+function rethrowUniqueError(error: unknown): never {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    if (JSON.stringify(error.meta ?? {}).includes("avatar_file_id")) {
+      throw new BadRequestException({ error: "invalid_avatar" });
+    }
     throw new ConflictException({ error: "title_taken" });
   }
   throw error;
@@ -50,13 +54,15 @@ function rethrowTitleTaken(error: unknown): never {
 
 @Injectable()
 export class CharactersService {
+  private readonly logger = new Logger(CharactersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly files: FilesService,
   ) {}
 
   async create(user: User, input: CharacterInput): Promise<CharacterDetail> {
-    await this.assertOwnAvatar(user, input.avatarFileId);
+    await this.assertFreeAvatar(user, input.avatarFileId, null);
     const row = await this.prisma.character
       .create({
         data: {
@@ -68,7 +74,7 @@ export class CharactersService {
         },
         include: characterDetailInclude,
       })
-      .catch(rethrowTitleTaken);
+      .catch(rethrowUniqueError);
     return toCharacterDetail(row, user);
   }
 
@@ -91,7 +97,7 @@ export class CharactersService {
   async update(id: string, user: User, body: unknown): Promise<CharacterDetail> {
     const current = await this.findOwnRow(id, user);
     const input = mergeCharacterInput(current, body);
-    await this.assertOwnAvatar(user, input.avatarFileId);
+    await this.assertFreeAvatar(user, input.avatarFileId, id);
     // A hidden character stays hidden. Only an admin can show it again.
     const status: CharacterStatus = current.status === "hidden" ? "hidden" : input.publish ? "published" : "draft";
     // A nested write runs in one transaction, so the openings and the tags change with the character.
@@ -106,9 +112,9 @@ export class CharactersService {
         },
         include: characterDetailInclude,
       })
-      .catch(rethrowTitleTaken);
+      .catch(rethrowUniqueError);
     if (current.avatarFileId && current.avatarFileId !== row.avatarFileId) {
-      await this.files.remove(current.avatarFileId);
+      await this.removeAvatarFile(current.avatarFileId);
     }
     return toCharacterDetail(row, user);
   }
@@ -118,7 +124,7 @@ export class CharactersService {
     const current = await this.findOwnRow(id, user);
     await this.prisma.character.delete({ where: { id } });
     if (current.avatarFileId) {
-      await this.files.remove(current.avatarFileId);
+      await this.removeAvatarFile(current.avatarFileId);
     }
   }
 
@@ -144,13 +150,29 @@ export class CharactersService {
     return row;
   }
 
-  /** A character can use only an avatar that its creator uploaded. */
-  private async assertOwnAvatar(user: User, fileId: string | null): Promise<void> {
+  /**
+   * The change is already saved, so a storage error must not give 500. The error goes to the log,
+   * and the file stays on the volume.
+   */
+  private async removeAvatarFile(fileId: string): Promise<void> {
+    try {
+      await this.files.remove(fileId);
+    } catch (error) {
+      this.logger.warn(`The old avatar file ${fileId} was not removed: ${String(error)}`);
+    }
+  }
+
+  /** A character can use only an avatar that its creator uploaded and that no other character uses. */
+  private async assertFreeAvatar(user: User, fileId: string | null, characterId: string | null): Promise<void> {
     if (!fileId) {
       return;
     }
-    const file = await this.prisma.file.findUnique({ where: { id: fileId }, select: { ownerId: true } });
-    if (file?.ownerId !== user.id) {
+    const file = await this.prisma.file.findUnique({
+      where: { id: fileId },
+      select: { ownerId: true, character: { select: { id: true } } },
+    });
+    const usedByOther = file?.character && file.character.id !== characterId;
+    if (file?.ownerId !== user.id || usedByOther) {
       throw new BadRequestException({ error: "invalid_avatar" });
     }
   }

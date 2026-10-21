@@ -93,6 +93,43 @@ describe("DiscoverView", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it("a late server answer for an earlier search does not overwrite the text that the user still types", async () => {
+    stubFetch();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const view = (q: string) => (
+      <QueryClientProvider client={client}>
+        <DiscoverView initial={{ items: [card(1)], nextCursor: null }} q={q} tag={null} sort="most_chats" />
+      </QueryClientProvider>
+    );
+    const { rerender } = render(view(""));
+    const box = screen.getByRole("searchbox", { name: "Search characters" });
+    await userEvent.type(box, "ab");
+    await vi.waitFor(() => expect(replace).toHaveBeenCalledWith("/?q=ab", { scroll: false }), { timeout: 1000 });
+    await userEvent.type(box, "c");
+    await vi.waitFor(() => expect(replace).toHaveBeenCalledWith("/?q=abc", { scroll: false }), { timeout: 1000 });
+
+    rerender(view("ab"));
+    expect(box).toHaveValue("abc");
+    rerender(view("abc"));
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(box).toHaveValue("abc");
+    expect(replace).toHaveBeenCalledTimes(2);
+  });
+
+  it("a failed list fetch for a logged-in user shows an error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        url.endsWith("/me")
+          ? Response.json({ id: "u1", name: "Tian", email: "t@e.com", pictureUrl: null, handle: "tian", role: "user", showAdult: false, suggestedHandle: null })
+          : Response.json({ error: "server_error" }, { status: 500 }),
+      ),
+    );
+    renderView({ items: [card(1)], nextCursor: null });
+    expect(await screen.findByText("The characters did not load. Reload the page to try again.")).toBeInTheDocument();
+    expect(screen.queryByText("Character 1")).not.toBeInTheDocument();
+  });
+
   it("Load more asks for the next cursor and adds the cards", async () => {
     const fetchMock = stubFetch([{ items: [card(2)], nextCursor: null }]);
     renderView({ items: [card(1)], nextCursor: "cursor-1" });

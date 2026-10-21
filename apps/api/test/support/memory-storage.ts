@@ -11,7 +11,8 @@ export class MemoryStorage implements FileStorage {
 
   read(key: string): Promise<Buffer> {
     const data = this.files.get(key);
-    return data ? Promise.resolve(data) : Promise.reject(new Error(`No file ${key}`));
+    // The same error code as the disk storage, so the tests see the real behavior.
+    return data ? Promise.resolve(data) : Promise.reject(Object.assign(new Error(`No file ${key}`), { code: "ENOENT" }));
   }
 
   remove(key: string): Promise<void> {

@@ -1,8 +1,9 @@
+import { IMAGE_UPLOAD_MAX_BYTES } from "@wanderer/shared";
 import sharp from "sharp";
 
 export const AVATAR_WIDTH = 600;
 export const AVATAR_HEIGHT = 800;
-export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = IMAGE_UPLOAD_MAX_BYTES;
 
 /** A larger image could use all the memory of the server. */
 const MAX_INPUT_PIXELS = 40_000_000;

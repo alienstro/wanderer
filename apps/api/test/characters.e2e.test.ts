@@ -150,6 +150,31 @@ describe("character create, read, update, and delete", () => {
     expect(storage.files.size).toBe(1);
   });
 
+  it("an avatarFileId that another character already uses gives 400 invalid_avatar", async () => {
+    const file = await app.get(FilesService).saveAvatar(owner.user.id, await pngImage());
+    await createCharacter(app, owner.cookie, { title: "First", avatarFileId: file.id });
+    const second = await createCharacter(app, owner.cookie, { title: "Second" });
+
+    expect((await postCharacter(app, owner.cookie, characterInput({ title: "Third", avatarFileId: file.id })).expect(400)).body).toEqual({
+      error: "invalid_avatar",
+    });
+    await patch(second, owner.cookie, { avatarFileId: file.id }).expect(400);
+  });
+
+  it("PATCH keeps its 200 when the old avatar file cannot be removed from the storage", async () => {
+    const files = app.get(FilesService);
+    const first = await files.saveAvatar(owner.user.id, await pngImage());
+    const second = await files.saveAvatar(owner.user.id, await pngImage());
+    const id = await createCharacter(app, owner.cookie, { avatarFileId: first.id });
+    const remove = storage.remove;
+    storage.remove = () => Promise.reject(new Error("read-only volume"));
+    try {
+      await patch(id, owner.cookie, { avatarFileId: second.id }).expect(200);
+    } finally {
+      storage.remove = remove;
+    }
+  });
+
   it("POST without the web Origin gives 403", async () => {
     await http().post("/characters").set("Cookie", owner.cookie).send(characterInput()).expect(403);
     expect(await prisma.character.count()).toBe(0);

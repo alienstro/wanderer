@@ -82,7 +82,8 @@ model Character {
   isPublic          Boolean         @default(true) @map("is_public")
   definitionVisible Boolean         @default(true) @map("definition_visible")
   status            CharacterStatus @default(draft)
-  avatarFileId      String?         @map("avatar_file_id") @db.Uuid
+  /// One avatar file belongs to one character, so a delete of the file cannot clear another avatar.
+  avatarFileId      String?         @unique @map("avatar_file_id") @db.Uuid
   chatCount         Int             @default(0) @map("chat_count")
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
@@ -141,8 +142,8 @@ model File {
   height    Int
   createdAt DateTime @default(now()) @map("created_at")
 
-  owner      User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  characters Character[]
+  owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  character Character?
 
   @@index([ownerId])
   @@map("files")

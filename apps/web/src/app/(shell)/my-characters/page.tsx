@@ -5,13 +5,8 @@ import type { MyCharacterCard } from "@wanderer/shared";
 import Link from "next/link";
 import { CharacterCard } from "@/components/character-card";
 import { apiFetch } from "@/lib/api";
+import { statusLabel } from "@/lib/format";
 import { useRequireLogin } from "@/lib/use-require-login";
-
-function statusLabel(card: MyCharacterCard): string {
-  if (card.status === "draft") return "Draft";
-  if (card.status === "hidden") return "Hidden";
-  return card.isPublic ? "Published" : "Private";
-}
 
 /** All characters of the user, drafts and private ones too, newest first. */
 export default function MyCharactersPage() {

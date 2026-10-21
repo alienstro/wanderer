@@ -39,7 +39,18 @@ export class FilesService {
       return null;
     }
     const file = await this.prisma.file.findUnique({ where: { id } });
-    return file ? this.storage.read(file.path) : null;
+    if (!file) {
+      return null;
+    }
+    try {
+      return await this.storage.read(file.path);
+    } catch (error) {
+      // A row with no bytes is a lost file, for example after a deploy without the volume.
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return null;
+      }
+      throw error;
+    }
   }
 
   /** Deletes a file row and its bytes. It does nothing for an unknown ID. */

@@ -120,6 +120,37 @@ describe("CharacterForm", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toMatch(/\/characters$/);
   });
 
+  it("the edit form of a published character shows Save and Move to drafts, and Save keeps it published", async () => {
+    const fetchMock = stubFetch(200);
+    const published = {
+      id: "c1",
+      title: "Mira",
+      chatName: "",
+      avatarUrl: null,
+      isAdult: false,
+      tags: [],
+      chatCount: 0,
+      creatorHandle: "tian",
+      bio: "Bio",
+      status: "published" as const,
+      isPublic: true,
+      definitionVisible: true,
+      openings: ["Hi."],
+      definition: { personality: "Calm.", scenario: "", exampleDialogs: "" },
+      isOwner: true,
+      createdAt: "2026-10-21T00:00:00.000Z",
+    };
+    render(<CharacterForm initial={published} onSaved={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: "Save draft" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Move to drafts" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(sentBody(fetchMock)).toMatchObject({ publish: true });
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ method: "PATCH" });
+  });
+
   it('a 409 title_taken shows "You already have a character with this title."', async () => {
     stubFetch(409, { error: "title_taken" });
     const onSaved = vi.fn();

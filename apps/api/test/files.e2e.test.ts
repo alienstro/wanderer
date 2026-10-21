@@ -75,6 +75,12 @@ describe("avatar upload and file serving", () => {
     await request(app.getHttpServer()).get("/files/not-a-uuid").expect(404);
   });
 
+  it("GET /files/:id gives 404 when the row exists but the bytes are gone", async () => {
+    const res = await upload(await pngImage(), "avatar.png").expect(201);
+    storage.files.clear();
+    await request(app.getHttpServer()).get(`/files/${res.body.id}`).expect(404);
+  });
+
   it('a text file named avatar.png gives 400 { error: "invalid_image" } and stores nothing', async () => {
     const res = await upload(Buffer.from("hello, this is text"), "avatar.png").expect(400);
     expect(res.body).toEqual({ error: "invalid_image" });

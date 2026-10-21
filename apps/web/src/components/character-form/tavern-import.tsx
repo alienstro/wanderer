@@ -25,7 +25,13 @@ export function TavernImport({ onImported }: { onImported: (draft: Partial<Chara
       const result = await uploadImage<{ draft: Partial<CharacterInput>; avatarFileId: string }>("/characters/import-png", file);
       onImported(result.draft, result.avatarFileId);
     } catch (caught) {
-      setError(caught instanceof ApiError && caught.status === 400 ? "This PNG has no character card." : "The import failed. Try again.");
+      if (caught instanceof ApiError && caught.code === "no_character_card") {
+        setError("This PNG has no character card.");
+      } else if (caught instanceof ApiError && caught.status === 400) {
+        setError(BAD_IMAGE_MESSAGE);
+      } else {
+        setError("The import failed. Try again.");
+      }
     } finally {
       setBusy(false);
     }
