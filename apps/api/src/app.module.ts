@@ -2,6 +2,7 @@ import { type DynamicModule, Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { LoggerModule } from "nestjs-pino";
+import { AdminModule } from "./admin/admin.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { CharactersModule } from "./characters/characters.module.js";
 import { ChatsModule } from "./chats/chats.module.js";
@@ -40,6 +41,7 @@ export class AppModule {
         AuthModule,
         FilesModule,
         CharactersModule,
+        AdminModule,
         ProxiesModule,
         ReportsModule,
         ChatsModule,

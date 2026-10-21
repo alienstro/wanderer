@@ -146,9 +146,9 @@ export class CharactersService {
 
   /**
    * The change is already saved, so a storage error must not give 500. The error goes to the log,
-   * and the file stays on the volume.
+   * and the file stays on the volume. The admin delete also uses it.
    */
-  private async removeAvatarFile(fileId: string): Promise<void> {
+  async removeAvatarFile(fileId: string): Promise<void> {
     try {
       await this.files.remove(fileId);
     } catch (error) {
