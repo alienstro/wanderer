@@ -11,6 +11,7 @@ import { FilesModule } from "./files/files.module.js";
 import { HealthController } from "./health/health.controller.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { ProxiesModule } from "./proxies/proxies.module.js";
+import { ReportsModule } from "./reports/reports.module.js";
 import { ClientIpThrottlerGuard } from "./security/client-ip-throttler.guard.js";
 import { OriginGuard } from "./security/origin.guard.js";
 import { USER_THROTTLER } from "./security/user-throttler.guard.js";
@@ -40,6 +41,7 @@ export class AppModule {
         FilesModule,
         CharactersModule,
         ProxiesModule,
+        ReportsModule,
         ChatsModule,
       ],
       controllers: [HealthController],

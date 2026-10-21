@@ -14,7 +14,7 @@ export interface TestUser {
 export async function userWithSession(
   app: NestExpressApplication,
   n: number,
-  data: { showAdult?: boolean; adultConfirmedAt?: Date | null } = {},
+  data: { showAdult?: boolean; adultConfirmedAt?: Date | null; role?: "user" | "admin" } = {},
 ): Promise<TestUser> {
   const user = await app.get(PrismaService).user.create({
     data: { email: `user${n}@example.com`, googleSub: `google-sub-${n}`, name: `User ${n}`, handle: `user_${n}`, ...data },
