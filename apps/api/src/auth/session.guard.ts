@@ -33,3 +33,28 @@ export class SessionGuard implements CanActivate {
     return true;
   }
 }
+
+/**
+ * Sets req.user when the session cookie is valid, and lets every request through.
+ * A route with this guard serves visitors and users, and reads the user with @OptionalUser().
+ */
+@Injectable()
+export class OptionalSessionGuard implements CanActivate {
+  constructor(private readonly sessions: SessionService) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const http = context.switchToHttp();
+    const req = http.getRequest<AuthedRequest>();
+    const cookies = req.cookies as Record<string, string | undefined> | undefined;
+    const token = cookies?.[SESSION_COOKIE];
+    const session = token ? await this.sessions.validateSession(token) : null;
+    if (token && session) {
+      if (session.renewed) {
+        http.getResponse<Response>().cookie(SESSION_COOKIE, token, sessionCookieOptions(session.expiresAt));
+      }
+      req.user = session.user;
+      req.sessionToken = token;
+    }
+    return true;
+  }
+}

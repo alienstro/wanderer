@@ -10,3 +10,9 @@ export const CurrentUser = createParamDecorator((_data: unknown, context: Execut
   }
   return user;
 });
+
+/** Gives the user that OptionalSessionGuard found, or null for a visitor. */
+export const OptionalUser = createParamDecorator(
+  (_data: unknown, context: ExecutionContext): User | null =>
+    context.switchToHttp().getRequest<AuthedRequest>().user ?? null,
+);

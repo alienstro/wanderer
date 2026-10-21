@@ -50,8 +50,15 @@ from the repository root with their own Dockerfile.
 | `COOKIE_SECRET` | A random value with 32 or more characters, for example from `openssl rand -base64 48` |
 | `WEB_ORIGIN` | `https://wanderer.alienstro.xyz` |
 | `ADMIN_EMAILS` | The owner's Google email. Use commas between more than one address. |
+| `UPLOAD_DIR` | `/data/uploads` (the image sets this value too) |
 
-Plan 2 adds `UPLOAD_DIR` and a Dokploy volume for uploads. Plan 3 adds `KEY_ENCRYPTION_KEY`.
+- Volume: in **Advanced → Volumes**, add a volume mount. Type: Volume. Name: `wanderer-uploads`.
+  Mount path: `/data/uploads`. The avatar images live there.
+
+**Caution:** without this volume, each new deploy deletes all avatar images, but the database
+still points to them.
+
+Plan 3 adds `KEY_ENCRYPTION_KEY`.
 
 ### Web
 
@@ -61,7 +68,11 @@ Plan 2 adds `UPLOAD_DIR` and a Dokploy volume for uploads. Plan 3 adds `KEY_ENCR
 - Port: `3000`.
 - Health check: `GET /` (the home page) returns 200.
 
-Plan 2 adds `API_INTERNAL_URL` for the pages that render on the server.
+- Environment variable: `API_INTERNAL_URL`. The Next.js server uses it for the pages that render on
+  the server (Discover and the character pages). Use the internal address of the API app on the
+  Dokploy network, for example `http://<api-app-name>:3001`. Dokploy shows the app name on the
+  API app page. When this value is not set, the server uses `NEXT_PUBLIC_API_URL`, which goes out
+  through Cloudflare and back.
 
 ## 4. Dokploy domains
 
@@ -99,7 +110,8 @@ Use Access only for the admin tools, such as the Dokploy dashboard and SSH.
 2. Make an R2 API token with **Object Read & Write** for that bucket only.
 3. In Dokploy, add an S3 destination with the R2 endpoint, the bucket, and the token.
 4. Turn on a daily backup of the Postgres service to that destination.
-5. Plan 2 adds the uploads volume. Back it up to the same bucket.
+5. In the API app, open **Volume Backups**. Add a daily backup of the `wanderer-uploads` volume to
+   the same destination.
 6. Do a test restore to a new database one time, so that you know that the backups work.
 
 ## Check after the deploy

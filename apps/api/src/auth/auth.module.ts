@@ -5,7 +5,7 @@ import { MeService } from "../me/me.service.js";
 import { AuthController } from "./auth.controller.js";
 import { AuthService } from "./auth.service.js";
 import { GOOGLE_OIDC, OpenIdGoogleOidc } from "./google-oidc.js";
-import { SessionGuard } from "./session.guard.js";
+import { OptionalSessionGuard, SessionGuard } from "./session.guard.js";
 import { SessionService } from "./session.service.js";
 
 @Module({
@@ -13,10 +13,11 @@ import { SessionService } from "./session.service.js";
   providers: [
     SessionService,
     SessionGuard,
+    OptionalSessionGuard,
     AuthService,
     MeService,
     { provide: GOOGLE_OIDC, useFactory: (env: Env) => new OpenIdGoogleOidc(env), inject: [ENV] },
   ],
-  exports: [SessionService, SessionGuard],
+  exports: [SessionService, SessionGuard, OptionalSessionGuard],
 })
 export class AuthModule {}

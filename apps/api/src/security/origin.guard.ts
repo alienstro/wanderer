@@ -11,10 +11,14 @@ import type { Request } from "express";
 import { ENV, type Env } from "../config/env.js";
 
 const SKIP_ORIGIN_CHECK = "skipOriginCheck";
+const ALLOW_MULTIPART = "allowMultipart";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 /** Turns off the origin check for one route. The route must check the origin itself. */
 export const SkipOriginCheck = () => SetMetadata(SKIP_ORIGIN_CHECK, true);
+
+/** Lets one route accept a multipart/form-data body, for a file upload. The origin check stays on. */
+export const AllowMultipart = () => SetMetadata(ALLOW_MULTIPART, true);
 
 function hasBody(req: Request): boolean {
   const length = req.headers["content-length"];
@@ -50,6 +54,13 @@ export class OriginGuard implements CanActivate {
     }
     if (req.headers.origin !== this.env.WEB_ORIGIN) {
       throw new ForbiddenException({ error: "origin_not_allowed" });
+    }
+    const allowMultipart = this.reflector.getAllAndOverride<boolean>(ALLOW_MULTIPART, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (allowMultipart && req.is("multipart/form-data")) {
+      return true;
     }
     if (hasBody(req) && !req.is("application/json")) {
       throw new ForbiddenException({ error: "json_required" });

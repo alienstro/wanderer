@@ -15,18 +15,23 @@ enum Role {
 }
 
 model User {
-  id         String    @id @default(uuid()) @db.Uuid
-  email      String    @unique
-  googleSub  String    @unique @map("google_sub")
-  name       String
-  pictureUrl String?   @map("picture_url")
-  handle     String?   @unique
-  role       Role      @default(user)
-  bannedAt   DateTime? @map("banned_at")
-  createdAt  DateTime  @default(now()) @map("created_at")
+  id               String    @id @default(uuid()) @db.Uuid
+  email            String    @unique
+  googleSub        String    @unique @map("google_sub")
+  name             String
+  pictureUrl       String?   @map("picture_url")
+  handle           String?   @unique
+  role             Role      @default(user)
+  bannedAt         DateTime? @map("banned_at")
+  /// True when the user sees 18+ characters. It can be true only when adultConfirmedAt is set.
+  showAdult        Boolean   @default(false) @map("show_adult")
+  adultConfirmedAt DateTime? @map("adult_confirmed_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
 
   sessions         Session[]
   termsAcceptances TermsAcceptance[]
+  characters       Character[]
+  files            File[]
 
   @@map("users")
 }
@@ -56,4 +61,90 @@ model TermsAcceptance {
 
   @@index([userId])
   @@map("terms_acceptances")
+}
+
+enum CharacterStatus {
+  draft
+  published
+  hidden
+}
+
+model Character {
+  id                String          @id @default(uuid()) @db.Uuid
+  creatorId         String          @map("creator_id") @db.Uuid
+  title             String
+  chatName          String          @default("") @map("chat_name")
+  bio               String
+  personality       String
+  scenario          String          @default("")
+  exampleDialogs    String          @default("") @map("example_dialogs")
+  isAdult           Boolean         @default(false) @map("is_adult")
+  isPublic          Boolean         @default(true) @map("is_public")
+  definitionVisible Boolean         @default(true) @map("definition_visible")
+  status            CharacterStatus @default(draft)
+  /// One avatar file belongs to one character, so a delete of the file cannot clear another avatar.
+  avatarFileId      String?         @unique @map("avatar_file_id") @db.Uuid
+  chatCount         Int             @default(0) @map("chat_count")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  creator  User               @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  avatar   File?              @relation(fields: [avatarFileId], references: [id], onDelete: SetNull)
+  openings CharacterOpening[]
+  tags     CharacterTag[]
+
+  @@unique([creatorId, title])
+  @@index([status, isPublic, isAdult, chatCount, createdAt])
+  @@map("characters")
+}
+
+model CharacterOpening {
+  id          String @id @default(uuid()) @db.Uuid
+  characterId String @map("character_id") @db.Uuid
+  position    Int
+  text        String
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, position])
+  @@map("character_openings")
+}
+
+model Tag {
+  slug  String @id
+  label String @unique
+
+  characters CharacterTag[]
+
+  @@map("tags")
+}
+
+model CharacterTag {
+  characterId String @map("character_id") @db.Uuid
+  tagSlug     String @map("tag_slug")
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  tag       Tag       @relation(fields: [tagSlug], references: [slug])
+
+  @@id([characterId, tagSlug])
+  @@index([tagSlug])
+  @@map("character_tags")
+}
+
+/// An uploaded image. The API keeps only a clean WebP copy on the disk volume.
+model File {
+  id        String   @id @default(uuid()) @db.Uuid
+  ownerId   String   @map("owner_id") @db.Uuid
+  path      String
+  mime      String
+  size      Int
+  width     Int
+  height    Int
+  createdAt DateTime @default(now()) @map("created_at")
+
+  owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  character Character?
+
+  @@index([ownerId])
+  @@map("files")
 }
