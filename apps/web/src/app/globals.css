@@ -1,0 +1,579 @@
+@import "tailwindcss";
+
+/* The colors and fonts of the Wanderer prototype (Claude Design canvas, App.dc.html). */
+@theme {
+  --color-bg: #0e0e10;
+  --color-sidebar: #131316;
+  --color-surface: #18181b;
+  --color-surface-2: #1f1f23;
+  --color-text: #f4f4f5;
+  --color-muted: #a1a1aa;
+  --color-subtle: #8c8c96;
+  --color-line: #222227;
+  --color-field-line: #2a2a30;
+  --color-hover: #1e1e22;
+  --color-current: #232329;
+  --color-accent: #632eff;
+  --color-accent-hover: #7a55ff;
+  --color-link: #b9a4ff;
+  --color-focus: #8f6bff;
+  --color-error: #fca5a5;
+  --color-gold: #f5c26b;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-cinzel), Georgia, serif;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  a {
+    color: var(--color-link);
+  }
+
+  :is(button, a, input, select, summary):focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #7c7c86;
+  }
+}
+
+@layer components {
+  .wordmark {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    line-height: 1;
+    text-transform: uppercase;
+    color: var(--color-gold);
+    background: linear-gradient(180deg, #fbe3ae 0%, #f5c26b 55%, #d99a3e 100%);
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgb(99 46 255 / 0.55));
+  }
+
+  .logo-ring {
+    border-radius: 50%;
+    box-shadow:
+      0 0 0 2px var(--color-sidebar),
+      0 0 0 3.5px var(--color-gold);
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 999px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+
+  .pill[aria-disabled="true"],
+  .pill:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .pill-accent {
+    background: var(--color-accent);
+    color: #ffffff;
+  }
+
+  .pill-accent:not([aria-disabled="true"]):hover {
+    background: var(--color-accent-hover);
+  }
+
+  .pill-soft {
+    background: var(--color-current);
+    color: var(--color-text);
+  }
+
+  .pill-soft:hover {
+    background: #2c2c33;
+  }
+
+  .pill-ghost {
+    background: transparent;
+    color: #c4c4cc;
+  }
+
+  .pill-ghost:hover {
+    background: var(--color-hover);
+    color: var(--color-text);
+  }
+
+  .pill-danger {
+    background: #c2414b;
+    color: #ffffff;
+  }
+
+  .pill-danger:hover {
+    background: #d24f59;
+  }
+
+  .pill-sm {
+    min-height: 34px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+
+  .side-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .side-foot {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #c4c4cc;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .nav:hover {
+    background: var(--color-hover);
+    color: var(--color-text);
+  }
+
+  .nav[aria-current="page"] {
+    background: var(--color-current);
+    color: var(--color-text);
+  }
+
+  .av {
+    flex: 0 0 auto;
+    border-radius: 999px;
+    object-fit: cover;
+    object-position: 50% 12%;
+    background: #26262b;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #c4c4cc;
+    font-weight: 600;
+    overflow: hidden;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 0;
+    background: #1c1c20;
+    color: #c4c4cc;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .chip:hover {
+    background: #26262b;
+    color: var(--color-text);
+  }
+
+  .chip[aria-pressed="true"],
+  .chip[aria-current="page"] {
+    background: var(--color-text);
+    color: var(--color-bg);
+    font-weight: 600;
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: var(--color-current);
+    color: #b4b4bc;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .icon-btn {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-muted);
+    cursor: pointer;
+  }
+
+  .icon-btn:hover {
+    background: var(--color-current);
+    color: var(--color-text);
+  }
+
+  .se-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .se-card .shot {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #1c1c20;
+  }
+
+  .se-card .shot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.25s ease;
+  }
+
+  .se-card:hover .shot img {
+    transform: scale(1.04);
+  }
+
+  .seg {
+    min-height: 30px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-muted);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .seg[aria-pressed="true"] {
+    background: #2c2c33;
+    color: var(--color-text);
+  }
+
+  .switch {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 0 6px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .switch .track {
+    position: relative;
+    width: 34px;
+    height: 20px;
+    border-radius: 999px;
+    background: #3a3a42;
+    transition: background 0.15s;
+  }
+
+  .switch .knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: #e4e4e7;
+    transition: transform 0.15s;
+  }
+
+  .switch[aria-checked="true"] .track {
+    background: var(--color-accent);
+  }
+
+  .switch[aria-checked="true"] .knob {
+    transform: translateX(14px);
+    background: #ffffff;
+  }
+
+  textarea.field {
+    line-height: 1.6;
+    resize: vertical;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .se-card .shot img,
+    .switch .track,
+    .switch .knob {
+      transition: none;
+    }
+  }
+
+  /* User text from the Markdown view. */
+  .markdown {
+    overflow-wrap: anywhere;
+  }
+
+  .markdown > :first-child {
+    margin-top: 0;
+  }
+
+  .markdown > :last-child {
+    margin-bottom: 0;
+  }
+
+  .markdown :is(ul, ol) {
+    padding-left: 1.4em;
+  }
+
+  .markdown blockquote {
+    margin-left: 0;
+    padding-left: 12px;
+    border-left: 3px solid var(--color-field-line);
+    color: var(--color-muted);
+  }
+
+  .markdown code {
+    padding: 1px 5px;
+    border-radius: 6px;
+    background: var(--color-current);
+    font-size: 13px;
+  }
+
+  @media (max-width: 760px) {
+    .side-nav {
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
+
+    .nav {
+      width: auto;
+    }
+
+    .side-foot {
+      margin-top: 0;
+      margin-left: auto;
+    }
+  }
+
+  .field {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--color-field-line);
+    border-radius: 12px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font: inherit;
+    font-size: 14px;
+    padding: 11px 14px;
+  }
+
+  .field:hover {
+    border-color: #3a3a42;
+  }
+
+  .field:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgb(99 46 255 / 0.25);
+  }
+
+  /* A quiet button under a message or in the bar of the text box: icon, then a short word. */
+  .msg-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-subtle);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .msg-action:hover {
+    background: var(--color-hover);
+    color: var(--color-text);
+  }
+
+  /* One reply choice, as in the prototype: a left-aligned card that the accent marks on hover. */
+  .choice {
+    display: block;
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--color-field-line);
+    border-radius: 14px;
+    background: var(--color-surface);
+    color: #e4e4e7;
+    font: inherit;
+    font-size: 14px;
+    line-height: 1.45;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .choice:hover {
+    border-color: var(--color-accent);
+    background: #1d1a2b;
+  }
+
+  .choice em {
+    color: var(--color-muted);
+  }
+
+  /* A choice that loads: the box pulses, and the typing dots show where the text comes. */
+  .choice-placeholder {
+    display: flex;
+    align-items: center;
+    height: 42px;
+    padding: 0 16px;
+    border-radius: 14px;
+    background: var(--color-surface);
+    animation: choice-pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes choice-pulse {
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .choice-placeholder {
+      animation: none;
+    }
+  }
+
+  /* The three dots of an AI reply that has no text yet. The height is one line of the bubble text. */
+  .typing {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 1.65em;
+  }
+
+  .typing span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-muted);
+    animation: typing-bounce 1.2s ease-in-out infinite;
+  }
+
+  .typing span:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+
+  .typing span:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+
+  @keyframes typing-bounce {
+    0%,
+    60%,
+    100% {
+      transform: translateY(0);
+      opacity: 0.4;
+    }
+    30% {
+      transform: translateY(-4px);
+      opacity: 1;
+    }
+  }
+
+  /* No movement for a user who asks for less motion. The dots only fade. */
+  @keyframes typing-fade {
+    0%,
+    60%,
+    100% {
+      opacity: 0.4;
+    }
+    30% {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .typing span {
+      animation-name: typing-fade;
+    }
+  }
+
+  .label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .hint {
+    font-size: 12px;
+    color: var(--color-subtle);
+  }
+}
+
+/*
+ * Sonner adds its styles at runtime, outside any layer. A rule in a layer always loses to them,
+ * so these rules stay outside the layers. Each rule also has more attribute selectors than the Sonner rule.
+ */
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] .toast-description {
+  color: var(--color-muted);
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] .toast-action {
+  background: var(--color-accent);
+  color: #ffffff;
+  border-radius: 999px;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"][data-type="error"] [data-icon] {
+  color: var(--color-error);
+}

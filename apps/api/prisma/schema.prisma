@@ -1,0 +1,267 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+  runtime      = "nodejs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  user
+  admin
+}
+
+model User {
+  id               String    @id @default(uuid()) @db.Uuid
+  email            String    @unique
+  googleSub        String    @unique @map("google_sub")
+  name             String
+  pictureUrl       String?   @map("picture_url")
+  handle           String?   @unique
+  role             Role      @default(user)
+  bannedAt         DateTime? @map("banned_at")
+  /// True when the user sees 18+ characters. It can be true only when adultConfirmedAt is set.
+  showAdult        Boolean   @default(false) @map("show_adult")
+  adultConfirmedAt DateTime? @map("adult_confirmed_at")
+  /// True when the chat page shows four reply choices after each AI reply.
+  replyChoicesOn   Boolean   @default(true) @map("reply_choices_on")
+  activeProxyId    String?   @unique @map("active_proxy_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  sessions         Session[]
+  termsAcceptances TermsAcceptance[]
+  characters       Character[]
+  files            File[]
+  proxies          Proxy[]   @relation("ProxyOwner")
+  activeProxy      Proxy?    @relation("ActiveProxy", fields: [activeProxyId], references: [id], onDelete: SetNull)
+  chats            Chat[]
+  reports          Report[]  @relation("Reporter")
+  resolvedReports  Report[]  @relation("ResolvedBy")
+
+  @@map("users")
+}
+
+model Session {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  tokenHash  String   @unique @map("token_hash")
+  expiresAt  DateTime @map("expires_at")
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model TermsAcceptance {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  version    String
+  acceptedAt DateTime @default(now()) @map("accepted_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("terms_acceptances")
+}
+
+enum CharacterStatus {
+  draft
+  published
+  hidden
+}
+
+model Character {
+  id                String          @id @default(uuid()) @db.Uuid
+  creatorId         String          @map("creator_id") @db.Uuid
+  title             String
+  chatName          String          @default("") @map("chat_name")
+  bio               String
+  personality       String
+  scenario          String          @default("")
+  exampleDialogs    String          @default("") @map("example_dialogs")
+  isAdult           Boolean         @default(false) @map("is_adult")
+  isPublic          Boolean         @default(true) @map("is_public")
+  definitionVisible Boolean         @default(true) @map("definition_visible")
+  status            CharacterStatus @default(draft)
+  /// One avatar file belongs to one character, so a delete of the file cannot clear another avatar.
+  avatarFileId      String?         @unique @map("avatar_file_id") @db.Uuid
+  chatCount         Int             @default(0) @map("chat_count")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  creator  User               @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  avatar   File?              @relation(fields: [avatarFileId], references: [id], onDelete: SetNull)
+  openings CharacterOpening[]
+  tags     CharacterTag[]
+  chats    Chat[]
+  reports  Report[]
+
+  @@unique([creatorId, title])
+  @@index([status, isPublic, isAdult, chatCount, createdAt])
+  @@map("characters")
+}
+
+model CharacterOpening {
+  id          String @id @default(uuid()) @db.Uuid
+  characterId String @map("character_id") @db.Uuid
+  position    Int
+  text        String
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, position])
+  @@map("character_openings")
+}
+
+model Tag {
+  slug  String @id
+  label String @unique
+
+  characters CharacterTag[]
+
+  @@map("tags")
+}
+
+model CharacterTag {
+  characterId String @map("character_id") @db.Uuid
+  tagSlug     String @map("tag_slug")
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  tag       Tag       @relation(fields: [tagSlug], references: [slug])
+
+  @@id([characterId, tagSlug])
+  @@index([tagSlug])
+  @@map("character_tags")
+}
+
+/// An uploaded image. The API keeps only a clean WebP copy on the disk volume.
+model File {
+  id        String   @id @default(uuid()) @db.Uuid
+  ownerId   String   @map("owner_id") @db.Uuid
+  path      String
+  mime      String
+  size      Int
+  width     Int
+  height    Int
+  createdAt DateTime @default(now()) @map("created_at")
+
+  owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  character Character?
+
+  @@index([ownerId])
+  @@map("files")
+}
+
+/// An OpenAI-compatible proxy of a user. The API key is stored only encrypted (AES-256-GCM).
+model Proxy {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  name          String
+  baseUrl       String   @map("base_url")
+  appendPath    Boolean  @default(true) @map("append_path")
+  model         String
+  customPrompt  String   @default("") @map("custom_prompt")
+  keyCiphertext Bytes    @map("key_ciphertext")
+  keyIv         Bytes    @map("key_iv")
+  keyTag        Bytes    @map("key_tag")
+  keyVersion    Int      @map("key_version")
+  keyLast4      String   @map("key_last4")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user     User  @relation("ProxyOwner", fields: [userId], references: [id], onDelete: Cascade)
+  activeOf User? @relation("ActiveProxy")
+
+  @@index([userId])
+  @@map("proxies")
+}
+
+model Chat {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  characterId   String   @map("character_id") @db.Uuid
+  title         String
+  lastMessageAt DateTime @default(now()) @map("last_message_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  @@index([userId, lastMessageAt])
+  @@index([userId, characterId])
+  @@map("chats")
+}
+
+enum MessageRole {
+  user
+  assistant
+}
+
+model Message {
+  id        String      @id @default(uuid()) @db.Uuid
+  chatId    String      @map("chat_id") @db.Uuid
+  role      MessageRole
+  content   String
+  /// The order in the chat. The opening is position 0. Positions can have gaps after a delete.
+  position  Int
+  editedAt  DateTime?   @map("edited_at")
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, position])
+  @@map("messages")
+}
+
+enum ReportReason {
+  minors
+  wrong_rating
+  hate
+  copied
+  other
+}
+
+enum ReportStatus {
+  open
+  closed
+}
+
+enum ReportAction {
+  none
+  hidden
+  deleted
+  banned
+}
+
+/// A report about a character. It stays for the admin after a delete of the character or of the reporter.
+model Report {
+  id             String        @id @default(uuid()) @db.Uuid
+  characterId    String?       @map("character_id") @db.Uuid
+  /// The title when the user sent the report, so the admin history keeps it after a delete.
+  characterTitle String        @map("character_title")
+  reporterId     String?       @map("reporter_id") @db.Uuid
+  reason         ReportReason
+  note           String        @default("")
+  status         ReportStatus  @default(open)
+  action         ReportAction?
+  resolvedById   String?       @map("resolved_by") @db.Uuid
+  resolvedAt     DateTime?     @map("resolved_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  character  Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  reporter   User?      @relation("Reporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  resolvedBy User?      @relation("ResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@unique([characterId, reporterId])
+  @@index([status, createdAt])
+  @@index([reporterId, createdAt])
+  @@map("reports")
+}

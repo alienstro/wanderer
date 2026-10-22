@@ -1,0 +1,58 @@
+import type { CharacterCard as Card } from "@wanderer/shared";
+import Link from "next/link";
+import type { ReactNode } from "react";
+import { fileSrc } from "@/lib/api";
+import { chatsLabel } from "@/lib/format";
+
+const BADGE = "inline-flex items-center gap-[5px] rounded-full bg-[rgba(10,10,12,0.72)] px-[9px] py-1 text-xs font-semibold text-text";
+
+/**
+ * A Discover card in the StoryEngine style: a tall 3:4 image, the chat count, the title, the tags, and the creator.
+ * The whole card links to the character page. `extraBadge` puts one more badge at the top right, such as "Draft".
+ * `linked={false}` shows the card with no link, for the form preview.
+ */
+export function CharacterCard({ card, extraBadge, linked = true }: { card: Card; extraBadge?: ReactNode; linked?: boolean }) {
+  const body = (
+    <>
+      <span className="shot">
+        {card.avatarUrl ? (
+          <img src={fileSrc(card.avatarUrl)} alt={card.title} loading="lazy" />
+        ) : (
+          <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center text-[64px] font-bold text-[#5a5a64]">
+            {card.title.charAt(0).toUpperCase()}
+          </span>
+        )}
+        <span className={`absolute top-2.5 left-2.5 ${BADGE}`}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />
+          </svg>
+          {chatsLabel(card.chatCount)}
+        </span>
+        <span className="absolute top-2.5 right-2.5 flex gap-1.5">
+          {card.isAdult && <span className={`${BADGE} bg-[rgba(194,65,75,0.9)]`}>18+</span>}
+          {extraBadge && <span className={BADGE}>{extraBadge}</span>}
+        </span>
+      </span>
+      <span className="flex flex-col gap-1.5 px-0.5">
+        <span className="text-[15px] leading-[1.3] font-bold">{card.title}</span>
+        {card.tags.length > 0 && (
+          <span className="flex flex-wrap gap-1">
+            {card.tags.slice(0, 3).map((tag) => (
+              <span key={tag.slug} className="tag">
+                {tag.label}
+              </span>
+            ))}
+          </span>
+        )}
+        <span className="text-xs text-subtle">@{card.creatorHandle}</span>
+      </span>
+    </>
+  );
+  return linked ? (
+    <Link href={`/characters/${card.id}`} className="se-card">
+      {body}
+    </Link>
+  ) : (
+    <div className="se-card">{body}</div>
+  );
+}

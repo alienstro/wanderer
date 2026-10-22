@@ -1,0 +1,20 @@
+import js from "@eslint/js";
+import globals from "globals";
+import tseslint from "typescript-eslint";
+
+export default tseslint.config(
+  { ignores: ["**/dist/**", "**/.next/**", "**/.next-e2e/**", "**/node_modules/**", "**/generated/**", "**/next-env.d.ts", "e2e/.tmp/**", "e2e/test-results/**", "e2e/playwright-report/**"] },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    rules: {
+      // A name that starts with "_" is unused on purpose.
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
+      ],
+    },
+  },
+  // Plain .mjs scripts run in Node.
+  { files: ["**/*.mjs"], languageOptions: { globals: globals.node } },
+);

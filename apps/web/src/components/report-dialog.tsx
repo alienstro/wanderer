@@ -1,0 +1,125 @@
+"use client";
+
+import { REPORT_NOTE_MAX, REPORT_REASON_LABELS, REPORT_REASONS, type ReportReason } from "@wanderer/shared";
+import { type FormEvent, useId, useState } from "react";
+import { ApiError, apiFetch } from "@/lib/api";
+
+function errorText(error: unknown): string {
+  if (error instanceof ApiError && error.code === "already_reported") {
+    return "You already reported this character.";
+  }
+  if (error instanceof ApiError && error.code === "report_limit") {
+    return "You sent too many reports today. Try again tomorrow.";
+  }
+  return "The report was not sent. Try again.";
+}
+
+/** The Report button of the character page. It opens a dialog with the reasons and an optional note. */
+export function ReportButton({ characterId }: { characterId: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" className="pill pill-soft self-start" onClick={() => setOpen(true)}>
+        Report
+      </button>
+      {open && <ReportDialog characterId={characterId} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+function ReportDialog({ characterId, onClose }: { characterId: string; onClose: () => void }) {
+  const titleId = useId();
+  const noteId = useId();
+  const [reason, setReason] = useState<ReportReason | null>(null);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function send(event: FormEvent) {
+    event.preventDefault();
+    if (!reason) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await apiFetch(`/characters/${encodeURIComponent(characterId)}/report`, {
+        method: "POST",
+        body: JSON.stringify({ reason, note }),
+      });
+      setSent(true);
+    } catch (caught) {
+      setError(errorText(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="flex w-full max-w-[460px] flex-col gap-4 rounded-[18px] bg-surface p-5 shadow-[0_16px_40px_rgba(0,0,0,0.6)]"
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.key === "Escape" && onClose()}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <h2 id={titleId} className="m-0 text-lg font-bold">
+            Report this character
+          </h2>
+          <button type="button" className="pill pill-soft" onClick={onClose} autoFocus>
+            Close
+          </button>
+        </div>
+        {sent ? (
+          <p className="m-0 text-muted">Thanks. The admin will look at it.</p>
+        ) : (
+          <form className="flex flex-col gap-4" onSubmit={(event) => void send(event)}>
+            <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
+              <legend className="label mb-2">Reason</legend>
+              {REPORT_REASONS.map((value) => (
+                <label key={value} className="flex items-center gap-2.5">
+                  <input
+                    type="radio"
+                    name="reason"
+                    value={value}
+                    checked={reason === value}
+                    onChange={() => setReason(value)}
+                  />
+                  {REPORT_REASON_LABELS[value]}
+                </label>
+              ))}
+            </fieldset>
+            <div className="flex flex-col gap-2">
+              <label htmlFor={noteId} className="label">
+                Note (optional)
+              </label>
+              <textarea
+                id={noteId}
+                className="field"
+                rows={3}
+                maxLength={REPORT_NOTE_MAX}
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+              />
+              <span className="hint">
+                {note.length} / {REPORT_NOTE_MAX}
+              </span>
+            </div>
+            {error && (
+              <p role="alert" className="m-0 text-[13px] text-error">
+                {error}
+              </p>
+            )}
+            <button type="submit" className="pill pill-accent self-start" disabled={!reason || busy}>
+              Send report
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}

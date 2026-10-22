@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+  - packages/*
+  - e2e
+
+# pnpm runs install scripts only for the packages in this list.
+allowBuilds:
+  "@prisma/engines": true
+  "@swc/core": true
+  prisma: true
+  # esbuild (through tsx) loads its binary from an optional platform package, so its install script is not necessary.
+  esbuild: false

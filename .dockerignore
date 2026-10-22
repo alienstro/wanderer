@@ -1,0 +1,14 @@
+**/node_modules
+**/dist
+**/.next
+**/.next-e2e
+**/.env
+**/.env.*
+!**/.env*.example
+**/*.tsbuildinfo
+apps/api/src/generated
+.git
+.superpowers
+.archify
+docs
+**/.DS_Store

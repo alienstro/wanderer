@@ -1,0 +1,57 @@
+{
+  "name": "@wanderer/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist",
+    "prisma",
+    "prisma.config.ts"
+  ],
+  "scripts": {
+    "postinstall": "prisma generate",
+    "generate": "prisma generate",
+    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "dev": "pnpm run build && pnpm run \"/^dev:/\"",
+    "dev:tsc": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "dev:node": "node --watch --env-file=.env dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "seed:dev": "tsx prisma/seed-dev.ts",
+    "test": "vitest run --maxWorkers=1"
+  },
+  "dependencies": {
+    "@nestjs/common": "^12.2.0",
+    "@nestjs/core": "^12.2.0",
+    "@nestjs/platform-express": "^12.2.0",
+    "@nestjs/throttler": "^6.7.1",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "@wanderer/shared": "workspace:*",
+    "cookie-parser": "^1.4.7",
+    "ipaddr.js": "^2.5.0",
+    "nestjs-pino": "^5.3.1",
+    "openai": "7.30.0",
+    "openid-client": "^6.8.8",
+    "pino": "^10.0.0",
+    "pino-http": "^11.0.0",
+    "prisma": "7.10.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "sharp": "^0.35.5",
+    "undici": "8.11.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^12.2.0",
+    "@swc/core": "^1.16.18",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.0",
+    "@types/multer": "^2.3.0",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.3.1",
+    "tsx": "^4.23.15",
+    "unplugin-swc": "^2.0.0"
+  }
+}

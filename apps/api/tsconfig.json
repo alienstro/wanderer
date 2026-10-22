@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "types": ["node", "multer"]
+  },
+  "include": ["src", "test", "prisma/seed-dev.ts", "vitest.config.ts"]
+}
