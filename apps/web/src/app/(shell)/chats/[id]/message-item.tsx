@@ -3,6 +3,7 @@
 import type { MessageView } from "@wanderer/shared";
 import { useState } from "react";
 import { Avatar } from "@/components/avatar";
+import { PencilIcon, RefreshIcon, TrashIcon } from "@/components/icons";
 import { Markdown } from "@/components/markdown";
 
 export interface MessageItemProps {
@@ -18,7 +19,10 @@ export interface MessageItemProps {
   onRegenerate?: () => void;
 }
 
-/** One message: a round avatar, the name, and the text. The user's messages are grey bubbles. */
+/**
+ * One message: a round avatar, the name, and the text in a bubble. The AI bubble has an outline, and the
+ * user's bubble is solid grey. The corner next to the avatar is less round, so the bubble points to the speaker.
+ */
 export function MessageItem({ message, speaker, editable, canRegenerate, onSave, onDelete, onRegenerate }: MessageItemProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.content);
@@ -51,8 +55,8 @@ export function MessageItem({ message, speaker, editable, canRegenerate, onSave,
   return (
     <article className={`flex gap-3 ${mine ? "flex-row-reverse" : ""}`}>
       <Avatar name={speaker.name} src={speaker.src} size={36} />
-      <div className={`flex min-w-0 max-w-[min(64ch,85%)] flex-col gap-1.5 ${mine ? "items-end" : ""}`}>
-        <span className="text-sm font-semibold text-muted">{speaker.name}</span>
+      <div className={`flex min-w-0 max-w-[min(62ch,85%)] flex-col gap-1.5 ${mine ? "items-end" : ""}`}>
+        <span className="text-[13px] font-semibold text-muted">{speaker.name}</span>
         {editing ? (
           <div className="flex w-full flex-col gap-2">
             <textarea
@@ -80,25 +84,31 @@ export function MessageItem({ message, speaker, editable, canRegenerate, onSave,
           </div>
         ) : (
           <div
-            className={`leading-[1.6] [overflow-wrap:anywhere] [&_em]:text-muted ${mine ? "rounded-[18px] bg-[var(--color-current)] px-4 py-2.5" : "text-[#e4e4e7]"}`}
+            className={`px-4 text-[15px] leading-[1.65] [overflow-wrap:anywhere] [&_em]:text-muted [&_p+p]:mt-3 ${
+              mine ? "rounded-[20px_6px_20px_20px] bg-[#26262b] py-2.5" : "rounded-[6px_20px_20px_20px] border border-line bg-surface py-3 text-[#ececee]"
+            }`}
           >
             <Markdown text={message.content} />
           </div>
         )}
         {!editing && (editable || canRegenerate) && (
-          <div className="flex gap-1.5">
+          // The negative margin lines the first icon up with the edge of the bubble.
+          <div className={`flex gap-0.5 ${mine ? "-mr-2.5" : "-ml-2.5"}`}>
             {editable && (
               <>
-                <button type="button" className="pill pill-ghost pill-sm" onClick={() => setEditing(true)}>
+                <button type="button" className="msg-action" onClick={() => setEditing(true)}>
+                  <PencilIcon />
                   Edit
                 </button>
-                <button type="button" className="pill pill-ghost pill-sm" onClick={() => setConfirming(true)}>
+                <button type="button" className="msg-action" onClick={() => setConfirming(true)}>
+                  <TrashIcon />
                   Delete
                 </button>
               </>
             )}
             {canRegenerate && (
-              <button type="button" className="pill pill-ghost pill-sm" onClick={onRegenerate}>
+              <button type="button" className="msg-action" onClick={onRegenerate}>
+                <RefreshIcon />
                 Regenerate
               </button>
             )}

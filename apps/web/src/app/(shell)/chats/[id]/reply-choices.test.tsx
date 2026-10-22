@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ChatDetail, ChatStreamEvent, MessageView } from "@wanderer/shared";
 import type { ReactNode } from "react";
@@ -35,7 +35,7 @@ const SETS = [
   ["Tell me more.", "Why?", "Sure.", "No way."],
 ];
 
-function stubApi(options: { replyChoicesOn?: boolean; choicesStatus?: number } = {}) {
+function stubApi(options: { replyChoicesOn?: boolean; choicesStatus?: number; choicesGate?: Promise<void> } = {}) {
   let me = {
     id: "u1",
     name: "Robin",
@@ -53,6 +53,7 @@ function stubApi(options: { replyChoicesOn?: boolean; choicesStatus?: number } =
       return Response.json(me);
     }
     if (url.endsWith("/choices")) {
+      await options.choicesGate;
       if (options.choicesStatus) {
         return Response.json({ error: "choices_failed" }, { status: options.choicesStatus });
       }
@@ -103,9 +104,42 @@ describe("reply choices", () => {
     withClient(<ChatView chatId="chat1" />);
     await send("Hi");
     expect(await screen.findByRole("button", { name: "Who are you?" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /^(Hello!|Who are you\?|\*waves back\*|Bye\.)$/ })).toHaveLength(4);
+    expect(screen.getAllByRole("button", { name: /^(Hello!|Who are you\?|waves back|Bye\.)$/ })).toHaveLength(4);
     await userEvent.click(screen.getByRole("button", { name: "Who are you?" }));
     await vi.waitFor(() => expect(streamMock).toHaveBeenLastCalledWith("/chats/chat1/messages", { content: "Who are you?" }, expect.anything()));
+  });
+
+  it("a choice shows its *action* part in italic, without the asterisks", async () => {
+    stubApi();
+    replyWith("Nice to meet you.");
+    withClient(<ChatView chatId="chat1" />);
+    await send("Hi");
+    const choice = await screen.findByRole("button", { name: "waves back" });
+    expect(choice.querySelector("em")).toHaveTextContent("waves back");
+    expect(choice).not.toHaveTextContent("*");
+  });
+
+  it("while the choices load, the list holds its place and says that it is busy", async () => {
+    let open: () => void = () => {};
+    stubApi({ choicesGate: new Promise<void>((resolve) => (open = resolve)) });
+    replyWith("Nice to meet you.");
+    withClient(<ChatView chatId="chat1" />);
+    await send("Hi");
+    expect(await screen.findByRole("group", { name: "Reply choices" })).toHaveAttribute("aria-busy", "true");
+    open();
+    expect(await screen.findByRole("button", { name: "Bye." })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Reply choices" })).toHaveAttribute("aria-busy", "false");
+  });
+
+  it('"New choices" sits in the bar of the text box, not in the list of choices', async () => {
+    stubApi();
+    replyWith("Nice to meet you.");
+    withClient(<ChatView chatId="chat1" />);
+    await send("Hi");
+    const list = await screen.findByRole("group", { name: "Reply choices" });
+    await within(list).findByRole("button", { name: "Bye." });
+    expect(within(list).queryByRole("button", { name: "New choices" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New choices" })).toBeInTheDocument();
   });
 
   it('"New choices" asks again and shows the new set', async () => {
