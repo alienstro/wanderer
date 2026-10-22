@@ -37,7 +37,11 @@ from the repository root with their own Dockerfile.
 
 - Build type: Dockerfile. Dockerfile path: `apps/api/Dockerfile`. Build context: `.` (the root).
 - Port: `3001`.
-- Health check: `GET /health` returns `{"status":"ok"}`.
+- Health checks:
+  - `GET /health` returns `{"status":"ok"}` when the process answers. It does not call Postgres.
+    The Dockerfile `HEALTHCHECK` uses it, so Docker restarts the API only when the process hangs.
+  - `GET /health/ready` also runs `SELECT 1` on Postgres. It returns 503 and
+    `{"status":"unavailable"}` when Postgres does not answer. The uptime monitor uses it (section 8).
 - At each start, the image runs `prisma migrate deploy` before the server starts.
 - Environment variables:
 
@@ -69,7 +73,8 @@ still points to them.
 - Build argument: `NEXT_PUBLIC_API_URL=https://wanderer-api.alienstro.xyz`. Next.js puts this
   value into the browser code at build time, so a change needs a new build.
 - Port: `3000`.
-- Health check: `GET /` (the home page) returns 200.
+- Health check: `GET /health` returns `{"status":"ok"}`. It does not call the API, so an API fault
+  does not make Docker restart the web app. The Dockerfile `HEALTHCHECK` uses it.
 
 - Environment variable: `API_INTERNAL_URL`. The Next.js server uses it for the pages that render on
   the server (Discover and the character pages). Use the internal address of the API app on the
@@ -115,9 +120,52 @@ Use Access only for the admin tools, such as the Dokploy dashboard and SSH.
 4. Turn on a daily backup of the Postgres service to that destination.
 5. In the API app, open **Volume Backups**. Add a daily backup of the `wanderer-uploads` volume to
    the same destination.
-6. Do a test restore to a new database one time, so that you know that the backups work.
+6. In both backups, set **Keep the latest** to `14`. Dokploy then deletes the backups that are
+   older than two weeks.
+7. In Cloudflare, open the bucket, then **Settings → Object lifecycle rules**. Add a rule that
+   deletes objects older than 30 days. This is a second limit, if a Dokploy setting changes.
+
+**Caution:** a backup that you never restored is not a known good backup. Do the restore drill
+before the launch, and then one time each month.
+
+### Restore drill
+
+1. In Dokploy, make a new Postgres service with the name `wanderer-restore-test`.
+2. In the backups of the main Postgres service, pick the newest backup and click **Restore**. Choose
+   `wanderer-restore-test` as the target.
+3. Open a terminal in `wanderer-restore-test` and run:
+   `psql -U <user> -d <database> -c "SELECT (SELECT count(*) FROM users) AS users, (SELECT count(*) FROM characters) AS characters;"`
+   Expected: the counts are near the counts of the main database.
+4. Delete the `wanderer-restore-test` service.
+
+## 8. Uptime monitor
+
+Add an external uptime monitor, for example the free plan of a hosted monitor, with an email alert.
+Check these two URLs each 5 minutes:
+
+- `https://wanderer-api.alienstro.xyz/health/ready`. It fails when the API or Postgres fails.
+- `https://wanderer.alienstro.xyz/health`. It fails when the web app fails.
+
+## First launch checklist
+
+Do the steps in this order. Each step needs the step before it.
+
+1. Make the secrets: the Google client (section 1), `COOKIE_SECRET`, and `KEY_ENCRYPTION_KEY`. Keep a
+   copy of `KEY_ENCRYPTION_KEY` in a password manager.
+2. Make the Postgres service (section 2).
+3. Deploy the API (section 3). Expected: the Dokploy container status is `healthy`.
+4. Deploy the web app (section 3). Expected: the Dokploy container status is `healthy`.
+5. Add the domains (section 4) and the tunnel (section 5).
+6. Turn on the backups (section 7), and do the restore drill one time.
+7. Add the uptime monitor (section 8).
+8. On your computer, in the repository, run `pnpm smoke`. Expected: five lines with `200`, and exit
+   code 0.
+9. Do the checks in "Check after the deploy".
+10. Make the first characters in the Create page. Use only images that you have the right to use.
 
 ## Check after the deploy
+
+Run `pnpm smoke` first. It checks the health routes, the login page, and the home page.
 
 1. Open `https://wanderer.alienstro.xyz/login`.
 2. Tick the Terms box, and log in with Google.
@@ -129,3 +177,34 @@ Use Access only for the admin tools, such as the Dokploy dashboard and SSH.
    Expected: "The proxy answered" with the time.
 6. Open a character, pick an opening, and click **Start a new chat**. Send a message.
    Expected: the reply streams in word by word, and four reply choices show above the text box.
+
+## Run locally
+
+`pnpm dev` starts the API on `http://localhost:3001` and the web app on `http://localhost:3100`.
+The API restarts when a file in `apps/api/src` changes.
+
+1. Start the local Postgres: `docker compose -f docker-compose.dev.yml up -d`.
+2. Copy `apps/api/.env.docker.example` to `apps/api/.env`, and fill in the values.
+   Change `host.docker.internal` to `localhost` in `DATABASE_URL`.
+   Set `WEB_ORIGIN=http://localhost:3100` and `GOOGLE_CALLBACK_URL=http://localhost:3001/auth/google/callback`.
+3. Copy `apps/web/.env.local.example` to `apps/web/.env.local`.
+4. Apply the migrations: `pnpm --filter @wanderer/api exec prisma migrate deploy`.
+5. Optional: add the sample data with `pnpm --filter @wanderer/api seed:dev`.
+6. Run `pnpm dev`.
+
+**Note:** The API does not watch `packages/shared`. After a change there, run
+`pnpm --filter @wanderer/shared build`, then start `pnpm dev` again.
+
+## End-to-end tests
+
+The Playwright tests run the built API and the built web app on this computer, against a separate
+database (`wanderer_e2e`). They do not touch production.
+
+1. Start the local Postgres: `docker compose -f docker-compose.dev.yml up -d`.
+2. One time on each computer, install the browser:
+   `pnpm --filter @wanderer/e2e exec playwright install chromium`.
+3. Run `pnpm e2e`. It builds the API and the web app, then runs the tests with one worker.
+4. To run the tests again without a new build, run `pnpm --filter @wanderer/e2e e2e`.
+
+The e2e build of the web app goes to `apps/web/.next-e2e`, so it does not change the `.next`
+folder of a dev server.

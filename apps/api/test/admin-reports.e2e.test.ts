@@ -50,6 +50,8 @@ describe("admin reports", () => {
   });
 
   afterAll(async () => {
+    // Leave no reports. A report row with two user keys stops a later user.deleteMany() in another file.
+    await prisma.report.deleteMany();
     await app.close();
   });
 

@@ -1,8 +1,9 @@
 import js from "@eslint/js";
+import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["**/dist/**", "**/.next/**", "**/node_modules/**", "**/generated/**", "**/next-env.d.ts"] },
+  { ignores: ["**/dist/**", "**/.next/**", "**/.next-e2e/**", "**/node_modules/**", "**/generated/**", "**/next-env.d.ts", "e2e/.tmp/**", "e2e/test-results/**", "e2e/playwright-report/**"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -14,4 +15,6 @@ export default tseslint.config(
       ],
     },
   },
+  // Plain .mjs scripts run in Node.
+  { files: ["**/*.mjs"], languageOptions: { globals: globals.node } },
 );
