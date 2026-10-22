@@ -3,10 +3,13 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ChatDetail, ChatStreamEvent, MessageView } from "@wanderer/shared";
 import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Toaster } from "@/components/toaster";
 import { ChatView } from "./chat-view";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/chats/chat1" }));
+const push = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace: vi.fn() }), usePathname: () => "/chats/chat1" }));
 
 type StreamOptions = { signal: AbortSignal; onEvent: (event: ChatStreamEvent) => void };
 const streamMock = vi.fn<(path: string, body: unknown, options: StreamOptions) => Promise<void>>();
@@ -56,7 +59,12 @@ function stubApi(chat: ChatDetail = detail) {
 
 function withClient(ui: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+  return render(
+    <QueryClientProvider client={client}>
+      {ui}
+      <Toaster />
+    </QueryClientProvider>,
+  );
 }
 
 async function typeAndSend(text: string) {
@@ -67,9 +75,11 @@ async function typeAndSend(text: string) {
 describe("chat page", () => {
   beforeEach(() => {
     streamMock.mockReset();
+    push.mockReset();
   });
 
   afterEach(() => {
+    toast.dismiss();
     vi.unstubAllGlobals();
   });
 
@@ -121,9 +131,27 @@ describe("chat page", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Stop" }));
     expect(signal?.aborted).toBe(true);
     expect(await screen.findByRole("button", { name: "Send" })).toBeInTheDocument();
+    expect(screen.queryByText("Onnit is typing")).not.toBeInTheDocument();
   });
 
-  it('an error event invalid_key shows "The proxy refused the API key."', async () => {
+  it("before the first text comes, three dots show that the character is typing", async () => {
+    stubApi();
+    let release = () => {};
+    streamMock.mockImplementation(async (_path, _body, { onEvent }) => {
+      onEvent({ type: "start", userMessage: message("m2", "user", "Hi", 2) });
+      await new Promise<void>((resolve) => (release = resolve));
+      onEvent({ type: "delta", text: "Hey" });
+      await new Promise<void>(() => {});
+    });
+    withClient(<ChatView chatId="chat1" />);
+    await typeAndSend("Hi");
+    expect(await screen.findByText("Onnit is typing")).toBeInTheDocument();
+    release();
+    expect(await screen.findByText("Hey")).toBeInTheDocument();
+    expect(screen.queryByText("Onnit is typing")).not.toBeInTheDocument();
+  });
+
+  it('an error event invalid_key shows a toast "The proxy refused the API key." with a step and an Open Settings button', async () => {
     stubApi();
     streamMock.mockImplementation(async (_path, _body, { onEvent }) => {
       onEvent({ type: "start", userMessage: message("m2", "user", "Hi", 2) });
@@ -132,6 +160,41 @@ describe("chat page", () => {
     withClient(<ChatView chatId="chat1" />);
     await typeAndSend("Hi");
     expect(await screen.findByText("The proxy refused the API key.")).toBeInTheDocument();
+    expect(screen.getByText("Check the API key of your model in Settings.")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Open Settings" }));
+    expect(push).toHaveBeenCalledWith("/settings/models");
+  });
+
+  it("an error that comes after the user leaves the chat shows no toast", async () => {
+    stubApi();
+    let fail = () => {};
+    streamMock.mockImplementation(async (_path, _body, { onEvent }) => {
+      onEvent({ type: "start", userMessage: message("m2", "user", "Hi", 2) });
+      await new Promise<void>((resolve) => (fail = resolve));
+      onEvent({ type: "error", error: "invalid_key", message: null });
+    });
+    render(<Toaster />);
+    const view = withClient(<ChatView chatId="chat1" />);
+    await typeAndSend("Hi");
+    expect(await screen.findByText("Onnit is typing")).toBeInTheDocument();
+    view.unmount();
+    fail();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByText("The proxy refused the API key.")).not.toBeInTheDocument();
+  });
+
+  it("an error event provider_error shows a toast with a step and no Settings button", async () => {
+    stubApi();
+    streamMock.mockImplementation(async (_path, _body, { onEvent }) => {
+      onEvent({ type: "start", userMessage: message("m2", "user", "Hi", 2) });
+      onEvent({ type: "error", error: "provider_error", message: null });
+    });
+    withClient(<ChatView chatId="chat1" />);
+    await typeAndSend("Hi");
+    expect(await screen.findByText("The proxy gave an error.")).toBeInTheDocument();
+    expect(screen.getByText("This problem is usually short. Try again in a moment.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open Settings" })).not.toBeInTheDocument();
   });
 
   it("Edit, then Save, sends PATCH with the new text, and an assistant message has no Edit", async () => {

@@ -17,13 +17,15 @@ export interface MessageItemProps {
   onSave?: (content: string) => Promise<void>;
   onDelete?: () => Promise<void>;
   onRegenerate?: () => void;
+  /** True while the AI reply has no text yet: three moving dots show in place of the text. */
+  typing?: boolean;
 }
 
 /**
  * One message: a round avatar, the name, and the text in a bubble. The AI bubble has an outline, and the
  * user's bubble is solid grey. The corner next to the avatar is less round, so the bubble points to the speaker.
  */
-export function MessageItem({ message, speaker, editable, canRegenerate, onSave, onDelete, onRegenerate }: MessageItemProps) {
+export function MessageItem({ message, speaker, editable, canRegenerate, onSave, onDelete, onRegenerate, typing }: MessageItemProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.content);
   const [confirming, setConfirming] = useState(false);
@@ -88,7 +90,17 @@ export function MessageItem({ message, speaker, editable, canRegenerate, onSave,
               mine ? "rounded-[20px_6px_20px_20px] bg-[#26262b] py-2.5" : "rounded-[6px_20px_20px_20px] border border-line bg-surface py-3 text-[#ececee]"
             }`}
           >
-            <Markdown text={message.content} />
+            {typing ? (
+              // The message list is a live region, so the text below is announced. A second live region here would repeat it.
+              <span className="typing">
+                <span aria-hidden="true" />
+                <span aria-hidden="true" />
+                <span aria-hidden="true" />
+                <span className="sr-only">{speaker.name} is typing</span>
+              </span>
+            ) : (
+              <Markdown text={message.content} />
+            )}
           </div>
         )}
         {!editing && (editable || canRegenerate) && (
