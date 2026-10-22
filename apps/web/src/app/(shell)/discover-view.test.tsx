@@ -41,6 +41,7 @@ const chats = {
       character: { id: "c9", title: "Onnit", chatName: "", avatarUrl: null },
       lastMessage: "*waves* See you soon!",
       lastMessageAt: "2026-10-21T10:00:00.000Z",
+      messageCount: 1,
     },
   ],
 };

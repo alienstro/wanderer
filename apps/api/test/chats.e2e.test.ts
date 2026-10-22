@@ -49,7 +49,7 @@ describe("chats", () => {
 
   it("POST /chats with openingIndex 1 makes a chat whose message 0 is the second opening", async () => {
     const res = await startChat(reader, 1).expect(201);
-    expect(res.body.chat).toMatchObject({ title: "Mi", lastMessage: "A storm hits the hull." });
+    expect(res.body.chat).toMatchObject({ title: "Mi", lastMessage: "A storm hits the hull.", messageCount: 1 });
     expect(res.body.chat.character).toMatchObject({ id: characterId, title: "Mira", chatName: "Mi" });
     expect(res.body.messages).toEqual([
       expect.objectContaining({ role: "assistant", content: "A storm hits the hull.", position: 0, editedAt: null }),
@@ -82,6 +82,14 @@ describe("chats", () => {
     const filtered = await get(reader, `/chats?characterId=${characterId}`).expect(200);
     expect(filtered.body.items.map((chat: { id: string }) => chat.id)).toEqual([first.body.chat.id]);
     expect((await get(other, "/chats").expect(200)).body.items).toEqual([]);
+  });
+
+  it("GET /chats and GET /chats/:id give the number of messages in each chat", async () => {
+    const chat = await startChat(reader).expect(201);
+    await addUserMessage(chat.body.chat.id);
+    const [item] = (await get(reader, `/chats?characterId=${characterId}`).expect(200)).body.items;
+    expect(item).toMatchObject({ id: chat.body.chat.id, messageCount: 2 });
+    expect((await get(reader, `/chats/${chat.body.chat.id}`).expect(200)).body.chat.messageCount).toBe(2);
   });
 
   it("PATCH /messages/:id of a user message sets editedAt, and of the opening gives 404", async () => {

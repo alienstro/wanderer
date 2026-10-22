@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Toaster } from "@/components/toaster";
+import { ApiError } from "@/lib/api";
 import { ChatView } from "./chat-view";
 
 const push = vi.fn();
@@ -37,6 +38,7 @@ const detail: ChatDetail = {
     character: { id: "c1", title: "Onnit", chatName: "", avatarUrl: null },
     lastMessage: "Hello",
     lastMessageAt: "2026-10-21T00:00:00.000Z",
+    messageCount: 2,
   },
   messages: [message("m0", "assistant", "*waves* Hi!", 0), message("m1", "user", "Hello", 1)],
   canSend: true,
@@ -132,6 +134,66 @@ describe("chat page", () => {
     expect(signal?.aborted).toBe(true);
     expect(await screen.findByRole("button", { name: "Send" })).toBeInTheDocument();
     expect(screen.queryByText("Onnit is typing")).not.toBeInTheDocument();
+  });
+
+  it("a send shows the user message at once, before the API saves it", async () => {
+    stubApi();
+    streamMock.mockImplementation(() => new Promise<void>(() => {}));
+    withClient(<ChatView chatId="chat1" />);
+    await typeAndSend("How are you?");
+    const log = screen.getByRole("log", { name: "Messages" });
+    expect(within(log).getByText("How are you?")).toBeInTheDocument();
+    expect(within(log).getByText("Onnit is typing")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue("");
+  });
+
+  it("a send that fails before the API saves it removes the message and puts the text back in the box", async () => {
+    stubApi();
+    streamMock.mockRejectedValue(new ApiError(409, "chat_busy"));
+    withClient(<ChatView chatId="chat1" />);
+    await typeAndSend("How are you?");
+    expect(await screen.findByText("A reply is already on its way. Wait for it, then send again.")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue("How are you?");
+    expect(within(screen.getByRole("log", { name: "Messages" })).queryByText("How are you?")).not.toBeInTheDocument();
+  });
+
+  it("a Stop before the API saves the message puts the text back in the box", async () => {
+    stubApi();
+    streamMock.mockImplementation(
+      (_path, _body, options) => new Promise<void>((resolve) => options.signal.addEventListener("abort", () => resolve())),
+    );
+    withClient(<ChatView chatId="chat1" />);
+    await typeAndSend("How are you?");
+    await userEvent.click(await screen.findByRole("button", { name: "Stop" }));
+    await vi.waitFor(() => expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue("How are you?"));
+    expect(within(screen.getByRole("log", { name: "Messages" })).queryByText("How are you?")).not.toBeInTheDocument();
+  });
+
+  it("a lost connection after the API saved the message does not put the text back, so it is not sent two times", async () => {
+    const chat: ChatDetail = { ...detail, messages: [...detail.messages] };
+    stubApi(chat);
+    streamMock.mockImplementation(async () => {
+      chat.messages.push(message("m2", "user", "How are you?", 2));
+      throw new Error("network");
+    });
+    withClient(<ChatView chatId="chat1" />);
+    await typeAndSend("How are you?");
+    expect(await screen.findByText("The message did not send. Try again.")).toBeInTheDocument();
+    await vi.waitFor(() => expect(within(screen.getByRole("log", { name: "Messages" })).getByText("How are you?")).toBeInTheDocument());
+    expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue("");
+  });
+
+  it("text typed while a send waits stays, and a failed send puts its text back above it", async () => {
+    stubApi();
+    let fail = () => {};
+    streamMock.mockImplementation(
+      () => new Promise<void>((_resolve, reject) => (fail = () => reject(new ApiError(409, "chat_busy")))),
+    );
+    withClient(<ChatView chatId="chat1" />);
+    await typeAndSend("First");
+    await userEvent.type(screen.getByRole("textbox", { name: "Message" }), "Second");
+    fail();
+    await vi.waitFor(() => expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue("First\nSecond"));
   });
 
   it("before the first text comes, three dots show that the character is typing", async () => {

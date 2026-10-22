@@ -3,7 +3,10 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ChatDetail, ChatStreamEvent, MessageView } from "@wanderer/shared";
 import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Toaster } from "@/components/toaster";
+import { ApiError } from "@/lib/api";
 import { ChatView } from "./chat-view";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/chats/chat1" }));
@@ -25,6 +28,7 @@ const detail: ChatDetail = {
     character: { id: "c1", title: "Onnit", chatName: "", avatarUrl: null },
     lastMessage: "Hi!",
     lastMessageAt: "2026-10-21T00:00:00.000Z",
+    messageCount: 1,
   },
   messages: [message("m0", "assistant", "Hi!", 0)],
   canSend: true,
@@ -78,7 +82,12 @@ function replyWith(content: string) {
 
 function withClient(ui: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+  return render(
+    <QueryClientProvider client={client}>
+      {ui}
+      <Toaster />
+    </QueryClientProvider>,
+  );
 }
 
 async function send(text: string) {
@@ -95,6 +104,7 @@ describe("reply choices", () => {
   });
 
   afterEach(() => {
+    toast.dismiss();
     vi.unstubAllGlobals();
   });
 
@@ -125,7 +135,10 @@ describe("reply choices", () => {
     replyWith("Nice to meet you.");
     withClient(<ChatView chatId="chat1" />);
     await send("Hi");
-    expect(await screen.findByRole("group", { name: "Reply choices" })).toHaveAttribute("aria-busy", "true");
+    const list = await screen.findByRole("group", { name: "Reply choices" });
+    expect(list).toHaveAttribute("aria-busy", "true");
+    expect(within(list).getByText("Loading reply choices")).toBeInTheDocument();
+    expect(list.querySelectorAll(".choice-placeholder .typing")).toHaveLength(4);
     open();
     expect(await screen.findByRole("button", { name: "Bye." })).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Reply choices" })).toHaveAttribute("aria-busy", "false");
@@ -189,6 +202,19 @@ describe("reply choices", () => {
     await screen.findByText("Nice to meet you.");
     expect(choicesCalls(fetchMock)).toBe(0);
     expect(screen.getByRole("switch", { name: "Reply choices" })).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("a click on a choice keeps the draft in the box, also when the send fails", async () => {
+    stubApi();
+    replyWith("Nice to meet you.");
+    withClient(<ChatView chatId="chat1" />);
+    await send("Hi");
+    const choice = await screen.findByRole("button", { name: "Who are you?" });
+    await userEvent.type(screen.getByRole("textbox", { name: "Message" }), "My draft");
+    streamMock.mockRejectedValue(new ApiError(409, "chat_busy"));
+    await userEvent.click(choice);
+    expect(await screen.findByText("A reply is already on its way. Wait for it, then send again.")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue("My draft");
   });
 
   it("after a send that fails, the old choices do not show again", async () => {
