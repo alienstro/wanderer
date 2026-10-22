@@ -470,8 +470,12 @@
     color: var(--color-muted);
   }
 
+  /* A choice that loads: the box pulses, and the typing dots show where the text comes. */
   .choice-placeholder {
+    display: flex;
+    align-items: center;
     height: 42px;
+    padding: 0 16px;
     border-radius: 14px;
     background: var(--color-surface);
     animation: choice-pulse 1.4s ease-in-out infinite;

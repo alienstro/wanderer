@@ -19,6 +19,7 @@ const chatList = {
       character: { id: "c1", title: "Mira", chatName: "", avatarUrl: null },
       lastMessage: "See you at the dock.",
       lastMessageAt: "2026-10-21T10:00:00.000Z",
+      messageCount: 12,
     },
   ],
 };
@@ -88,6 +89,7 @@ describe("start a chat", () => {
     const fetchMock = stubApi();
     withClient(<YourChats characterId="c1" />);
     expect(await screen.findByText("See you at the dock.")).toBeInTheDocument();
+    expect(screen.getByText(/· 12 messages$/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open" })).toHaveAttribute("href", "/chats/chat1");
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
     expect(fetchMock.mock.calls.some(([, init]) => init?.method === "DELETE")).toBe(false);

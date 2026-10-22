@@ -5,6 +5,7 @@ import type { ChatListResponse, ChatSummary } from "@wanderer/shared";
 import Link from "next/link";
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { messagesLabel } from "@/lib/format";
 import { useMe } from "@/lib/query-provider";
 
 function ChatRow({ chat, onDeleted }: { chat: ChatSummary; onDeleted: () => void }) {
@@ -26,7 +27,8 @@ function ChatRow({ chat, onDeleted }: { chat: ChatSummary; onDeleted: () => void
         <div className="flex min-w-0 flex-col">
           <span className="truncate">{chat.lastMessage}</span>
           <span className="text-sm text-muted">
-            {new Date(chat.lastMessageAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+            {new Date(chat.lastMessageAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })} ·{" "}
+            {messagesLabel(chat.messageCount)}
           </span>
         </div>
         <div className="flex gap-2">

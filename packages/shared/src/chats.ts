@@ -37,6 +37,8 @@ export interface ChatSummary {
   character: { id: string; title: string; chatName: string; avatarUrl: string | null };
   lastMessage: string;
   lastMessageAt: string;
+  /** The number of messages in the chat, with the opening. */
+  messageCount: number;
 }
 
 export interface ChatDetail {

@@ -63,7 +63,20 @@ export function ReplyChoices({ state, onPick }: { state: ReplyChoicesState; onPi
               <ChoiceText text={choice} />
             </button>
           ))
-        : [0, 1, 2, 3].map((slot) => <div key={slot} className="choice-placeholder" aria-hidden="true" />)}
+        : [0, 1, 2, 3].map((slot) => (
+            <div key={slot} className="choice-placeholder" aria-hidden="true">
+              <span className="typing">
+                <span />
+                <span />
+                <span />
+              </span>
+            </div>
+          ))}
+      {state.loading && (
+        <span role="status" className="sr-only">
+          Loading reply choices
+        </span>
+      )}
     </div>
   );
 }

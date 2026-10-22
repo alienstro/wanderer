@@ -44,7 +44,7 @@ export function toMessageView(row: Message): MessageView {
   };
 }
 
-function toChatSummary(chat: ChatWithCharacter, last: Message | undefined): ChatSummary {
+function toChatSummary(chat: ChatWithCharacter, last: Message | undefined, messageCount: number): ChatSummary {
   const { character } = chat;
   return {
     id: chat.id,
@@ -57,6 +57,7 @@ function toChatSummary(chat: ChatWithCharacter, last: Message | undefined): Chat
     },
     lastMessage: (last?.content ?? "").slice(0, LAST_MESSAGE_MAX),
     lastMessageAt: chat.lastMessageAt.toISOString(),
+    messageCount,
   };
 }
 
@@ -100,7 +101,7 @@ export class ChatsService {
         include: { character: { select: characterSelect }, messages: true },
       });
     });
-    return { chat: toChatSummary(chat, chat.messages[0]), messages: chat.messages.map(toMessageView), canSend: true };
+    return { chat: toChatSummary(chat, chat.messages[0], chat.messages.length), messages: chat.messages.map(toMessageView), canSend: true };
   }
 
   async list(user: User, characterId: string | undefined): Promise<ChatListResponse> {
@@ -111,16 +112,21 @@ export class ChatsService {
       where: { userId: user.id, characterId },
       orderBy: { lastMessageAt: "desc" },
       take: LIST_LIMIT,
-      include: { character: { select: characterSelect }, messages: { orderBy: { position: "desc" }, take: 1 } },
+      // The count comes in the same query, so the list does not load each message.
+      include: {
+        character: { select: characterSelect },
+        messages: { orderBy: { position: "desc" }, take: 1 },
+        _count: { select: { messages: true } },
+      },
     });
-    return { items: chats.map((chat) => toChatSummary(chat, chat.messages[0])) };
+    return { items: chats.map((chat) => toChatSummary(chat, chat.messages[0], chat._count.messages)) };
   }
 
   async get(user: User, id: string): Promise<ChatDetail> {
     const chat = await this.findOwn(user, id);
     const messages = chat.messages.map(toMessageView);
     return {
-      chat: toChatSummary(chat, chat.messages.at(-1)),
+      chat: toChatSummary(chat, chat.messages.at(-1), messages.length),
       messages,
       canSend: characterAccess(chat.character, user) === "ok",
     };

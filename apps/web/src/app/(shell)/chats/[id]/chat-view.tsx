@@ -18,8 +18,16 @@ import { NewChoicesButton, ReplyChoices, ReplyChoicesSwitch, useReplyChoices } f
 interface LiveReply {
   replaceId: string | null;
   text: string;
+  /** The text that the user sent and the API did not save yet. It shows at once as the user's message. */
+  sending: string | null;
   /** True after a Stop, while the page waits for the API to save the part that came. */
   stopped?: boolean;
+}
+
+/** A user message that the page shows before the API saves it. fromBox is false for a click on a reply choice. */
+interface Sending {
+  text: string;
+  fromBox: boolean;
 }
 
 /** The API saves the part of a stopped reply after it sees the closed connection, so wait this long first. */
@@ -117,11 +125,29 @@ export function ChatView({ chatId }: { chatId: string }) {
     });
   }
 
-  async function run(path: string, body: unknown, replaceId: string | null) {
+  /**
+   * Gives the text of a send back when the API did not save it. The chat loads again first, because the API can save
+   * the message and then lose the connection before the page reads the start event.
+   */
+  async function giveBack(sending: Sending) {
+    await queryClient.invalidateQueries({ queryKey });
+    const latest = queryClient.getQueryData<ChatDetail>(queryKey)?.messages.at(-1);
+    if (latest?.role === "user" && latest.content === sending.text) {
+      return;
+    }
+    // Text that the user typed during the send stays. The failed text goes above it.
+    setText((current) => (!current ? sending.text : sending.fromBox ? `${sending.text}\n${current}` : current));
+  }
+
+  async function run(path: string, body: unknown, replaceId: string | null, sending: Sending | null = null) {
     const controller = new AbortController();
     abortRef.current = controller;
     toast.dismiss(ERROR_TOAST_ID);
-    setLive({ replaceId, text: "" });
+    setLive({ replaceId, text: "", sending: sending?.text ?? null });
+    if (sending?.fromBox) {
+      setText("");
+    }
+    let saved = false;
     let ended = false;
     try {
       await streamChat(path, body, {
@@ -129,8 +155,9 @@ export function ChatView({ chatId }: { chatId: string }) {
         onEvent: (event) => {
           if (event.type === "start") {
             if (event.userMessage) {
+              saved = true;
               upsert(event.userMessage);
-              setText("");
+              setLive((current) => current && { ...current, sending: null });
             }
           } else if (event.type === "delta") {
             setLive((current) => current && { ...current, text: current.text + event.text });
@@ -160,9 +187,11 @@ export function ChatView({ chatId }: { chatId: string }) {
         // Keep the part that came on the page until the chat loads again with the saved part.
         setLive((current) => current && { ...current, stopped: true });
         await new Promise((resolve) => setTimeout(resolve, STOP_SETTLE_MS));
-        await queryClient.invalidateQueries({ queryKey });
+      }
+      if (sending && !saved) {
+        await giveBack(sending);
       } else if (!ended) {
-        void queryClient.invalidateQueries({ queryKey });
+        await queryClient.invalidateQueries({ queryKey });
       }
       setLive(null);
       void queryClient.invalidateQueries({ queryKey: ["chats"] });
@@ -176,6 +205,8 @@ export function ChatView({ chatId }: { chatId: string }) {
   async function remove(id: string) {
     await apiFetch(`/messages/${id}`, { method: "DELETE" });
     patchChat((detail) => ({ ...detail, messages: detail.messages.filter((item) => item.id !== id) }));
+    // The chat lists show the number of messages.
+    void queryClient.invalidateQueries({ queryKey: ["chats"] });
   }
 
   if (chat.isError) {
@@ -203,7 +234,8 @@ export function ChatView({ chatId }: { chatId: string }) {
   const last = messages.at(-1);
   const idle = live === null;
   const regenerate = () => void run(`/chats/${chatId}/regenerate`, {}, last?.role === "assistant" ? last.id : null);
-  const send = (content: string) => void run(`/chats/${chatId}/messages`, { content }, null);
+  const send = (content: string, fromBox: boolean) =>
+    void run(`/chats/${chatId}/messages`, { content }, null, { text: content, fromBox });
 
   return (
     <div className="flex h-screen flex-col max-[760px]:h-[85dvh]">
@@ -232,6 +264,7 @@ export function ChatView({ chatId }: { chatId: string }) {
               onRegenerate={regenerate}
             />
           ))}
+          {live?.sending && <MessageItem message={{ role: "user", content: live.sending }} speaker={user} />}
           {live && <MessageItem message={{ role: "assistant", content: live.text }} speaker={character} typing={!live.text && !live.stopped} />}
           {canSend && idle && last?.role === "user" && (
             <button type="button" className="pill pill-soft pill-sm self-start" onClick={regenerate}>
@@ -253,13 +286,13 @@ export function ChatView({ chatId }: { chatId: string }) {
                 to start chatting.
               </p>
             )}
-            <ReplyChoices state={choices} onPick={send} />
+            <ReplyChoices state={choices} onPick={(choice) => send(choice, false)} />
             <Composer
               value={text}
               onChange={setText}
               disabled={!me.activeProxy || Boolean(live?.stopped)}
               streaming={live !== null && !live.stopped}
-              onSend={send}
+              onSend={(content) => send(content, true)}
               onStop={() => abortRef.current?.abort()}
               toolbar={
                 <>

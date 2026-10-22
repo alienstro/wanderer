@@ -11,3 +11,8 @@ export function statusLabel(card: { status: "draft" | "published" | "hidden"; is
 export function chatsLabel(count: number): string {
   return `${compact.format(count)} ${count === 1 ? "chat" : "chats"}`;
 }
+
+/** "1 message", "12 messages", "1.2K messages". */
+export function messagesLabel(count: number): string {
+  return `${compact.format(count)} ${count === 1 ? "message" : "messages"}`;
+}
