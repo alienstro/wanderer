@@ -1,9 +1,11 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AI_ERROR_TEXT, type ChatDetail, isAiErrorCode, type MessageView } from "@wanderer/shared";
+import { AI_ERROR_TEXT, type AiErrorCode, type ChatDetail, isAiErrorCode, type MessageView } from "@wanderer/shared";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Avatar } from "@/components/avatar";
 import { ApiError, apiFetch, fileSrc } from "@/lib/api";
 import { streamChat } from "@/lib/chat-stream";
@@ -23,12 +25,28 @@ interface LiveReply {
 /** The API saves the part of a stopped reply after it sees the closed connection, so wait this long first. */
 const STOP_SETTLE_MS = 500;
 
-/** The text for an error before the stream starts, such as a busy chat or no active proxy. */
+/**
+ * One toast id for the chat errors, so a new error replaces the old one and a new send removes it.
+ * The toast stays until the user closes it, because it tells the user what to do next.
+ */
+const ERROR_TOAST_ID = "chat-error";
+
+/** The next step for each AI error. "settings" adds a button that opens the model page. */
+const AI_ERROR_STEP: Record<AiErrorCode, { text: string; settings?: boolean }> = {
+  no_active_proxy: { text: "Add a model, then send your message again.", settings: true },
+  invalid_key: { text: "Check the API key of your model in Settings.", settings: true },
+  model_not_found: { text: "Check the model name in Settings.", settings: true },
+  no_credit: { text: "Add credit on the proxy site, then try again." },
+  rate_limited: { text: "Wait a minute, then try again." },
+  timeout: { text: "Try again. If the problem continues, use a faster model." },
+  blocked_url: { text: "Use a different proxy URL in Settings.", settings: true },
+  provider_unreachable: { text: "Check the proxy URL in Settings, or try again later.", settings: true },
+  provider_error: { text: "This problem is usually short. Try again in a moment." },
+};
+
+/** The text for an error before the stream starts, such as a busy chat or a rate limit. */
 function sendErrorText(error: unknown): string {
   const code = error instanceof ApiError ? error.code : null;
-  if (isAiErrorCode(code)) {
-    return AI_ERROR_TEXT[code];
-  }
   if (code === "chat_busy") {
     return "A reply is already on its way. Wait for it, then send again.";
   }
@@ -42,6 +60,7 @@ function sendErrorText(error: unknown): string {
 export function ChatView({ chatId }: { chatId: string }) {
   const me = useRequireLogin();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const queryKey = ["chat", chatId];
   const chat = useQuery({
     queryKey,
@@ -50,10 +69,17 @@ export function ChatView({ chatId }: { chatId: string }) {
   });
   const [text, setText] = useState("");
   const [live, setLive] = useState<LiveReply | null>(null);
-  const [error, setError] = useState<string | null>(null);
   // Goes up after each full reply, so the reply choices ask for a new set.
   const [replyRound, setReplyRound] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
+  // The stream continues after the user leaves the chat, so the reply saves. Its error must not show on the next page.
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   // The choices answer the last AI reply, so they hide when the last message is the user's.
   const lastMessage = chat.data?.messages.at(-1);
   const choices = useReplyChoices(
@@ -78,10 +104,23 @@ export function ChatView({ chatId }: { chatId: string }) {
     }));
   }
 
+  function showAiError(code: AiErrorCode) {
+    if (!mountedRef.current) {
+      return;
+    }
+    const step = AI_ERROR_STEP[code];
+    toast.error(AI_ERROR_TEXT[code], {
+      id: ERROR_TOAST_ID,
+      description: step.text,
+      duration: Number.POSITIVE_INFINITY,
+      action: step.settings ? { label: "Open Settings", onClick: () => router.push("/settings/models") } : undefined,
+    });
+  }
+
   async function run(path: string, body: unknown, replaceId: string | null) {
     const controller = new AbortController();
     abortRef.current = controller;
-    setError(null);
+    toast.dismiss(ERROR_TOAST_ID);
     setLive({ replaceId, text: "" });
     let ended = false;
     try {
@@ -104,12 +143,17 @@ export function ChatView({ chatId }: { chatId: string }) {
             if (event.message) {
               upsert(event.message);
             }
-            setError(AI_ERROR_TEXT[event.error]);
+            showAiError(event.error);
           }
         },
       });
     } catch (caught) {
-      setError(sendErrorText(caught));
+      const code = caught instanceof ApiError ? caught.code : null;
+      if (isAiErrorCode(code)) {
+        showAiError(code);
+      } else if (mountedRef.current) {
+        toast.error(sendErrorText(caught), { id: ERROR_TOAST_ID, duration: Number.POSITIVE_INFINITY });
+      }
     } finally {
       abortRef.current = null;
       if (!ended && controller.signal.aborted) {
@@ -188,16 +232,11 @@ export function ChatView({ chatId }: { chatId: string }) {
               onRegenerate={regenerate}
             />
           ))}
-          {live && <MessageItem message={{ role: "assistant", content: live.text || "…" }} speaker={character} />}
+          {live && <MessageItem message={{ role: "assistant", content: live.text }} speaker={character} typing={!live.text && !live.stopped} />}
           {canSend && idle && last?.role === "user" && (
             <button type="button" className="pill pill-soft pill-sm self-start" onClick={regenerate}>
               Get a reply
             </button>
-          )}
-          {error && (
-            <p role="alert" className="m-0 text-error">
-              {error}
-            </p>
           )}
         </div>
       </div>

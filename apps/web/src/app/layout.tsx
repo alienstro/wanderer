@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cinzel, Inter } from "next/font/google";
 import type { ReactNode } from "react";
+import { Toaster } from "@/components/toaster";
 import { QueryProvider } from "@/lib/query-provider";
 import "./globals.css";
 
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className={`${inter.variable} ${cinzel.variable}`}>
       <body>
         <QueryProvider>{children}</QueryProvider>
+        <Toaster />
       </body>
     </html>
   );
