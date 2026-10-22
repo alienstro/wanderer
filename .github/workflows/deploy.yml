@@ -1,0 +1,43 @@
+# CD only: this job tells Dokploy to deploy. Dokploy builds the images on the server, and no lint,
+# test or build runs here, so each run uses about 1 minute of GitHub Actions time.
+# Dokploy queues each deploy and replies at once. The Dokploy deployment log shows a failed build.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy request at a time. A new push waits, and does not cancel the running request.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Deploy the API, then the web app
+        shell: bash
+        env:
+          DOKPLOY_URL: ${{ vars.DOKPLOY_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          API_APP_ID: ${{ vars.DOKPLOY_API_APP_ID }}
+          WEB_APP_ID: ${{ vars.DOKPLOY_WEB_APP_ID }}
+          TITLE: ${{ github.sha }}
+        # The API goes first, because its container applies the database migrations.
+        run: |
+          set -euo pipefail
+          deploy() {
+            curl --fail-with-body --silent --show-error --max-time 30 \
+              -X POST "$DOKPLOY_URL/api/application.deploy" \
+              -H 'content-type: application/json' \
+              -H "x-api-key: $DOKPLOY_API_KEY" \
+              -d "{\"applicationId\":\"$1\",\"title\":\"$TITLE\"}"
+            echo
+          }
+          deploy "$API_APP_ID"
+          deploy "$WEB_APP_ID"
