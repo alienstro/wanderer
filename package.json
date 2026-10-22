@@ -7,6 +7,7 @@
   },
   "scripts": {
     "postinstall": "pnpm --filter @wanderer/shared build",
+    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
     "typecheck": "pnpm -r --workspace-concurrency=1 typecheck",
     "lint": "pnpm -r --workspace-concurrency=1 lint",
     "e2e": "pnpm --filter @wanderer/e2e build && pnpm --filter @wanderer/e2e e2e",

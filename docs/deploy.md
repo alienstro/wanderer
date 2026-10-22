@@ -178,6 +178,23 @@ Run `pnpm smoke` first. It checks the health routes, the login page, and the hom
 6. Open a character, pick an opening, and click **Start a new chat**. Send a message.
    Expected: the reply streams in word by word, and four reply choices show above the text box.
 
+## Run locally
+
+`pnpm dev` starts the API on `http://localhost:3001` and the web app on `http://localhost:3100`.
+The API restarts when a file in `apps/api/src` changes.
+
+1. Start the local Postgres: `docker compose -f docker-compose.dev.yml up -d`.
+2. Copy `apps/api/.env.docker.example` to `apps/api/.env`, and fill in the values.
+   Change `host.docker.internal` to `localhost` in `DATABASE_URL`.
+   Set `WEB_ORIGIN=http://localhost:3100` and `GOOGLE_CALLBACK_URL=http://localhost:3001/auth/google/callback`.
+3. Copy `apps/web/.env.local.example` to `apps/web/.env.local`.
+4. Apply the migrations: `pnpm --filter @wanderer/api exec prisma migrate deploy`.
+5. Optional: add the sample data with `pnpm --filter @wanderer/api seed:dev`.
+6. Run `pnpm dev`.
+
+**Note:** The API does not watch `packages/shared`. After a change there, run
+`pnpm --filter @wanderer/shared build`, then start `pnpm dev` again.
+
 ## End-to-end tests
 
 The Playwright tests run the built API and the built web app on this computer, against a separate
