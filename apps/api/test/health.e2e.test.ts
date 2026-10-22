@@ -45,6 +45,15 @@ describe("health, CORS, and env", () => {
     expect(res.body).toEqual({ status: "unavailable" });
   });
 
+  it('GET /health/ready returns 503 within 3 seconds when the database query hangs', async () => {
+    vi.spyOn(app.get(PrismaService), "$queryRaw").mockReturnValue(new Promise(() => {}) as never);
+    const start = Date.now();
+    const res = await request(app.getHttpServer()).get("/health/ready");
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({ status: "unavailable" });
+    expect(Date.now() - start).toBeLessThan(3000);
+  });
+
   it("GET /health returns 200 when the database query fails", async () => {
     failDatabase();
     const res = await request(app.getHttpServer()).get("/health");

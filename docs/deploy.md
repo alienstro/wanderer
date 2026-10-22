@@ -201,8 +201,10 @@ The Playwright tests run the built API and the built web app on this computer, a
 database (`wanderer_e2e`). They do not touch production.
 
 1. Start the local Postgres: `docker compose -f docker-compose.dev.yml up -d`.
-2. Run `pnpm e2e`. It builds the API and the web app, then runs the tests with one worker.
-3. To run the tests again without a new build, run `pnpm --filter @wanderer/e2e e2e`.
+2. One time on each computer, install the browser:
+   `pnpm --filter @wanderer/e2e exec playwright install chromium`.
+3. Run `pnpm e2e`. It builds the API and the web app, then runs the tests with one worker.
+4. To run the tests again without a new build, run `pnpm --filter @wanderer/e2e e2e`.
 
-**Note:** `pnpm e2e` builds the web app for `http://127.0.0.1:3201`. Before a local
-`next start` for development, build the web app again.
+The e2e build of the web app goes to `apps/web/.next-e2e`, so it does not change the `.next`
+folder of a dev server.

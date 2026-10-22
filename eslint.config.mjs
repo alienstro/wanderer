@@ -3,7 +3,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["**/dist/**", "**/.next/**", "**/node_modules/**", "**/generated/**", "**/next-env.d.ts", "e2e/.tmp/**", "e2e/test-results/**", "e2e/playwright-report/**"] },
+  { ignores: ["**/dist/**", "**/.next/**", "**/.next-e2e/**", "**/node_modules/**", "**/generated/**", "**/next-env.d.ts", "e2e/.tmp/**", "e2e/test-results/**", "e2e/playwright-report/**"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

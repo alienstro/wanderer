@@ -24,7 +24,8 @@ test.describe("as the creator", () => {
     await page.goto(`/characters/${id}/edit`);
     await page.getByLabel("Title").fill("New Title");
     await page.getByRole("button", { name: "Save", exact: true }).click();
-    await page.goto(`/characters/${id}`);
+    // The edit page opens the character page after the save. A goto here could stop the save.
+    await expect(page).toHaveURL(new RegExp(`/characters/${id}$`));
     await expect(page.getByRole("heading", { level: 1, name: "New Title" })).toBeVisible();
   });
 });

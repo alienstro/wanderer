@@ -104,4 +104,25 @@ describe("DELETE /me", () => {
   it("gives 401 to a visitor", async () => {
     await remove("").expect(401);
   });
+
+  it("an admin who reported a character and resolved that report can delete their account", async () => {
+    const admin = await userWithSession(app, 3, { role: "admin" });
+    const characterId = await createCharacter(app, other.cookie);
+    const report = await http()
+      .post(`/characters/${characterId}/report`)
+      .set("Origin", WEB_ORIGIN)
+      .set("Cookie", admin.cookie)
+      .send({ reason: "hate" });
+    expect(report.status).toBe(201);
+    const resolve = await http()
+      .post(`/admin/reports/${report.body.id}/resolve`)
+      .set("Origin", WEB_ORIGIN)
+      .set("Cookie", admin.cookie)
+      .send({ action: "none" });
+    expect(resolve.status).toBe(200);
+
+    expect((await remove(admin.cookie)).status).toBe(204);
+    const kept = await prisma.report.findUniqueOrThrow({ where: { id: report.body.id } });
+    expect(kept).toMatchObject({ characterId, reporterId: null, resolvedById: null });
+  });
 });

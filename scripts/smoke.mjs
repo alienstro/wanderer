@@ -10,12 +10,15 @@ const { values } = parseArgs({
 });
 
 const TIMEOUT_MS = 10_000;
+// A trailing slash would give "//health", so remove it.
+const api = values.api.replace(/\/+$/, "");
+const web = values.web.replace(/\/+$/, "");
 const urls = [
-  `${values.api}/health`,
-  `${values.api}/health/ready`,
-  `${values.web}/health`,
-  `${values.web}/login`,
-  `${values.web}/`,
+  `${api}/health`,
+  `${api}/health/ready`,
+  `${web}/health`,
+  `${web}/login`,
+  `${web}/`,
 ];
 
 let failed = false;
