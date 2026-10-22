@@ -10,7 +10,7 @@ import { streamChat } from "@/lib/chat-stream";
 import { useRequireLogin } from "@/lib/use-require-login";
 import { Composer } from "./composer";
 import { MessageItem } from "./message-item";
-import { ReplyChoices, ReplyChoicesSwitch } from "./reply-choices";
+import { NewChoicesButton, ReplyChoices, ReplyChoicesSwitch, useReplyChoices } from "./reply-choices";
 
 /** The reply that streams now. replaceId is the reply that a Regenerate replaces. */
 interface LiveReply {
@@ -54,6 +54,16 @@ export function ChatView({ chatId }: { chatId: string }) {
   // Goes up after each full reply, so the reply choices ask for a new set.
   const [replyRound, setReplyRound] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
+  // The choices answer the last AI reply, so they hide when the last message is the user's.
+  const lastMessage = chat.data?.messages.at(-1);
+  const choices = useReplyChoices(
+    chatId,
+    replyRound,
+    Boolean(me?.replyChoicesOn && me.activeProxy && chat.data?.canSend) &&
+      live === null &&
+      lastMessage?.role === "assistant" &&
+      lastMessage.position > 0,
+  );
 
   function patchChat(change: (detail: ChatDetail) => ChatDetail) {
     queryClient.setQueryData<ChatDetail>(queryKey, (detail) => detail && change(detail));
@@ -204,13 +214,7 @@ export function ChatView({ chatId }: { chatId: string }) {
                 to start chatting.
               </p>
             )}
-            {/* The choices answer the last AI reply, so they hide when the last message is the user's. */}
-            <ReplyChoices
-              chatId={chatId}
-              round={replyRound}
-              visible={me.replyChoicesOn && idle && Boolean(me.activeProxy) && last?.role === "assistant" && last.position > 0}
-              onPick={send}
-            />
+            <ReplyChoices state={choices} onPick={send} />
             <Composer
               value={text}
               onChange={setText}
@@ -218,7 +222,12 @@ export function ChatView({ chatId }: { chatId: string }) {
               streaming={live !== null && !live.stopped}
               onSend={send}
               onStop={() => abortRef.current?.abort()}
-              toolbar={<ReplyChoicesSwitch me={me} />}
+              toolbar={
+                <>
+                  <ReplyChoicesSwitch me={me} />
+                  <NewChoicesButton state={choices} />
+                </>
+              }
             />
           </>
         ) : (

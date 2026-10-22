@@ -423,6 +423,72 @@
     box-shadow: 0 0 0 3px rgb(99 46 255 / 0.25);
   }
 
+  /* A quiet button under a message or in the bar of the text box: icon, then a short word. */
+  .msg-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-subtle);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .msg-action:hover {
+    background: var(--color-hover);
+    color: var(--color-text);
+  }
+
+  /* One reply choice, as in the prototype: a left-aligned card that the accent marks on hover. */
+  .choice {
+    display: block;
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--color-field-line);
+    border-radius: 14px;
+    background: var(--color-surface);
+    color: #e4e4e7;
+    font: inherit;
+    font-size: 14px;
+    line-height: 1.45;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .choice:hover {
+    border-color: var(--color-accent);
+    background: #1d1a2b;
+  }
+
+  .choice em {
+    color: var(--color-muted);
+  }
+
+  .choice-placeholder {
+    height: 42px;
+    border-radius: 14px;
+    background: var(--color-surface);
+    animation: choice-pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes choice-pulse {
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .choice-placeholder {
+      animation: none;
+    }
+  }
+
   .label {
     font-size: 14px;
     font-weight: 600;

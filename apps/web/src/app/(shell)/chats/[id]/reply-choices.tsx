@@ -3,47 +3,81 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ChoicesResponse, MeResponse } from "@wanderer/shared";
 import { useState } from "react";
+import { RefreshIcon } from "@/components/icons";
 import { apiFetch } from "@/lib/api";
 
+export interface ReplyChoicesState {
+  /** The current set, or null when there is none to show. */
+  choices: string[] | null;
+  /** True while a set loads. */
+  loading: boolean;
+  /** Asks for a new set. */
+  refresh: () => void;
+}
+
 /**
- * Four short replies above the text box. A new AI reply (a new round) asks for a new set. A click sends
- * that reply at once. An error hides the choices with no message, because the chat still works.
+ * The four short replies for the last AI reply. A new AI reply (a new round) asks for a new set.
+ * An error gives no set and no message, because the chat still works.
  */
-export function ReplyChoices({
-  chatId,
-  round,
-  visible,
-  onPick,
-}: {
-  chatId: string;
-  /** Goes up by one after each AI reply that came in full. 0 means no reply in this visit yet. */
-  round: number;
-  visible: boolean;
-  onPick: (text: string) => void;
-}) {
+export function useReplyChoices(chatId: string, round: number, visible: boolean): ReplyChoicesState {
   const [nonce, setNonce] = useState(0);
+  const enabled = visible && round > 0;
   const query = useQuery({
     queryKey: ["choices", chatId, round, nonce],
     queryFn: () => apiFetch<ChoicesResponse>(`/chats/${chatId}/choices`, { method: "POST" }),
-    enabled: visible && round > 0,
+    enabled,
     retry: false,
     staleTime: Infinity,
     gcTime: 0,
   });
-  if (!visible || round === 0 || !query.data) {
+  return {
+    choices: enabled && query.data ? query.data.choices : null,
+    loading: enabled && query.isLoading,
+    refresh: () => setNonce((value) => value + 1),
+  };
+}
+
+/** Shows the *action* parts of a choice in italic, as the messages do, without the asterisks. */
+function ChoiceText({ text }: { text: string }) {
+  return text
+    .split(/(\*[^*]+\*)/)
+    .filter(Boolean)
+    .map((part, index) => (part.length > 2 && part.startsWith("*") && part.endsWith("*") ? <em key={index}>{part.slice(1, -1)}</em> : part));
+}
+
+/** The choices above the text box, in two columns. A click sends that reply at once. */
+export function ReplyChoices({ state, onPick }: { state: ReplyChoicesState; onPick: (text: string) => void }) {
+  if (!state.loading && !state.choices) {
     return null;
   }
   return (
-    <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Reply choices">
-      {query.data.choices.map((choice) => (
-        <button key={choice} type="button" className="pill pill-soft pill-sm max-w-full text-left whitespace-normal" onClick={() => onPick(choice)}>
-          {choice}
-        </button>
-      ))}
-      <button type="button" className="pill pill-ghost pill-sm" onClick={() => setNonce((value) => value + 1)}>
-        New choices
-      </button>
+    <div
+      className="grid grid-cols-2 gap-2 max-[640px]:grid-cols-1"
+      role="group"
+      aria-label="Reply choices"
+      aria-busy={state.loading}
+    >
+      {state.choices
+        ? state.choices.map((choice) => (
+            <button key={choice} type="button" className="choice" onClick={() => onPick(choice)}>
+              <ChoiceText text={choice} />
+            </button>
+          ))
+        : [0, 1, 2, 3].map((slot) => <div key={slot} className="choice-placeholder" aria-hidden="true" />)}
     </div>
+  );
+}
+
+/** The "New choices" button in the bar of the text box. It shows only when a set shows. */
+export function NewChoicesButton({ state }: { state: ReplyChoicesState }) {
+  if (!state.choices) {
+    return null;
+  }
+  return (
+    <button type="button" className="msg-action" onClick={state.refresh}>
+      <RefreshIcon />
+      New choices
+    </button>
   );
 }
 
