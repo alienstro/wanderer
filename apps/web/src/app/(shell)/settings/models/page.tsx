@@ -29,7 +29,7 @@ export default function ModelsPage() {
     <div className="flex flex-col gap-6 px-7 pt-7 pb-20 max-[760px]:px-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h1 className="m-0 text-[28px] font-bold tracking-[-0.02em]">Models</h1>
+          <h1 className="page-title">Models</h1>
           <p className="m-0 max-w-[64ch] text-muted">
             Add an OpenAI-compatible proxy with your own API key. Wanderer keeps the key encrypted and never shows it
             again.
@@ -54,7 +54,7 @@ export default function ModelsPage() {
       )}
       {list.isError && <p className="m-0 text-error">Your models did not load. Reload the page.</p>}
       {list.data && list.data.length === 0 && editing === null && (
-        <div className="flex flex-col items-center gap-2.5 rounded-[18px] bg-surface px-6 py-14 text-center">
+        <div className="flex flex-col items-center gap-2.5 panel px-6 py-14 text-center">
           <p className="m-0 text-[17px] font-semibold">You have no models yet.</p>
           <p className="m-0 text-muted">Add a proxy to start chatting.</p>
         </div>

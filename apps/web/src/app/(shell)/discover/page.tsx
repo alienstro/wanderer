@@ -9,7 +9,7 @@ function first(value: string | string[] | undefined): string | undefined {
 }
 
 /** Discover. The server renders the visitor list, so the first page shows cards before the browser code runs. */
-export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
+export default async function DiscoverPage({ searchParams }: { searchParams: SearchParams }) {
   const raw = await searchParams;
   const parsed = characterListQuerySchema.safeParse({ q: first(raw.q), tag: first(raw.tag), sort: first(raw.sort) });
   // A bad value in the URL gives the default list, not an error page.

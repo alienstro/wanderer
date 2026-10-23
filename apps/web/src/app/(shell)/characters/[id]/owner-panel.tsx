@@ -82,7 +82,7 @@ export function OwnerPanel({ detail, onSaved }: { detail: CharacterDetail; onSav
   }
 
   return (
-    <aside aria-labelledby="owner-h" className="flex flex-[1_1_280px] flex-col gap-[18px] rounded-[18px] border border-line bg-surface p-5">
+    <aside aria-labelledby="owner-h" className="flex flex-[1_1_280px] flex-col gap-[18px] panel p-5">
       <div className="flex flex-col gap-0.5">
         <h2 id="owner-h" className="m-0 text-base font-bold">
           Character settings

@@ -21,7 +21,7 @@ export function ContinueBanner() {
     return null;
   }
   return (
-    <Link href={`/chats/${latest.id}`} className="flex items-center gap-4 rounded-[18px] bg-surface px-5 py-4 hover:bg-hover">
+    <Link href={`/chats/${latest.id}`} className="flex items-center gap-4 panel px-5 py-4 hover:bg-hover">
       <Avatar name={latest.title} src={latest.character.avatarUrl ? fileSrc(latest.character.avatarUrl) : null} size={52} />
       <span className="flex min-w-0 flex-col gap-0.5">
         <span className="text-sm text-muted">Continue your chat</span>

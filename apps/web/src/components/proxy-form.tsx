@@ -102,7 +102,7 @@ export function ProxyForm({ initial, onSaved, onCancel }: ProxyFormProps) {
   }
 
   return (
-    <form className="flex flex-col gap-4 rounded-[18px] bg-surface p-5" noValidate onSubmit={submit}>
+    <form className="flex flex-col gap-4 panel p-5" noValidate onSubmit={submit}>
       <h2 className="m-0 text-xl font-bold">{initial ? `Edit ${initial.name}` : "Add a model"}</h2>
 
       <Field name="name" label="Name" required error={errors.name}>

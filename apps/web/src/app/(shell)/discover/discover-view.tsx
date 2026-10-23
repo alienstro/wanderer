@@ -145,7 +145,7 @@ export function DiscoverView({ initial, q, tag, sort }: DiscoverQuery & { initia
       <div className="flex flex-col gap-9 px-7 pb-20 max-[760px]:px-4">
         <div className="flex flex-col gap-0.5">
           <span className="text-[15px] text-muted">{me ? `Welcome back, ${me.name}` : "Welcome to Wanderer"}</span>
-          <h1 className="m-0 text-[28px] font-bold tracking-[-0.02em]">Discover</h1>
+          <h1 className="page-title">Discover</h1>
         </div>
 
         <ContinueBanner />
@@ -184,7 +184,7 @@ export function DiscoverView({ initial, q, tag, sort }: DiscoverQuery & { initia
           </div>
 
           {failed ? (
-            <p role="alert" className="m-0 rounded-[18px] bg-surface px-6 py-14 text-center text-error">
+            <p role="alert" className="m-0 panel px-6 py-14 text-center text-error">
               The characters did not load. Reload the page to try again.
             </p>
           ) : items.length > 0 ? (
@@ -196,7 +196,7 @@ export function DiscoverView({ initial, q, tag, sort }: DiscoverQuery & { initia
               ))}
             </ul>
           ) : (
-            <div className="flex flex-col items-center gap-2.5 rounded-[18px] bg-surface px-6 py-14 text-center">
+            <div className="flex flex-col items-center gap-2.5 panel px-6 py-14 text-center">
               <p className="m-0 text-[17px] font-semibold">No characters match your search.</p>
               <p className="m-0 text-muted">Try a different word, or make the character yourself.</p>
               <Link href="/create" className="pill pill-accent">

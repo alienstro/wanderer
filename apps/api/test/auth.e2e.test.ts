@@ -1,4 +1,5 @@
 import type { NestExpressApplication } from "@nestjs/platform-express";
+import { TERMS_VERSION } from "@wanderer/shared";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { GOOGLE_OIDC, type GoogleOidc, type GoogleProfile } from "../src/auth/google-oidc.js";
@@ -7,7 +8,7 @@ import { PrismaService } from "../src/prisma/prisma.service.js";
 import { createTestApp } from "./support/app.js";
 import { WEB_ORIGIN } from "./support/env.js";
 
-const TERMS = "2026-10-21";
+const TERMS = TERMS_VERSION;
 const CALLBACK = "https://wanderer-api.alienstro.xyz/auth/google/callback";
 
 class FakeGoogleOidc implements GoogleOidc {
@@ -114,7 +115,7 @@ describe("Google login", () => {
     expect(cookie).not.toMatch(/Domain=/i);
   });
 
-  it("the callback saves a TermsAcceptance with version 2026-10-21", async () => {
+  it("the callback saves a TermsAcceptance with the current terms version", async () => {
     await login();
     const user = await prisma.user.findUniqueOrThrow({ where: { googleSub: "google-sub-1" } });
     const acceptances = await prisma.termsAcceptance.findMany({ where: { userId: user.id } });
@@ -128,13 +129,13 @@ describe("Google login", () => {
     expect(user.role).toBe("admin");
   });
 
-  it("a new user goes to /onboarding, and a user with a handle goes to /", async () => {
+  it("a new user goes to /onboarding, and a user with a handle goes to /discover", async () => {
     const first = await login();
     expect(first.headers.location).toBe(`${WEB_ORIGIN}/onboarding`);
 
     await prisma.user.update({ where: { googleSub: "google-sub-1" }, data: { handle: "tian" } });
     const second = await login();
-    expect(second.headers.location).toBe(`${WEB_ORIGIN}/`);
+    expect(second.headers.location).toBe(`${WEB_ORIGIN}/discover`);
   });
 
   it("Review Focus 1: the callback with error=access_denied redirects to /login?error=cancelled", async () => {

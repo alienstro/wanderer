@@ -62,7 +62,7 @@ function ReportDialog({ characterId, onClose }: { characterId: string; onClose: 
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="flex w-full max-w-[460px] flex-col gap-4 rounded-[18px] bg-surface p-5 shadow-[0_16px_40px_rgba(0,0,0,0.6)]"
+        className="flex w-full max-w-[460px] flex-col gap-4 panel p-5 shadow-[0_16px_40px_rgba(0,0,0,0.6)]"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => event.key === "Escape" && onClose()}
       >

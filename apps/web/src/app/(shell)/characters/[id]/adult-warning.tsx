@@ -29,7 +29,7 @@ export function AdultWarning({ onConfirmed }: { onConfirmed: () => void }) {
   }
 
   return (
-    <section className="flex max-w-[520px] flex-col items-start gap-3 rounded-[18px] bg-surface p-7">
+    <section className="flex max-w-[520px] flex-col items-start gap-3 panel p-7">
       <h1 className="m-0 text-2xl font-bold">This character is 18+.</h1>
       <p className="m-0 text-muted">This character has adult content. You must be 18 or older to see it.</p>
       {isPending ? null : me ? (

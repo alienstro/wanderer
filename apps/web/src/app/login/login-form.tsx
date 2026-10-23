@@ -48,7 +48,7 @@ export function LoginForm({ error }: { error?: LoginError }) {
           className="mt-0.5 size-[18px] flex-none accent-accent"
         />
         <label htmlFor={checkboxId} className="text-[14px] text-muted">
-          I agree to the <Link href="/terms">Terms of Service</Link> and the{" "}
+          I am 18 or older, and I agree to the <Link href="/terms">Terms of Service</Link> and the{" "}
           <Link href="/privacy">Privacy Policy</Link>
         </label>
       </div>
