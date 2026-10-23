@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { TERMS_VERSION } from "@wanderer/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginForm } from "./login-form";
 
@@ -24,11 +25,11 @@ describe("LoginForm", () => {
     expect(googleLink()).toHaveAttribute("aria-disabled", "true");
   });
 
-  it("after the box is ticked, the href ends with /auth/google?terms=2026-10-21", async () => {
+  it("after the box is ticked, the href ends with /auth/google?terms=<current version>", async () => {
     render(<LoginForm />);
     await userEvent.click(screen.getByRole("checkbox"));
     expect(googleLink().getAttribute("href")).toBe(
-      "https://wanderer-api.alienstro.xyz/auth/google?terms=2026-10-21",
+      `https://wanderer-api.alienstro.xyz/auth/google?terms=${TERMS_VERSION}`,
     );
     expect(googleLink()).not.toHaveAttribute("aria-disabled", "true");
   });
@@ -37,6 +38,11 @@ describe("LoginForm", () => {
     render(<LoginForm />);
     expect(screen.getByRole("link", { name: "Terms of Service" })).toHaveAttribute("href", "/terms");
     expect(screen.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute("href", "/privacy");
+  });
+
+  it("the checkbox confirms that the user is 18 or older", () => {
+    render(<LoginForm />);
+    expect(screen.getByRole("checkbox", { name: /^I am 18 or older, and I agree to the Terms/ })).toBeInTheDocument();
   });
 
   it('error="banned" shows "This account is banned."', () => {
