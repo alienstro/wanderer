@@ -214,7 +214,7 @@ export function ChatView({ chatId }: { chatId: string }) {
     return (
       <div className="flex flex-col gap-3 px-7 pt-7 max-[760px]:px-4">
         <p className="m-0 text-error">{missing ? "This chat does not exist." : "The chat did not load. Reload the page."}</p>
-        <Link href="/" className="pill pill-soft self-start">
+        <Link href="/discover" className="pill pill-soft self-start">
           Go to Discover
         </Link>
       </div>
@@ -303,7 +303,7 @@ export function ChatView({ chatId }: { chatId: string }) {
             />
           </>
         ) : (
-          <p className="m-0 rounded-[14px] bg-surface px-4 py-3 text-muted">This character is no longer available.</p>
+          <p className="m-0 rounded-[16px] border border-line bg-surface px-4 py-3 text-muted">This character is no longer available.</p>
         )}
       </footer>
     </div>

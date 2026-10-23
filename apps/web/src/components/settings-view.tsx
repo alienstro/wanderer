@@ -22,7 +22,7 @@ function handleErrorText(error: unknown): string {
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="flex flex-col gap-3 rounded-[18px] bg-surface p-5">
+    <section className="flex flex-col gap-3 panel p-5">
       <h2 className="m-0 text-lg font-bold">{title}</h2>
       {children}
     </section>

@@ -8,7 +8,7 @@ import { CenteredCard } from "@/components/centered-card";
 import { useMe } from "@/lib/query-provider";
 import { HandleForm } from "./handle-form";
 
-/** The handle step after the first login. A user without a session goes to /login, and a user with a handle goes to /. */
+/** The handle step after the first login. A user without a session goes to /login, and a user with a handle goes to /discover. */
 export default function OnboardingPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -18,7 +18,7 @@ export default function OnboardingPage() {
     if (me === null) {
       router.replace("/login");
     } else if (me?.handle) {
-      router.replace("/");
+      router.replace("/discover");
     }
   }, [me, router]);
 
@@ -31,7 +31,7 @@ export default function OnboardingPage() {
 
   function done(updated: MeResponse) {
     queryClient.setQueryData(["me"], updated);
-    router.replace("/");
+    router.replace("/discover");
   }
 
   return (

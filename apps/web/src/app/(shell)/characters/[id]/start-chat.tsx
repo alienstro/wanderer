@@ -44,7 +44,7 @@ export function StartChat({ characterId, openings }: { characterId: string; open
         {openings.map((opening, index) => (
           <label
             key={index}
-            className="flex cursor-pointer gap-3 rounded-[14px] bg-surface px-4 py-3 leading-[1.6] text-[#e4e4e7] has-[:checked]:outline has-[:checked]:outline-2 has-[:checked]:outline-accent"
+            className="flex cursor-pointer gap-3 rounded-[16px] border border-line bg-surface px-4 py-3 leading-[1.6] text-[#e4e4e7] has-[:checked]:outline has-[:checked]:outline-2 has-[:checked]:outline-accent"
           >
             <input
               type="radio"

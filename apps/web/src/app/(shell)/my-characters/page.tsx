@@ -21,14 +21,14 @@ export default function MyCharactersPage() {
   return (
     <div className="flex flex-col gap-6 px-7 pt-7 pb-20 max-[760px]:px-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="m-0 text-[28px] font-bold tracking-[-0.02em]">My characters</h1>
+        <h1 className="page-title">My characters</h1>
         <Link href="/create" className="pill pill-accent">
           Create a character
         </Link>
       </div>
       {list.isError && <p className="m-0 text-error">Your characters did not load. Reload the page.</p>}
       {list.data && list.data.length === 0 && (
-        <div className="flex flex-col items-center gap-2.5 rounded-[18px] bg-surface px-6 py-14 text-center">
+        <div className="flex flex-col items-center gap-2.5 panel px-6 py-14 text-center">
           <p className="m-0 text-[17px] font-semibold">You have no characters yet.</p>
           <p className="m-0 text-muted">Make one, or import a Tavern PNG card.</p>
         </div>

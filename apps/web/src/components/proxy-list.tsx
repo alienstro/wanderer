@@ -42,7 +42,7 @@ function ProxyRow({ proxy, onEdit, onChanged }: { proxy: ProxyView; onEdit: () =
   }
 
   return (
-    <li className="flex flex-col gap-2.5 rounded-[18px] bg-surface p-4">
+    <li className="flex flex-col gap-2.5 panel p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-col">
           <span className="flex items-center gap-2 font-semibold">

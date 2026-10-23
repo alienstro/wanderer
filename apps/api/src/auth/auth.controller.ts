@@ -118,7 +118,7 @@ export class AuthController {
       return res.redirect(302, this.webUrl("/login?error=account"));
     }
     res.cookie(SESSION_COOKIE, result.token, sessionCookieOptions(result.expiresAt));
-    res.redirect(302, this.webUrl(result.hasHandle ? "/" : "/onboarding"));
+    res.redirect(302, this.webUrl(result.hasHandle ? "/discover" : "/onboarding"));
   }
 
   @Post("logout")

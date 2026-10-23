@@ -55,7 +55,7 @@ function ReportRow({ report }: { report: AdminReport }) {
 
   const { character } = report;
   return (
-    <article aria-label={`Report about ${report.characterTitle}`} className="flex flex-col gap-2.5 rounded-[18px] bg-surface p-5">
+    <article aria-label={`Report about ${report.characterTitle}`} className="flex flex-col gap-2.5 panel p-5">
       <div className="flex flex-wrap items-center gap-2">
         {report.reason === "minors" && <span className="tag bg-[rgba(194,65,75,0.9)] text-white">Minors</span>}
         <span className="font-semibold">{REPORT_REASON_LABELS[report.reason]}</span>
