@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /** The version of the Terms of Service and the Privacy Policy that a user accepts at login. */
-export const TERMS_VERSION = "2026-10-21";
+export const TERMS_VERSION = "2026-10-23";
 
 export const HANDLE_MIN = 3;
 export const HANDLE_MAX = 20;
