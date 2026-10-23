@@ -129,13 +129,13 @@ describe("Google login", () => {
     expect(user.role).toBe("admin");
   });
 
-  it("a new user goes to /onboarding, and a user with a handle goes to /", async () => {
+  it("a new user goes to /onboarding, and a user with a handle goes to /discover", async () => {
     const first = await login();
     expect(first.headers.location).toBe(`${WEB_ORIGIN}/onboarding`);
 
     await prisma.user.update({ where: { googleSub: "google-sub-1" }, data: { handle: "tian" } });
     const second = await login();
-    expect(second.headers.location).toBe(`${WEB_ORIGIN}/`);
+    expect(second.headers.location).toBe(`${WEB_ORIGIN}/discover`);
   });
 
   it("Review Focus 1: the callback with error=access_denied redirects to /login?error=cancelled", async () => {

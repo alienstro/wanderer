@@ -19,7 +19,7 @@ const iconProps = {
 
 const NAV_ITEMS: { href: string; label: string; icon: ReactNode; userOnly?: boolean }[] = [
   {
-    href: "/",
+    href: "/discover",
     label: "Discover",
     icon: (
       <svg {...iconProps}>
@@ -29,7 +29,7 @@ const NAV_ITEMS: { href: string; label: string; icon: ReactNode; userOnly?: bool
     ),
   },
   {
-    href: "/#for-you",
+    href: "/discover#for-you",
     label: "For you",
     userOnly: true,
     icon: (

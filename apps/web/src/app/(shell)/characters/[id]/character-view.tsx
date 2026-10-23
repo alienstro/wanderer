@@ -11,7 +11,7 @@ export function CharacterView({ detail }: { detail: CharacterDetail }) {
 
   return (
     <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-8">
-      <section className="relative overflow-hidden rounded-[22px] bg-surface">
+      <section className="relative overflow-hidden panel">
         {image && (
           <img
             src={image}
@@ -38,7 +38,7 @@ export function CharacterView({ detail }: { detail: CharacterDetail }) {
             </span>
           )}
           <div className="flex min-w-0 flex-[1_1_340px] flex-col gap-3">
-            <h1 className="m-0 text-[34px] leading-[1.15] font-bold tracking-[-0.02em] [overflow-wrap:anywhere]">{detail.title}</h1>
+            <h1 className="page-title [overflow-wrap:anywhere]">{detail.title}</h1>
             <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-[13px] text-[#c4c4cc]">
               <span>
                 Chat with <strong className="text-text">{detail.chatName || detail.title}</strong>
@@ -75,7 +75,7 @@ export function CharacterView({ detail }: { detail: CharacterDetail }) {
           Definition
         </h2>
         {detail.definition ? (
-          <details className="rounded-[14px] bg-surface">
+          <details className="rounded-[16px] border border-line bg-surface">
             <summary className="flex min-h-[46px] cursor-pointer items-center px-4 font-semibold">Show the personality and scenario</summary>
             <div className="flex flex-col gap-2.5 px-4 pb-4 whitespace-pre-wrap text-[#c4c4cc] [overflow-wrap:anywhere]">
               <p className="m-0">

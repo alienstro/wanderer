@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DiscoverView } from "./discover-view";
 
 const replace = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }), usePathname: () => "/" }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }), usePathname: () => "/discover" }));
 
 function card(n: number): CharacterCard {
   return {
@@ -86,7 +86,7 @@ describe("DiscoverView", () => {
     stubFetch();
     renderView({ items: [card(1)], nextCursor: null });
     await userEvent.click(screen.getByRole("button", { name: "Noir" }));
-    expect(replace).toHaveBeenCalledWith("/?tag=noir", { scroll: false });
+    expect(replace).toHaveBeenCalledWith("/discover?tag=noir", { scroll: false });
   });
 
   it("a second click goes back to All", async () => {
@@ -94,7 +94,7 @@ describe("DiscoverView", () => {
     renderView({ items: [card(1)], nextCursor: null }, { tag: "noir" });
     expect(screen.getByRole("button", { name: "Noir" })).toHaveAttribute("aria-pressed", "true");
     await userEvent.click(screen.getByRole("button", { name: "Noir" }));
-    expect(replace).toHaveBeenCalledWith("/", { scroll: false });
+    expect(replace).toHaveBeenCalledWith("/discover", { scroll: false });
   });
 
   it("a search text puts q in the URL after a 300 ms pause", async () => {
@@ -102,7 +102,7 @@ describe("DiscoverView", () => {
     renderView({ items: [card(1)], nextCursor: null });
     await userEvent.type(screen.getByRole("searchbox", { name: "Search characters" }), "mira");
     expect(replace).not.toHaveBeenCalled();
-    await vi.waitFor(() => expect(replace).toHaveBeenCalledWith("/?q=mira", { scroll: false }), { timeout: 1000 });
+    await vi.waitFor(() => expect(replace).toHaveBeenCalledWith("/discover?q=mira", { scroll: false }), { timeout: 1000 });
     expect(replace).toHaveBeenCalledTimes(1);
   });
 
@@ -135,9 +135,9 @@ describe("DiscoverView", () => {
     const { rerender } = render(view(""));
     const box = screen.getByRole("searchbox", { name: "Search characters" });
     await userEvent.type(box, "ab");
-    await vi.waitFor(() => expect(replace).toHaveBeenCalledWith("/?q=ab", { scroll: false }), { timeout: 1000 });
+    await vi.waitFor(() => expect(replace).toHaveBeenCalledWith("/discover?q=ab", { scroll: false }), { timeout: 1000 });
     await userEvent.type(box, "c");
-    await vi.waitFor(() => expect(replace).toHaveBeenCalledWith("/?q=abc", { scroll: false }), { timeout: 1000 });
+    await vi.waitFor(() => expect(replace).toHaveBeenCalledWith("/discover?q=abc", { scroll: false }), { timeout: 1000 });
 
     rerender(view("ab"));
     expect(box).toHaveValue("abc");

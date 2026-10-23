@@ -71,6 +71,7 @@ describe("sidebar", () => {
     stubApi(null);
     renderWithClient(<SidebarNav />);
     expect(screen.getByRole("link", { name: "Create" })).toHaveAttribute("href", "/create");
+    expect(screen.getByRole("link", { name: "Discover" })).toHaveAttribute("href", "/discover");
     expect(screen.getByRole("link", { name: "Discover" })).not.toHaveAttribute("aria-current");
     expect(screen.getByRole("link", { name: "My characters" })).toHaveAttribute("aria-current", "page");
   });
@@ -131,7 +132,7 @@ describe("sidebar", () => {
     const card = await screen.findByRole("link", { name: /OpenRouter/ });
     expect(card).toHaveAttribute("href", "/settings/models");
     expect(card).toHaveTextContent("deepseek/deepseek-chat");
-    expect(screen.getByRole("link", { name: "For you" })).toHaveAttribute("href", "/#for-you");
+    expect(screen.getByRole("link", { name: "For you" })).toHaveAttribute("href", "/discover#for-you");
   });
 
   it('the model card shows "Add a model" when activeProxy is null', async () => {

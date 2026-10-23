@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-quer
 import type { MeResponse } from "@wanderer/shared";
 import { type ReactNode, useState } from "react";
 import { ApiError, apiFetch } from "./api";
+import { setSignedInHint } from "./signed-in-hint";
 
 const MAX_RETRIES = 2;
 
@@ -15,13 +16,21 @@ export function shouldRetry(failureCount: number, error: unknown): boolean {
   return failureCount < MAX_RETRIES;
 }
 
+/** The query client of the app. Each change of the ["me"] data, also by setQueryData, updates the signed-in hint. */
+export function createQueryClient(): QueryClient {
+  const client = new QueryClient({
+    defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false, retry: shouldRetry } },
+  });
+  client.getQueryCache().subscribe((event) => {
+    if (event.type === "updated" && event.action.type === "success" && event.query.queryKey[0] === "me") {
+      setSignedInHint(event.query.state.data != null);
+    }
+  });
+  return client;
+}
+
 export function QueryProvider({ children }: { children: ReactNode }) {
-  const [client] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false, retry: shouldRetry } },
-      }),
-  );
+  const [client] = useState(createQueryClient);
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
