@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import type { MeResponse, UpdateMeRequest } from "@wanderer/shared";
+import { type MeResponse, REPLY_CHOICES_PROMPT_MAX, type UpdateMeRequest } from "@wanderer/shared";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, type ReactNode, useState } from "react";
@@ -29,13 +29,16 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-/** The account settings: the handle, Show 18+, Reply choices, the models link, and Delete account. */
+/** The account settings: the handle, Show 18+, Reply choices and their instructions, the models link, and Delete account. */
 export function SettingsView({ me }: { me: MeResponse }) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const [handle, setHandle] = useState(me.handle ?? "");
   const [handleError, setHandleError] = useState<string | null>(null);
   const [handleSaved, setHandleSaved] = useState(false);
+  const [choicesPrompt, setChoicesPrompt] = useState(me.replyChoicesPrompt);
+  const [choicesPromptError, setChoicesPromptError] = useState(false);
+  const [choicesPromptSaved, setChoicesPromptSaved] = useState(false);
   const [askAge, setAskAge] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [deleteWord, setDeleteWord] = useState("");
@@ -57,6 +60,18 @@ export function SettingsView({ me }: { me: MeResponse }) {
       setHandleSaved(true);
     } catch (error) {
       setHandleError(handleErrorText(error));
+    }
+  }
+
+  async function saveChoicesPrompt(event: FormEvent) {
+    event.preventDefault();
+    setChoicesPromptError(false);
+    setChoicesPromptSaved(false);
+    try {
+      await save("/me", "PATCH", { replyChoicesPrompt: choicesPrompt.trim() });
+      setChoicesPromptSaved(true);
+    } catch {
+      setChoicesPromptError(true);
     }
   }
 
@@ -153,6 +168,33 @@ export function SettingsView({ me }: { me: MeResponse }) {
           checked={me.replyChoicesOn}
           onChange={(on) => void change("/me", "PATCH", { replyChoicesOn: on })}
         />
+        <form className="flex flex-col gap-3" onSubmit={(event) => void saveChoicesPrompt(event)}>
+          <Field
+            name="replyChoicesPrompt"
+            label="Reply choices instructions"
+            error={choicesPromptError ? "The instructions were not saved. Try again." : undefined}
+            hint={`${choicesPrompt.length}/${REPLY_CHOICES_PROMPT_MAX}`}
+          >
+            {({ inputId, describedBy }) => (
+              <textarea
+                id={inputId}
+                className="field"
+                rows={3}
+                maxLength={REPLY_CHOICES_PROMPT_MAX}
+                value={choicesPrompt}
+                aria-describedby={describedBy}
+                placeholder="For example: Write each choice as an action in *asterisks*."
+                onChange={(event) => setChoicesPrompt(event.target.value)}
+              />
+            )}
+          </Field>
+          <div className="flex items-center gap-3">
+            <button type="submit" className="pill pill-accent">
+              Save instructions
+            </button>
+            {choicesPromptSaved && <span className="text-[13px] text-muted">Saved.</span>}
+          </div>
+        </form>
         <Link href="/settings/models" className="pill pill-soft self-start">
           Manage models
         </Link>

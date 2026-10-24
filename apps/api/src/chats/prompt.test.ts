@@ -96,6 +96,19 @@ describe("buildChoicesPrompt", () => {
         "Write four short replies that Robin could say next, in the voice of Robin. Each reply has 25 words or less. Answer only with a JSON array of four strings.",
     });
   });
+
+  it("puts the user instructions after the fixed text and keeps the JSON rule as the last sentence", () => {
+    const messages = buildChoicesPrompt(input(), "  Write each choice as an action of {{user}} in *asterisks*.  ");
+    expect(messages.at(-1)).toEqual({
+      role: "user",
+      content:
+        "Write four short replies that Robin could say next, in the voice of Robin. Each reply has 25 words or less.\n\nWrite each choice as an action of Robin in *asterisks*.\n\nAnswer only with a JSON array of four strings.",
+    });
+  });
+
+  it("with blank user instructions, the instruction is the same as before", () => {
+    expect(buildChoicesPrompt(input(), "   ")).toEqual(buildChoicesPrompt(input()));
+  });
 });
 
 describe("buildChoicesPrompt budget", () => {

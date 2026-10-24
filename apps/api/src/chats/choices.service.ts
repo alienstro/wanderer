@@ -26,7 +26,10 @@ export class ChoicesService {
   async make(user: User, chatId: string): Promise<ChoicesResponse> {
     const { character, history } = await this.chats.loadForReply(chatId, user);
     const { target, customPrompt, contextTokens } = await this.proxies.loadTarget(user);
-    const messages = buildChoicesPrompt({ character, customPrompt, contextTokens, userName: user.name, history });
+    const messages = buildChoicesPrompt(
+      { character, customPrompt, contextTokens, userName: user.name, history },
+      user.replyChoicesPrompt,
+    );
     const client = this.clients.create(target);
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
       let text: string;

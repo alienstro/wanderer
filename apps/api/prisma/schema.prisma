@@ -15,31 +15,33 @@ enum Role {
 }
 
 model User {
-  id               String    @id @default(uuid()) @db.Uuid
-  email            String    @unique
-  googleSub        String    @unique @map("google_sub")
-  name             String
-  pictureUrl       String?   @map("picture_url")
-  handle           String?   @unique
-  role             Role      @default(user)
-  bannedAt         DateTime? @map("banned_at")
+  id                 String    @id @default(uuid()) @db.Uuid
+  email              String    @unique
+  googleSub          String    @unique @map("google_sub")
+  name               String
+  pictureUrl         String?   @map("picture_url")
+  handle             String?   @unique
+  role               Role      @default(user)
+  bannedAt           DateTime? @map("banned_at")
   /// True when the user sees 18+ characters. It can be true only when adultConfirmedAt is set.
-  showAdult        Boolean   @default(false) @map("show_adult")
-  adultConfirmedAt DateTime? @map("adult_confirmed_at")
+  showAdult          Boolean   @default(false) @map("show_adult")
+  adultConfirmedAt   DateTime? @map("adult_confirmed_at")
   /// True when the chat page shows four reply choices after each AI reply.
-  replyChoicesOn   Boolean   @default(true) @map("reply_choices_on")
-  activeProxyId    String?   @unique @map("active_proxy_id") @db.Uuid
-  createdAt        DateTime  @default(now()) @map("created_at")
+  replyChoicesOn     Boolean   @default(true) @map("reply_choices_on")
+  /// The user instructions for the style and the content of the reply choices. Empty means none.
+  replyChoicesPrompt String    @default("") @map("reply_choices_prompt")
+  activeProxyId      String?   @unique @map("active_proxy_id") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at")
 
   sessions         Session[]
   termsAcceptances TermsAcceptance[]
   characters       Character[]
   files            File[]
-  proxies          Proxy[]   @relation("ProxyOwner")
-  activeProxy      Proxy?    @relation("ActiveProxy", fields: [activeProxyId], references: [id], onDelete: SetNull)
+  proxies          Proxy[]           @relation("ProxyOwner")
+  activeProxy      Proxy?            @relation("ActiveProxy", fields: [activeProxyId], references: [id], onDelete: SetNull)
   chats            Chat[]
-  reports          Report[]  @relation("Reporter")
-  resolvedReports  Report[]  @relation("ResolvedBy")
+  reports          Report[]          @relation("Reporter")
+  resolvedReports  Report[]          @relation("ResolvedBy")
 
   @@map("users")
 }

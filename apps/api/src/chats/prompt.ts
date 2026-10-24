@@ -9,7 +9,9 @@ const CHOICE_MAX = 300;
 const ROLEPLAY_TEXT =
   "You are {{char}} in a roleplay with {{user}}. Stay in character. Write only the reply of {{char}}. Do not write the words or actions of {{user}}.";
 const CHOICES_TEXT =
-  "Write four short replies that {{user}} could say next, in the voice of {{user}}. Each reply has 25 words or less. Answer only with a JSON array of four strings.";
+  "Write four short replies that {{user}} could say next, in the voice of {{user}}. Each reply has 25 words or less.";
+/** The format rule stays the last sentence, so that the user instructions cannot change what parseChoices reads. */
+const CHOICES_FORMAT_TEXT = "Answer only with a JSON array of four strings.";
 
 export interface PromptCharacter {
   title: string;
@@ -71,10 +73,16 @@ export function buildReplyPrompt(input: PromptInput): PromptMessage[] {
   return [{ role: "system", content: system }, ...fitHistory(input, estimateTokens(system))];
 }
 
-/** The messages for the reply choices: the reply prompt, then the choices instruction as a user message. */
-export function buildChoicesPrompt(input: PromptInput): PromptMessage[] {
+/**
+ * The messages for the reply choices: the reply prompt, then the choices instruction as a user message.
+ * The user instructions go between the fixed text and the format rule. Blank instructions add nothing.
+ */
+export function buildChoicesPrompt(input: PromptInput, userInstructions = ""): PromptMessage[] {
   const system = systemText(input);
-  const instruction = fill(CHOICES_TEXT, input);
+  const custom = userInstructions.trim();
+  const instruction = custom
+    ? fill(`${CHOICES_TEXT}\n\n${custom}\n\n${CHOICES_FORMAT_TEXT}`, input)
+    : fill(`${CHOICES_TEXT} ${CHOICES_FORMAT_TEXT}`, input);
   return [
     { role: "system", content: system },
     ...fitHistory(input, estimateTokens(system) + estimateTokens(instruction)),
