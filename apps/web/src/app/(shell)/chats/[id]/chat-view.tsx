@@ -13,6 +13,7 @@ import { useRequireLogin } from "@/lib/use-require-login";
 import { Composer } from "./composer";
 import { MemoryButton } from "./memory-panel";
 import { MessageItem } from "./message-item";
+import { OpeningSwitcher } from "./opening-switcher";
 import { NewChoicesButton, ReplyChoices, ReplyChoicesSwitch, useReplyChoices } from "./reply-choices";
 
 /** The reply that streams now. replaceId is the reply that a Regenerate replaces. */
@@ -225,7 +226,7 @@ export function ChatView({ chatId }: { chatId: string }) {
     return <p className="m-0 px-7 pt-7 text-muted">Loading the chat…</p>;
   }
 
-  const { chat: summary, messages, canSend } = chat.data;
+  const { chat: summary, messages, canSend, opening } = chat.data;
   const character = {
     name: summary.character.chatName || summary.character.title,
     src: summary.character.avatarUrl ? fileSrc(summary.character.avatarUrl) : null,
@@ -270,6 +271,16 @@ export function ChatView({ chatId }: { chatId: string }) {
               onRegenerate={regenerate}
             />
           ))}
+          {/* The user picks the opening until the first message. The server refuses a change after it. */}
+          {canSend && idle && messages.length === 1 && opening.count > 1 && (
+            <OpeningSwitcher
+              chatId={chatId}
+              index={opening.index}
+              count={opening.count}
+              onChanged={(next) => queryClient.setQueryData<ChatDetail>(queryKey, next)}
+              onLocked={() => void queryClient.invalidateQueries({ queryKey })}
+            />
+          )}
           {live?.sending && <MessageItem message={{ role: "user", content: live.sending }} speaker={user} />}
           {live && <MessageItem message={{ role: "assistant", content: live.text }} speaker={character} typing={!live.text && !live.stopped} />}
           {canSend && idle && last?.role === "user" && (
