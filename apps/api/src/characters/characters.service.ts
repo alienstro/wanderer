@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -13,7 +12,7 @@ import { FilesService } from "../files/files.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { mergeCharacterInput } from "./character-input.js";
 import { type CharacterDetailRow, characterDetailInclude, toCharacterDetail } from "./character-mapper.js";
-import { characterAccess } from "./visibility.js";
+import { assertCharacterAccess } from "./visibility.js";
 
 const NOT_FOUND = { error: "not_found" };
 
@@ -78,19 +77,10 @@ export class CharactersService {
     return toCharacterDetail(row, user);
   }
 
-  /**
-   * Gives the character when the viewer can see it. Another user gets 404, so a private character stays secret.
-   * An 18+ character gives 403 with only the error code, so that the web can show the 18+ warning.
-   */
+  /** Gives the character when the viewer can see it. assertCharacterAccess gives the 404 and the 403. */
   async findVisible(id: string, viewer: User | null): Promise<CharacterDetail> {
     const row = await this.findRow(id);
-    const access = row ? characterAccess(row, viewer) : "not_found";
-    if (!row || access === "not_found") {
-      throw new NotFoundException(NOT_FOUND);
-    }
-    if (access === "adult_content") {
-      throw new ForbiddenException({ error: "adult_content" });
-    }
+    assertCharacterAccess(row, viewer);
     return toCharacterDetail(row, viewer);
   }
 

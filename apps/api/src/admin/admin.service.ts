@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import { type AdminReport, resolveReportRequestSchema } from "@wanderer/shared";
+import { type AdminReport, type ReportAction, resolveReportRequestSchema } from "@wanderer/shared";
 import { CharactersService } from "../characters/characters.service.js";
+import { deleteCommentsOf } from "../comments/comments.service.js";
 import { isUuid } from "../common/uuid.js";
 import type { Prisma, User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -11,12 +12,13 @@ const LIST_MAX = 200;
 const reportInclude = {
   character: { select: { id: true, creatorId: true, status: true, creator: { select: { handle: true } } } },
   reporter: { select: { handle: true } },
+  comment: { select: { id: true, body: true, authorId: true, deletedAt: true, author: { select: { handle: true } } } },
 } satisfies Prisma.ReportInclude;
 
 type ReportRow = Prisma.ReportGetPayload<{ include: typeof reportInclude }>;
 
 function toAdminReport(row: ReportRow): AdminReport {
-  const { character } = row;
+  const { character, comment } = row;
   return {
     id: row.id,
     reason: row.reason,
@@ -27,6 +29,16 @@ function toAdminReport(row: ReportRow): AdminReport {
       ? { id: character.id, creatorId: character.creatorId, creatorHandle: character.creator.handle, status: character.status }
       : null,
     reporterHandle: row.reporter?.handle ?? null,
+    target: row.target,
+    comment: comment
+      ? {
+          id: comment.id,
+          body: comment.body,
+          authorId: comment.authorId,
+          authorHandle: comment.author.handle,
+          deleted: comment.deletedAt !== null,
+        }
+      : null,
   };
 }
 
@@ -58,7 +70,9 @@ export class AdminService {
   /**
    * Closes a report and does its action. The close and the action are in one transaction, and the close
    * accepts only an open report, so a second click gives 409 and does not do the action again.
-   * An action on the character also closes all other open reports of that character.
+   * An action on the character also closes all other open character reports of that character. On a comment
+   * report, "hidden" and "deleted" delete the comment, "banned" bans its author, and an action closes all other
+   * open reports of that comment.
    */
   async resolve(admin: User, reportId: string, body: unknown): Promise<AdminReport> {
     const parsed = resolveReportRequestSchema.safeParse(body);
@@ -73,9 +87,13 @@ export class AdminService {
     if (report.status === "closed") {
       throw new ConflictException({ error: "report_closed" });
     }
-    const characterId = report.characterId;
+    const { characterId, commentId } = report;
     if (action !== "none" && characterId === null) {
       throw new ConflictException({ error: "character_gone" });
+    }
+    // The comment row goes with an account delete. An action must not then fall through to the character.
+    if (action !== "none" && report.target === "comment" && commentId === null) {
+      throw new ConflictException({ error: "comment_gone" });
     }
     const closed = { status: "closed" as const, action, resolvedById: admin.id, resolvedAt: new Date() };
 
@@ -87,7 +105,11 @@ export class AdminService {
       if (action === "none" || characterId === null) {
         return null;
       }
-      await tx.report.updateMany({ where: { characterId, status: "open" }, data: closed });
+      if (report.target === "comment" && commentId !== null) {
+        await this.resolveCommentInTransaction(tx, commentId, action, closed);
+        return null;
+      }
+      await tx.report.updateMany({ where: { characterId, target: "character", status: "open" }, data: closed });
       if (action === "banned") {
         const character = await tx.character.findUniqueOrThrow({ where: { id: characterId } });
         await this.banInTransaction(tx, character.creatorId);
@@ -107,7 +129,29 @@ export class AdminService {
     return toAdminReport(row);
   }
 
-  /** Bans a user. The ban ends their sessions at once and hides their published characters. */
+  /** Does the action of a comment report and closes the other open reports of the comment. */
+  private async resolveCommentInTransaction(
+    tx: Prisma.TransactionClient,
+    commentId: string,
+    action: Exclude<ReportAction, "none">,
+    closed: Prisma.ReportUpdateManyMutationInput,
+  ): Promise<void> {
+    await tx.report.updateMany({ where: { commentId, status: "open" }, data: closed });
+    const comment = await tx.characterComment.findUniqueOrThrow({ where: { id: commentId } });
+    if (action === "banned") {
+      await this.banInTransaction(tx, comment.authorId);
+      return;
+    }
+    const gone = await tx.characterComment.updateMany({
+      where: { id: commentId, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    if (gone.count > 0) {
+      await tx.character.update({ where: { id: comment.characterId }, data: { commentCount: { decrement: 1 } } });
+    }
+  }
+
+  /** Bans a user. The ban ends their sessions at once and hides their published characters and their comments. */
   async ban(userId: string): Promise<void> {
     if (!isUuid(userId)) {
       throw new NotFoundException({ error: "not_found" });
@@ -127,5 +171,6 @@ export class AdminService {
     await tx.user.updateMany({ where: { id: userId, bannedAt: null }, data: { bannedAt: new Date() } });
     await tx.session.deleteMany({ where: { userId } });
     await tx.character.updateMany({ where: { creatorId: userId, status: "published" }, data: { status: "hidden" } });
+    await deleteCommentsOf(tx, userId);
   }
 }
