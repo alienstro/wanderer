@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
 import { type MeResponse, suggestHandle, type UpdateMeRequest } from "@wanderer/shared";
+import { deleteCommentsOf } from "../comments/comments.service.js";
 import { Prisma, type User } from "../generated/prisma/client.js";
 import { FilesService } from "../files/files.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -32,12 +33,16 @@ export class MeService {
   ) {}
 
   /**
-   * Deletes the account. The cascades remove the characters, chats, proxies, sessions, and file rows.
-   * Reports by the user and about their characters stay without the link. The file bytes go last.
+   * Deletes the account. The cascades remove the characters, chats, comments, proxies, sessions, and file rows.
+   * The comments first leave the comment counts. Reports by the user and about their characters stay without
+   * the link. The file bytes go last.
    */
   async remove(user: User): Promise<void> {
     const paths = await this.files.pathsOf(user.id);
-    await this.prisma.user.delete({ where: { id: user.id } });
+    await this.prisma.$transaction(async (tx) => {
+      await deleteCommentsOf(tx, user.id);
+      await tx.user.delete({ where: { id: user.id } });
+    });
     await this.files.removeBytes(paths);
   }
 

@@ -53,9 +53,11 @@ function ReportRow({ report }: { report: AdminReport }) {
     resolve.mutate(action);
   }
 
-  const { character } = report;
+  const { character, comment } = report;
+  const aboutComment = report.target === "comment";
+  const label = aboutComment ? `Report about a comment on ${report.characterTitle}` : `Report about ${report.characterTitle}`;
   return (
-    <article aria-label={`Report about ${report.characterTitle}`} className="flex flex-col gap-2.5 panel p-5">
+    <article aria-label={label} className="flex flex-col gap-2.5 panel p-5">
       <div className="flex flex-wrap items-center gap-2">
         {report.reason === "minors" && <span className="tag bg-[rgba(194,65,75,0.9)] text-white">Minors</span>}
         <span className="font-semibold">{REPORT_REASON_LABELS[report.reason]}</span>
@@ -74,12 +76,34 @@ function ReportRow({ report }: { report: AdminReport }) {
         <span>{character ? `By @${character.creatorHandle ?? "unknown"} · ${character.status}` : "Character deleted"}</span>
         <span>Reported by {report.reporterHandle ? `@${report.reporterHandle}` : "Deleted account"}</span>
       </p>
+      {aboutComment && !comment && <p className="m-0 text-[13px] text-muted">Comment deleted with the account of its author</p>}
+      {comment && (
+        <div className="flex flex-col gap-1 rounded-[12px] border border-line px-3.5 py-2.5">
+          <span className="text-[13px] text-muted">
+            Comment by @{comment.authorHandle ?? "unknown"}
+            {comment.deleted && " · deleted"}
+          </span>
+          <p className="m-0 whitespace-pre-wrap [overflow-wrap:anywhere]">{comment.body}</p>
+        </div>
+      )}
       {report.note && <p className="m-0 whitespace-pre-wrap [overflow-wrap:anywhere]">{report.note}</p>}
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className="pill pill-soft" disabled={resolve.isPending} onClick={() => act("none")}>
           Close
         </button>
-        {character && (
+        {character && comment && (
+          <>
+            {!comment.deleted && (
+              <button type="button" className="pill pill-soft" disabled={resolve.isPending} onClick={() => act("hidden")}>
+                Delete comment
+              </button>
+            )}
+            <button type="button" className="pill pill-danger" disabled={resolve.isPending} onClick={() => act("banned")}>
+              Ban author
+            </button>
+          </>
+        )}
+        {character && !aboutComment && (
           <>
             <button type="button" className="pill pill-soft" disabled={resolve.isPending} onClick={() => act("hidden")}>
               Hide

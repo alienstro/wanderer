@@ -77,10 +77,7 @@ export class CharactersService {
     return toCharacterDetail(row, user, false);
   }
 
-  /**
-   * Gives the character when the viewer can see it. Another user gets 404, so a private character stays secret.
-   * An 18+ character gives 403 with only the error code, so that the web can show the 18+ warning.
-   */
+  /** Gives the character when the viewer can see it. assertCharacterAccess gives the 404 and the 403. */
   async findVisible(id: string, viewer: User | null): Promise<CharacterDetail> {
     const row = await this.findRow(id);
     assertCharacterAccess(row, viewer);

@@ -14,3 +14,14 @@ export class ReportsController {
     return this.reports.create(user, id, body);
   }
 }
+
+@Controller("comments/:id/report")
+@UseGuards(SessionGuard)
+export class CommentReportsController {
+  constructor(private readonly reports: ReportsService) {}
+
+  @Post()
+  create(@CurrentUser() user: User, @Param("id") id: string, @Body() body: unknown): Promise<{ id: string }> {
+    return this.reports.createForComment(user, id, body);
+  }
+}

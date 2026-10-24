@@ -13,6 +13,8 @@ const minors: AdminReport = {
   characterTitle: "Mira",
   character: { id: "c1", creatorId: "u2", creatorHandle: "tian", status: "published" },
   reporterHandle: "lee",
+  target: "character",
+  comment: null,
 };
 
 const gone: AdminReport = {
@@ -23,6 +25,20 @@ const gone: AdminReport = {
   characterTitle: "Old one",
   character: null,
   reporterHandle: null,
+  target: "character",
+  comment: null,
+};
+
+const rude: AdminReport = {
+  id: "r3",
+  reason: "hate",
+  note: "",
+  createdAt: "2026-10-21T12:00:00.000Z",
+  characterTitle: "Mira",
+  character: { id: "c1", creatorId: "u2", creatorHandle: "tian", status: "published" },
+  reporterHandle: "lee",
+  target: "comment",
+  comment: { id: "m1", body: "You are all fools.", authorId: "u3", authorHandle: "troll", deleted: false },
 };
 
 /** Answers the list with the reports, and each resolve with 200. */
@@ -117,5 +133,65 @@ describe("AdminReports", () => {
     stubApi([]);
     renderView();
     expect(await screen.findByText("No open reports.")).toBeTruthy();
+  });
+});
+
+describe("AdminReports for a comment", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("shows the comment, its author, and only the comment actions", async () => {
+    stubApi([rude]);
+    renderView();
+    const card = await screen.findByRole("article", { name: "Report about a comment on Mira" });
+    expect(within(card).getByText("You are all fools.")).toBeInTheDocument();
+    expect(within(card).getByText("Comment by @troll")).toBeInTheDocument();
+    expect(within(card).queryByRole("button", { name: "Hide" })).toBeNull();
+    expect(within(card).queryByRole("button", { name: "Ban creator" })).toBeNull();
+    expect(within(card).getByRole("button", { name: "Delete comment" })).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Ban author" })).toBeInTheDocument();
+  });
+
+  it("sends hidden for Delete comment, with no confirm", async () => {
+    const fetchMock = stubApi([rude]);
+    renderView();
+    const card = await screen.findByRole("article", { name: "Report about a comment on Mira" });
+    await userEvent.click(within(card).getByRole("button", { name: "Delete comment" }));
+    await vi.waitFor(() => {
+      const call = fetchMock.mock.calls.find(([url]) => url.endsWith("/admin/reports/r3/resolve"));
+      expect(JSON.parse(String(call?.[1]?.body))).toEqual({ action: "hidden" });
+    });
+  });
+
+  it("asks before Ban author, then sends banned", async () => {
+    const fetchMock = stubApi([rude]);
+    renderView();
+    const card = await screen.findByRole("article", { name: "Report about a comment on Mira" });
+    await userEvent.click(within(card).getByRole("button", { name: "Ban author" }));
+    await userEvent.click(within(card).getByRole("button", { name: "Yes, ban" }));
+    await vi.waitFor(() => {
+      const call = fetchMock.mock.calls.find(([url]) => url.endsWith("/admin/reports/r3/resolve"));
+      expect(JSON.parse(String(call?.[1]?.body))).toEqual({ action: "banned" });
+    });
+  });
+
+  it("says when the comment is already deleted", async () => {
+    stubApi([{ ...rude, comment: { ...rude.comment!, deleted: true } }]);
+    renderView();
+    const card = await screen.findByRole("article", { name: "Report about a comment on Mira" });
+    expect(within(card).getByText("Comment by @troll · deleted")).toBeInTheDocument();
+    expect(within(card).queryByRole("button", { name: "Delete comment" })).toBeNull();
+  });
+
+  it("shows only Close when the comment is gone with its author", async () => {
+    stubApi([{ ...rude, comment: null }]);
+    renderView();
+    const card = await screen.findByRole("article", { name: "Report about a comment on Mira" });
+    expect(within(card).getByText("Comment deleted with the account of its author")).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Close" })).toBeInTheDocument();
+    for (const name of ["Hide", "Delete", "Ban creator", "Delete comment", "Ban author"]) {
+      expect(within(card).queryByRole("button", { name })).toBeNull();
+    }
   });
 });

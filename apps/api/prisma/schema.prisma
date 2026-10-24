@@ -1,8 +1,10 @@
 generator client {
-  provider     = "prisma-client"
-  output       = "../src/generated/prisma"
-  moduleFormat = "esm"
-  runtime      = "nodejs"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  moduleFormat    = "esm"
+  runtime         = "nodejs"
+  /// Report needs a partial unique index, so that one user can report a character and its comments.
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -35,12 +37,13 @@ model User {
   termsAcceptances TermsAcceptance[]
   characters       Character[]
   files            File[]
-  proxies          Proxy[]           @relation("ProxyOwner")
-  activeProxy      Proxy?            @relation("ActiveProxy", fields: [activeProxyId], references: [id], onDelete: SetNull)
+  proxies          Proxy[]            @relation("ProxyOwner")
+  activeProxy      Proxy?             @relation("ActiveProxy", fields: [activeProxyId], references: [id], onDelete: SetNull)
   chats            Chat[]
-  reports          Report[]          @relation("Reporter")
-  resolvedReports  Report[]          @relation("ResolvedBy")
+  reports          Report[]           @relation("Reporter")
+  resolvedReports  Report[]           @relation("ResolvedBy")
   characterLikes   CharacterLike[]
+  comments         CharacterComment[]
 
   @@map("users")
 }
@@ -96,6 +99,8 @@ model Character {
   chatCount         Int             @default(0) @map("chat_count")
   /// A trigger on character_likes keeps this count. The app never writes it.
   likeCount         Int             @default(0) @map("like_count")
+  /// The number of comments that are not deleted. A post adds 1 and a delete takes 1 in the same transaction.
+  commentCount      Int             @default(0) @map("comment_count")
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
 
@@ -106,6 +111,7 @@ model Character {
   chats    Chat[]
   reports  Report[]
   likes    CharacterLike[]
+  comments CharacterComment[]
 
   @@unique([creatorId, title])
   @@index([status, isPublic, isAdult, chatCount, createdAt])
@@ -258,6 +264,12 @@ enum ReportStatus {
   closed
 }
 
+/// What a report is about. A comment report stays a comment report after a delete of its comment.
+enum ReportTarget {
+  character
+  comment
+}
+
 enum ReportAction {
   none
   hidden
@@ -265,13 +277,34 @@ enum ReportAction {
   banned
 }
 
-/// A report about a character. It stays for the admin after a delete of the character or of the reporter.
+/// A plain-text comment on a character page. A delete sets deletedAt, so a report keeps the text for the admin.
+model CharacterComment {
+  id          String    @id @default(uuid()) @db.Uuid
+  characterId String    @map("character_id") @db.Uuid
+  authorId    String    @map("author_id") @db.Uuid
+  body        String
+  createdAt   DateTime  @default(now()) @map("created_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reports   Report[]
+
+  @@index([characterId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([authorId])
+  @@map("character_comments")
+}
+
+/// A report about a character, or about a comment when commentId is set. It stays for the admin after a delete of the character or of the reporter.
 model Report {
   id             String        @id @default(uuid()) @db.Uuid
   characterId    String?       @map("character_id") @db.Uuid
   /// The title when the user sent the report, so the admin history keeps it after a delete.
   characterTitle String        @map("character_title")
   reporterId     String?       @map("reporter_id") @db.Uuid
+  target         ReportTarget  @default(character)
+  /// Set for a report about a comment. characterId then names the character of the comment.
+  commentId      String?       @map("comment_id") @db.Uuid
   reason         ReportReason
   note           String        @default("")
   status         ReportStatus  @default(open)
@@ -280,11 +313,13 @@ model Report {
   resolvedAt     DateTime?     @map("resolved_at")
   createdAt      DateTime      @default(now()) @map("created_at")
 
-  character  Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
-  reporter   User?      @relation("Reporter", fields: [reporterId], references: [id], onDelete: SetNull)
-  resolvedBy User?      @relation("ResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  character  Character?        @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  comment    CharacterComment? @relation(fields: [commentId], references: [id], onDelete: SetNull)
+  reporter   User?             @relation("Reporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  resolvedBy User?             @relation("ResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
 
-  @@unique([characterId, reporterId])
+  @@unique([characterId, reporterId], map: "reports_character_id_reporter_id_key", where: raw("target = 'character'"))
+  @@unique([commentId, reporterId])
   @@index([status, createdAt])
   @@index([reporterId, createdAt])
   @@map("reports")
