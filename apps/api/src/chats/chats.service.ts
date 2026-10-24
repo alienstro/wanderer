@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import {
   type ChatDetail,
   type ChatListResponse,
@@ -9,12 +9,14 @@ import {
   memoryInputSchema,
   messageInputSchema,
   type MessageView,
+  openingInputSchema,
 } from "@wanderer/shared";
 import { characterAccess } from "../characters/visibility.js";
 import { isUuid } from "../common/uuid.js";
 import { fileUrl } from "../files/files.service.js";
 import type { Chat, Message, User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { ChatLocks } from "./chat-locks.js";
 import type { PromptCharacter } from "./prompt.js";
 
 const NOT_FOUND = { error: "not_found" };
@@ -93,7 +95,10 @@ function toChatSummary(chat: ChatWithCharacter, last: Message | undefined, messa
 /** The chats of a user. Each query filters by the user ID of the session, so another user gets 404. */
 @Injectable()
 export class ChatsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly locks: ChatLocks,
+  ) {}
 
   /** Starts a chat from one opening of the character. The opening is message 0, with role assistant. */
   async create(user: User, body: unknown): Promise<ChatDetail> {
@@ -154,6 +159,46 @@ export class ChatsService {
 
   async get(user: User, id: string): Promise<ChatDetail> {
     return toChatDetail(await this.findOwn(user, id), user);
+  }
+
+  /**
+   * Puts another opening of the character in message 0. It works only while the chat has no other message.
+   * The chat lock stops a reply that starts at the same time.
+   */
+  async setOpening(user: User, id: string, body: unknown): Promise<ChatDetail> {
+    const parsed = openingInputSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: "invalid_opening" });
+    }
+    const { openingIndex } = parsed.data;
+    const chat = isUuid(id)
+      ? await this.prisma.chat.findFirst({
+          where: { id, userId: user.id },
+          select: { character: { select: { ...characterSelect, openings: { where: { position: openingIndex } } } } },
+        })
+      : null;
+    // A character that the user cannot see now gives 404, as a reply does, so a hidden opening never shows.
+    if (!chat || characterAccess(chat.character, user) !== "ok") {
+      throw new NotFoundException(NOT_FOUND);
+    }
+    const opening = chat.character.openings[0];
+    if (!opening) {
+      throw new BadRequestException({ error: "invalid_opening" });
+    }
+    await this.locks.run(user.id, id, () =>
+      this.prisma.$transaction(async (tx) => {
+        // The check and the write are one statement, so a message that another request saves cannot come between them.
+        const { count } = await tx.message.updateMany({
+          where: { chatId: id, position: 0, chat: { messages: { none: { position: { gt: 0 } } } } },
+          data: { content: opening.text },
+        });
+        if (count === 0) {
+          throw new ConflictException({ error: "opening_locked" });
+        }
+        await tx.chat.update({ where: { id }, data: { openingIndex } });
+      }),
+    );
+    return this.get(user, id);
   }
 
   async remove(user: User, id: string): Promise<void> {
