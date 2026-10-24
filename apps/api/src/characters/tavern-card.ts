@@ -78,22 +78,20 @@ function readItxtText(data: Buffer, keywordEnd: number): string | null {
   }
 }
 
-function decodeCard(text: string | undefined): Record<string, unknown> | null {
+function decodeCard(text: string | undefined): unknown {
   const trimmed = text?.trim();
   if (!trimmed || !BASE64_PATTERN.test(trimmed)) {
     return null;
   }
   try {
-    const json: unknown = JSON.parse(Buffer.from(trimmed, "base64").toString("utf8"));
-    if (typeof json !== "object" || json === null) {
-      return null;
-    }
-    // A V2 or V3 card keeps the fields in "data". A V1 card keeps them at the top.
-    const data = (json as { data?: unknown }).data ?? json;
-    return typeof data === "object" && data !== null ? (data as Record<string, unknown>) : null;
+    return JSON.parse(Buffer.from(trimmed, "base64").toString("utf8"));
   } catch {
     return null;
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function text(value: unknown, max: number): string {
@@ -112,12 +110,21 @@ function toTagSlugs(value: unknown): TagSlug[] {
 
 /**
  * Reads a Tavern character card (V1, V2, or V3) from a PNG. A "ccv3" chunk wins over a "chara" chunk.
- * It gives the form fields that the card fills, cut to the field limits, or null when the PNG has no valid card.
+ * It gives the form fields that the card fills, or null when the PNG has no valid card.
  */
 export function readTavernCard(png: Buffer): Partial<CharacterInput> | null {
   const texts = readCardChunks(png);
-  const card = decodeCard(texts.get("ccv3")) ?? decodeCard(texts.get("chara"));
-  if (!card) {
+  return mapTavernCard(decodeCard(texts.get("ccv3"))) ?? mapTavernCard(decodeCard(texts.get("chara")));
+}
+
+/**
+ * Maps the JSON of a Tavern character card (V1, V2, or V3) to the form fields, cut to the field limits.
+ * The PNG import and the JSON import both use it. It gives null when the card has no name or no other field.
+ */
+export function mapTavernCard(json: unknown): Partial<CharacterInput> | null {
+  // A V2 or V3 card keeps the fields in "data". A V1 card keeps them at the top.
+  const card = isRecord(json) ? (json.data ?? json) : null;
+  if (!isRecord(card)) {
     return null;
   }
 
@@ -141,7 +148,11 @@ export function readTavernCard(png: Buffer): Partial<CharacterInput> | null {
     tags: toTagSlugs(card.tags),
   };
   // Leave out the empty fields, so that the form keeps its defaults.
-  return Object.fromEntries(
+  const filled = Object.fromEntries(
     Object.entries(draft).filter(([, value]) => (Array.isArray(value) ? value.length > 0 : value !== "")),
   ) as Partial<CharacterInput>;
+  if (!filled.title || Object.keys(filled).length < 2) {
+    return null;
+  }
+  return filled;
 }

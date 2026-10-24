@@ -1,6 +1,13 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Res, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import type { ChatDetail, ChatListResponse, ChoicesResponse, MessageView } from "@wanderer/shared";
+import type {
+  ChatDetail,
+  ChatListResponse,
+  ChatMemory,
+  ChoicesResponse,
+  MemoryDraftResponse,
+  MessageView,
+} from "@wanderer/shared";
 import type { Response } from "express";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SessionGuard } from "../auth/session.guard.js";
@@ -8,6 +15,7 @@ import type { User } from "../generated/prisma/client.js";
 import { perUserLimit, UserThrottlerGuard } from "../security/user-throttler.guard.js";
 import { ChatsService } from "./chats.service.js";
 import { ChoicesService } from "./choices.service.js";
+import { MemoryService } from "./memory.service.js";
 import { ReplyService } from "./reply.service.js";
 
 /** The limit of proxy calls for each user and route. */
@@ -20,6 +28,7 @@ export class ChatsController {
     private readonly chats: ChatsService,
     private readonly replies: ReplyService,
     private readonly choices: ChoicesService,
+    private readonly memory: MemoryService,
   ) {}
 
   @Get()
@@ -41,6 +50,24 @@ export class ChatsController {
   @HttpCode(204)
   remove(@CurrentUser() user: User, @Param("id") id: string): Promise<void> {
     return this.chats.remove(user, id);
+  }
+
+  @Patch(":id/memory")
+  updateMemory(@CurrentUser() user: User, @Param("id") id: string, @Body() body: unknown): Promise<ChatMemory> {
+    return this.chats.updateMemory(user, id, body);
+  }
+
+  /** A memory draft from the old messages that left the history window. It saves nothing. */
+  @Post(":id/memory/summarize")
+  @UseGuards(UserThrottlerGuard)
+  @Throttle(perUserLimit(CALLS_EACH_MINUTE))
+  @HttpCode(200)
+  summarizeMemory(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() body: unknown,
+  ): Promise<MemoryDraftResponse> {
+    return this.memory.draft(user, id, body);
   }
 
   /** Saves the user message and streams the AI reply as Server-Sent Events. */

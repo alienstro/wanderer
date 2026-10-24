@@ -3,11 +3,15 @@ import type OpenAI from "openai";
 
 type PromptMessage = OpenAI.Chat.ChatCompletionMessageParam;
 
+/** The history drops old messages one page at a time, so the start of the prompt stays the same for many replies. */
+const PAGES_IN_BUDGET = 4;
 const CHOICES_COUNT = 4;
 const CHOICE_MAX = 300;
 
 const ROLEPLAY_TEXT =
   "You are {{char}} in a roleplay with {{user}}. Stay in character. Write only the reply of {{char}}. Do not write the words or actions of {{user}}.";
+const SUMMARY_TEXT =
+  "Update the memory of a roleplay between {{char}} and {{user}}. Keep the old facts that are still true. Add the important new facts from the messages: names, promises, debts, places, relations and open goals. Remove the facts that changed. Write short lines. Use no more than 2,000 characters. Answer only with the memory text.";
 const CHOICES_TEXT =
   "Write four short replies that {{user}} could say next, in the voice of {{user}}. Each reply has 25 words or less.";
 /** The format rule stays the last sentence, so that the user instructions cannot change what parseChoices reads. */
@@ -26,6 +30,8 @@ export interface PromptInput {
   customPrompt: string;
   /** The context budget of the proxy in estimated tokens. The system message always goes in. */
   contextTokens: number;
+  /** The memory text of the chat. The user writes it, or saves a summary draft. */
+  memory: string;
   userName: string;
   /** The messages of the chat, oldest first. The opening is the first message. */
   history: Array<{ role: "user" | "assistant"; content: string }>;
@@ -44,6 +50,7 @@ function systemText(input: PromptInput): string {
     ["Personality", character.personality],
     ["Scenario", character.scenario],
     ["Example dialogs", character.exampleDialogs],
+    ["Memory", input.memory],
   ];
   const sections = parts
     .filter(([, body]) => body.trim().length > 0)
@@ -51,20 +58,63 @@ function systemText(input: PromptInput): string {
   return fill([ROLEPLAY_TEXT, ...sections].join("\n\n"), input);
 }
 
-/** The newest messages that fit in the budget, oldest first. The newest message always goes in. */
-function fitHistory(input: PromptInput, used: number): PromptMessage[] {
-  const kept: PromptMessage[] = [];
+/** The start index of each page. A page starts at the oldest message, so a new message changes only the last page. */
+function pageStarts(tokens: number[], pageTokens: number): number[] {
+  const starts: number[] = [];
+  let size = 0;
+  tokens.forEach((count, index) => {
+    if (index === 0 || size + count > pageTokens) {
+      starts.push(index);
+      size = 0;
+    }
+    size += count;
+  });
+  return starts;
+}
+
+/** The index of the first history message that fits in the budget after the `used` tokens. */
+function firstKept(tokens: number[], used: number, budget: number): number {
+  const starts = pageStarts(tokens, budget / PAGES_IN_BUDGET);
   let total = used;
-  for (let index = input.history.length - 1; index >= 0; index--) {
-    const message = input.history[index]!;
-    const content = fill(message.content, input);
-    total += estimateTokens(content);
-    if (kept.length > 0 && total > input.contextTokens) {
+  let first = tokens.length;
+  for (let page = starts.length - 1; page >= 0; page--) {
+    const pageTokens = tokens.slice(starts[page], first).reduce((sum, count) => sum + count, 0);
+    if (total + pageTokens > budget) {
       break;
     }
-    kept.unshift({ role: message.role, content });
+    total += pageTokens;
+    first = starts[page]!;
   }
-  return kept;
+  if (first < tokens.length) {
+    return first;
+  }
+  // The newest page alone does not fit. Keep the newest messages that fit. The newest message always goes in.
+  first = tokens.length - 1;
+  total = used + (tokens[first] ?? 0);
+  while (first > 0 && total + tokens[first - 1]! <= budget) {
+    first--;
+    total += tokens[first]!;
+  }
+  return Math.max(first, 0);
+}
+
+function filledHistory(input: PromptInput): PromptMessage[] {
+  return input.history.map((message) => ({ role: message.role, content: fill(message.content, input) }));
+}
+
+function tokensOf(messages: PromptMessage[]): number[] {
+  return messages.map((message) => estimateTokens(typeof message.content === "string" ? message.content : ""));
+}
+
+/** The newest pages that fit in the budget, oldest first. The newest message always goes in. */
+function fitHistory(input: PromptInput, used: number): PromptMessage[] {
+  const history = filledHistory(input);
+  return history.slice(firstKept(tokensOf(history), used, input.contextTokens));
+}
+
+/** The history index of the first message that a reply prompt keeps. `extraTokens` counts the parts after the system part. */
+export function windowStart(input: PromptInput, extraTokens: number): number {
+  return firstKept(tokensOf(filledHistory(input)), estimateTokens(systemText(input)) + extraTokens, input.contextTokens);
 }
 
 /** The messages for a reply: the system message, then the newest history that fits in the budget. */
@@ -87,6 +137,22 @@ export function buildChoicesPrompt(input: PromptInput, userInstructions = ""): P
     { role: "system", content: system },
     ...fitHistory(input, estimateTokens(system) + estimateTokens(instruction)),
     { role: "user", content: instruction },
+  ];
+}
+
+/** One summary reads half of the context budget of old messages or less, so one click costs less than one reply. */
+export function summaryInputTokens(input: PromptInput): number {
+  return input.contextTokens / 2;
+}
+
+/** The messages for a memory draft: the instruction, then the current memory and the old messages as one user message. */
+export function buildSummaryPrompt(input: PromptInput): PromptMessage[] {
+  const charName = input.character.chatName || input.character.title;
+  const lines = input.history.map((message) => `${message.role === "user" ? "{{user}}" : charName}: ${message.content}`);
+  const body = `## Current memory\n${input.memory.trim() || "(empty)"}\n\n## Messages\n${lines.join("\n\n")}`;
+  return [
+    { role: "system", content: fill(SUMMARY_TEXT, input) },
+    { role: "user", content: fill(body, input) },
   ];
 }
 

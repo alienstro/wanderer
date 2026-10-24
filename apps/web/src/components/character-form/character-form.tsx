@@ -96,6 +96,7 @@ function PreviewCard({ state, creatorHandle }: { state: FormState; creatorHandle
           isAdult: state.isAdult,
           tags: TAGS.filter((tag) => state.tags.includes(tag.slug)),
           chatCount: 0,
+          likeCount: 0,
           creatorHandle,
         }}
       />
@@ -156,8 +157,8 @@ export function CharacterForm({ initial, onSaved, creatorHandle = "you" }: Chara
       <form className="flex min-w-0 flex-[1_1_520px] flex-col gap-[22px]" onSubmit={(event) => event.preventDefault()} noValidate>
         <div data-field="avatar" className="flex flex-col gap-3">
           <AvatarField value={state.avatarFileId} onChange={(avatarFileId) => set({ avatarFileId })} />
-          {/* A card fills only the fields that it has. The other fields keep what the user typed. */}
-          <TavernImport onImported={(draft, avatarFileId) => set({ ...draft, avatarFileId })} />
+          {/* A card fills only the fields that it has. The other fields keep what the user typed. A JSON card keeps the avatar. */}
+          <TavernImport onImported={(draft, avatarFileId) => set(avatarFileId ? { ...draft, avatarFileId } : draft)} />
         </div>
 
         <Field name="title" label="Title" required error={errors.title} hint={`${state.title.length}/${TITLE_MAX}`}>

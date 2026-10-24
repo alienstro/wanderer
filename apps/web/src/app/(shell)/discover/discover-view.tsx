@@ -1,7 +1,13 @@
 "use client";
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { type CharacterCard as CharacterCardData, type CharacterListResponse, TAGS, type TagSlug } from "@wanderer/shared";
+import {
+  type CharacterCard as CharacterCardData,
+  type CharacterListResponse,
+  type CharacterSort,
+  TAGS,
+  type TagSlug,
+} from "@wanderer/shared";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -10,12 +16,10 @@ import { ContinueBanner } from "@/components/continue-banner";
 import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/query-provider";
 
-export type DiscoverSort = "most_chats" | "newest";
-
 interface DiscoverQuery {
   q: string;
   tag: TagSlug | null;
-  sort: DiscoverSort;
+  sort: CharacterSort;
 }
 
 const SEARCH_PAUSE_MS = 300;
@@ -159,6 +163,9 @@ export function DiscoverView({ initial, q, tag, sort }: DiscoverQuery & { initia
             <div role="group" aria-label="Sort by" className="flex gap-1 rounded-full bg-surface p-1">
               <button type="button" className="seg" aria-pressed={sort === "most_chats"} onClick={() => go({ q, tag, sort: "most_chats" })}>
                 Most chats
+              </button>
+              <button type="button" className="seg" aria-pressed={sort === "most_liked"} onClick={() => go({ q, tag, sort: "most_liked" })}>
+                Most liked
               </button>
               <button type="button" className="seg" aria-pressed={sort === "newest"} onClick={() => go({ q, tag, sort: "newest" })}>
                 Newest

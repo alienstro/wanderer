@@ -13,6 +13,7 @@ interface SeedOptions {
   creatorId?: string;
   chatName?: string;
   chatCount?: number;
+  likeCount?: number;
   minute?: number;
   tags?: string[];
   isAdult?: boolean;
@@ -35,6 +36,7 @@ describe("Discover list, search, and tags", () => {
         bio: "Bio",
         personality: "Calm",
         chatCount: options.chatCount ?? 0,
+        likeCount: options.likeCount ?? 0,
         createdAt: new Date(BASE_TIME + (options.minute ?? 0) * 60_000),
         isAdult: options.isAdult ?? false,
         isPublic: options.isPublic ?? true,
@@ -92,6 +94,32 @@ describe("Discover list, search, and tags", () => {
 
     expect(titles((await list({ sort: "most_chats" })).items)).toEqual(["Old popular", "Middle", "Newest quiet", "New quiet"]);
     expect(titles((await list({ sort: "newest" })).items)).toEqual(["Newest quiet", "New quiet", "Middle", "Old popular"]);
+  });
+
+  it("sort most_liked orders by like count, then by creation time", async () => {
+    await seed("Liked", { likeCount: 5, chatCount: 0, minute: 1 });
+    await seed("Most liked", { likeCount: 9, chatCount: 1, minute: 2 });
+    await seed("Old unliked", { likeCount: 0, chatCount: 50, minute: 3 });
+    await seed("New unliked", { likeCount: 0, chatCount: 50, minute: 4 });
+
+    expect(titles((await list({ sort: "most_liked" })).items)).toEqual(["Most liked", "Liked", "New unliked", "Old unliked"]);
+  });
+
+  it("sort most_liked pages have no repeat and no gap when like counts are equal", async () => {
+    for (let i = 0; i < 30; i++) {
+      await seed(`Char ${i}`, { chatCount: i % 3, likeCount: (i + 1) % 3, minute: i });
+    }
+
+    const first = await list({ sort: "most_liked" });
+    expect(first.items).toHaveLength(24);
+    const second = await list({ sort: "most_liked", cursor: first.nextCursor ?? "" });
+    expect(second.items).toHaveLength(6);
+    expect(second.nextCursor).toBeNull();
+
+    const items = [...first.items, ...second.items];
+    expect(new Set(titles(items)).size).toBe(30);
+    const counts = items.map((item) => item.likeCount);
+    expect(counts).toEqual([...counts].sort((a, b) => b - a));
   });
 
   it("tag=noir gives only noir characters", async () => {
