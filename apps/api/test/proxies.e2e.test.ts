@@ -88,6 +88,25 @@ describe("proxies", () => {
     });
   });
 
+  it("POST /proxies with no contextTokens saves 16,000, and PATCH changes it to 2,000", async () => {
+    const created = await post(one, "/proxies", proxyBody).expect(201);
+    expect(created.body.contextTokens).toBe(16_000);
+    const res = await patch(one, `/proxies/${created.body.id}`, { contextTokens: 2_000 }).expect(200);
+    expect(res.body.contextTokens).toBe(2_000);
+  });
+
+  it("a context size of 1,999 or 200,001 gives 400 invalid_proxy and does not save", async () => {
+    for (const contextTokens of [1_999, 200_001]) {
+      const bad = await post(one, "/proxies", { ...proxyBody, contextTokens }).expect(400);
+      expect(bad.body).toEqual({ error: "invalid_proxy", fields: ["contextTokens"] });
+    }
+    expect(await prisma.proxy.count()).toBe(0);
+    const created = await post(one, "/proxies", proxyBody).expect(201);
+    await patch(one, `/proxies/${created.body.id}`, { contextTokens: 200_001 }).expect(400);
+    const row = await prisma.proxy.findUniqueOrThrow({ where: { id: created.body.id } });
+    expect(row.contextTokens).toBe(16_000);
+  });
+
   it("POST /proxies with https://10.0.0.5 gives 400 blocked_url", async () => {
     const res = await post(one, "/proxies", { ...proxyBody, baseUrl: "https://10.0.0.5/v1" }).expect(400);
     expect(res.body.error).toBe("blocked_url");

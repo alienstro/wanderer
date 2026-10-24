@@ -11,6 +11,7 @@ function input(overrides: Partial<PromptInput> = {}): PromptInput {
       exampleDialogs: "{{user}}: Hi\n{{char}}: Hello!",
     },
     customPrompt: "Write short replies.",
+    contextTokens: 16_000,
     userName: "Robin",
     history: [
       { role: "assistant", content: "*waves* Hi, {{user}}!" },
@@ -19,6 +20,12 @@ function input(overrides: Partial<PromptInput> = {}): PromptInput {
     ...overrides,
   };
 }
+
+/** Six messages of about 1,000 tokens each, oldest first. Each message starts with its index. */
+const longHistory = Array.from({ length: 6 }, (_, n) => ({
+  role: n % 2 === 0 ? ("assistant" as const) : ("user" as const),
+  content: `${n} ${"x".repeat(4_000)}`,
+}));
 
 function text(content: unknown): string {
   return typeof content === "string" ? content : "";
@@ -67,6 +74,13 @@ describe("buildReplyPrompt", () => {
     expect(text(messages[1]?.content).startsWith("3 ")).toBe(true);
   });
 
+  it("a context size of 2,000 tokens keeps only the newest message of the six, and 16,000 keeps all six", () => {
+    const small = buildReplyPrompt(input({ history: longHistory, contextTokens: 2_000 }));
+    expect(small.length).toBe(1 + 1);
+    expect(text(small[1]?.content).startsWith("5 ")).toBe(true);
+    expect(buildReplyPrompt(input({ history: longHistory })).length).toBe(1 + 6);
+  });
+
   it("a newest message of 20,000 tokens still goes in", () => {
     const messages = buildReplyPrompt(input({ history: [{ role: "user", content: "y".repeat(80_000) }] }));
     expect(messages.length).toBe(2);
@@ -81,6 +95,14 @@ describe("buildChoicesPrompt", () => {
       content:
         "Write four short replies that Robin could say next, in the voice of Robin. Each reply has 25 words or less. Answer only with a JSON array of four strings.",
     });
+  });
+});
+
+describe("buildChoicesPrompt budget", () => {
+  it("uses the context size of the input, as the reply does", () => {
+    const messages = buildChoicesPrompt(input({ history: longHistory, contextTokens: 2_000 }));
+    expect(messages.length).toBe(1 + 1 + 1);
+    expect(text(messages[1]?.content).startsWith("5 ")).toBe(true);
   });
 });
 

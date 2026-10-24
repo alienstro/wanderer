@@ -168,6 +168,7 @@ model Proxy {
   appendPath    Boolean  @default(true) @map("append_path")
   model         String
   customPrompt  String   @default("") @map("custom_prompt")
+  contextTokens Int      @default(16000) @map("context_tokens")
   keyCiphertext Bytes    @map("key_ciphertext")
   keyIv         Bytes    @map("key_iv")
   keyTag        Bytes    @map("key_tag")

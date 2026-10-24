@@ -50,6 +50,25 @@ describe("reply choices", () => {
     expect(sent.messages?.at(-1)?.content).toContain("Write four short replies that User 1 could say next");
   });
 
+  it("the prompt keeps only the newest history that fits in the context size of the proxy", async () => {
+    await prisma.proxy.updateMany({ where: { userId: user.user.id }, data: { contextTokens: 2_000 } });
+    // Three messages of about 1,000 tokens each, after the opening.
+    await prisma.message.createMany({
+      data: [1, 2, 3].map((position) => ({
+        chatId,
+        role: position % 2 === 0 ? ("assistant" as const) : ("user" as const),
+        content: `${position} ${"x".repeat(4_000)}`,
+        position,
+      })),
+    });
+    fake.next({ pieces: [FOUR] });
+    await choices().expect(200);
+    const sent = fake.requests.at(-1)!.body.messages!;
+    // The system message, the newest message, and the choices instruction.
+    expect(sent.length).toBe(3);
+    expect(sent[1]?.content.startsWith("3 ")).toBe(true);
+  });
+
   it("prose, then a fenced array, gives the choices after one more try", async () => {
     fake.next({ pieces: ["Sure! Here are some ideas."] }, { pieces: ["```json\n", FOUR, "\n```"] });
     const res = await choices().expect(200);
