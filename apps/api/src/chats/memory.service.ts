@@ -72,11 +72,11 @@ export class MemoryService {
     } catch (error) {
       this.logger.warn({ msg: "Proxy summary failed", ...aiErrorLogFields(error) });
       const code = toAiError(error);
-      await this.events.record("summary_failed", { userId: user.id, characterId: character.id, reason: code });
+      await this.events.record("summary_failed", { userId: user.id, characterId: chat.characterId, reason: code });
       throw new HttpException({ error: code }, 502);
     }
     if (!text) {
-      await this.events.record("summary_failed", { userId: user.id, characterId: character.id, reason: "empty_summary" });
+      await this.events.record("summary_failed", { userId: user.id, characterId: chat.characterId, reason: "empty_summary" });
       throw new HttpException({ error: "summary_failed" }, 502);
     }
     return { memory: text.slice(0, MEMORY_MAX), throughPosition: last.position };

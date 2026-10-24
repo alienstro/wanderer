@@ -51,7 +51,7 @@ export class ChoicesService {
       } catch (error) {
         this.logger.warn({ msg: "Proxy choices failed", ...aiErrorLogFields(error) });
         const code = toAiError(error);
-        await this.events.record("choices_failed", { userId: user.id, characterId: character.id, reason: code });
+        await this.events.record("choices_failed", { userId: user.id, characterId: chat.characterId, reason: code });
         throw new HttpException({ error: code }, 502);
       }
       const choices = parseChoices(text);
@@ -59,7 +59,7 @@ export class ChoicesService {
         return { choices };
       }
     }
-    await this.events.record("choices_failed", { userId: user.id, characterId: character.id, reason: "bad_choices" });
+    await this.events.record("choices_failed", { userId: user.id, characterId: chat.characterId, reason: "bad_choices" });
     throw new HttpException({ error: "choices_failed" }, 502);
   }
 }

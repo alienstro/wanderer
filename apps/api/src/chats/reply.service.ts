@@ -102,7 +102,7 @@ export class ReplyService {
         : null;
       // A Stop of the user is not a failure, so it gives no error and no event.
       if (result.error) {
-        await this.events.record("ai_reply_failed", { userId: user.id, characterId: character.id, reason: result.error });
+        await this.events.record("ai_reply_failed", { userId: user.id, characterId: chat.characterId, reason: result.error });
       }
       if (result.clientGone) {
         return;
@@ -114,7 +114,7 @@ export class ReplyService {
       }
     } catch (error) {
       this.logger.error({ msg: "Reply stream failed", name: error instanceof Error ? error.name : "unknown" });
-      await this.events.record("ai_reply_failed", { userId: user.id, characterId: character.id, reason: "internal_error" });
+      await this.events.record("ai_reply_failed", { userId: user.id, characterId: chat.characterId, reason: "internal_error" });
       if (!sse) {
         throw error;
       }
