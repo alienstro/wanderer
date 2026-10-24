@@ -57,13 +57,14 @@ export function MessageItem({ message, speaker, editable, canRegenerate, onSave,
   return (
     <article className={`flex gap-3 ${mine ? "flex-row-reverse" : ""}`}>
       <Avatar name={speaker.name} src={speaker.src} size={36} />
-      <div className={`flex min-w-0 max-w-[min(62ch,85%)] flex-col gap-1.5 ${mine ? "items-end" : ""}`}>
+      {/* An AI reply fills the chat column. The user's box fits its text, up to 82% of the column, and the edit box takes that 82%. */}
+      <div className={`flex min-w-0 flex-col gap-1.5 ${mine ? `max-w-[82%] items-end ${editing ? "w-full" : ""}` : "flex-1"}`}>
         <span className="text-[13px] font-semibold text-muted">{speaker.name}</span>
         {editing ? (
           <div className="flex w-full flex-col gap-2">
             <textarea
               aria-label="Edit message"
-              className="field min-w-[min(48ch,70vw)]"
+              className="field w-full"
               rows={3}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
@@ -88,7 +89,7 @@ export function MessageItem({ message, speaker, editable, canRegenerate, onSave,
           <div
             className={`px-4 text-[15px] leading-[1.65] [overflow-wrap:anywhere] [&_em]:text-muted [&_p+p]:mt-3 ${
               mine ? "rounded-[20px_6px_20px_20px] bg-[#26262b] py-2.5" : "rounded-[6px_20px_20px_20px] border border-line bg-surface py-3 text-[#ececee]"
-            }`}
+            } ${typing ? "self-start" : ""}`}
           >
             {typing ? (
               // The message list is a live region, so the text below is announced. A second live region here would repeat it.
