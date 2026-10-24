@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import type { AddressInfo } from "node:net";
 import { fetch as undiciFetch } from "undici";
 import { type AiClientFactory, type AiTarget, createOpenAiClient } from "../../src/ai/ai-client.js";
+import { fetchModelIds, type ModelListClient } from "../../src/ai/model-list.js";
 
 /** What the fake server does for one request. */
 export type FakeBehavior =
@@ -118,5 +119,21 @@ export class UnguardedAiClientFactory implements AiClientFactory {
     this.targets.push(target);
     const endpoint = this.sendTo ? `${this.sendTo}/chat/completions` : target.endpoint;
     return createOpenAiClient({ ...target, endpoint }, { fetch: undiciFetch });
+  }
+}
+
+/**
+ * The model list client with no SSRF guard, so e2e tests can reach the fake server. Use it only in tests.
+ * Each call goes to `<sendTo>/models`, so a saved https proxy reaches the http fake server.
+ */
+export class UnguardedModelListClient implements ModelListClient {
+  /** The calls, with the URL and the key that the API gave. */
+  readonly calls: Array<{ url: string; apiKey: string }> = [];
+
+  constructor(private readonly sendTo: string) {}
+
+  list(url: string, apiKey: string): Promise<string[]> {
+    this.calls.push({ url, apiKey });
+    return fetchModelIds(`${this.sendTo}/models`, apiKey, { fetch: undiciFetch });
   }
 }
