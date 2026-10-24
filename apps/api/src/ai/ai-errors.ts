@@ -20,6 +20,19 @@ function providerCode(error: APIError): string | undefined {
   return typeof code === "string" ? code : undefined;
 }
 
+/**
+ * A usage limit of a provider account, such as "FreeUsageLimitError" of OpenCode. A wait of a minute does not reset it.
+ * Some proxies put the provider error into the message only, so the message is the second check.
+ */
+const USAGE_LIMIT = /usage[\s_-]?limit/i;
+
+function isUsageLimit(code: string | undefined, message: unknown): boolean {
+  return USAGE_LIMIT.test(code ?? "") || (typeof message === "string" && USAGE_LIMIT.test(message));
+}
+
+/** The longest provider code that goes to the log. The provider sets the value, so the log limits its length. */
+const PROVIDER_CODE_LOG_MAX = 100;
+
 /** Changes an error of a proxy call into a clear error code. The code never holds the key. */
 export function toAiError(error: unknown): AiErrorCode {
   if (isBlocked(error)) {
@@ -33,13 +46,17 @@ export function toAiError(error: unknown): AiErrorCode {
     return "provider_unreachable";
   }
   if (error instanceof APIError) {
-    return statusToAiError(error.status, providerCode(error));
+    const message = (error.error as { message?: unknown } | undefined)?.message;
+    return statusToAiError(error.status, { code: providerCode(error), message });
   }
   return "provider_error";
 }
 
-/** Changes the HTTP status of a failed proxy answer into an error code. */
-export function statusToAiError(status: number | undefined, code?: string): AiErrorCode {
+/** Changes the HTTP status of a failed proxy answer into an error code. The provider code and message are optional. */
+export function statusToAiError(
+  status: number | undefined,
+  provider: { code?: string; message?: unknown } = {},
+): AiErrorCode {
   switch (status) {
     case 401:
     case 403:
@@ -49,13 +66,25 @@ export function statusToAiError(status: number | undefined, code?: string): AiEr
     case 402:
       return "no_credit";
     case 429:
-      return code === "insufficient_quota" ? "no_credit" : "rate_limited";
+      if (provider.code === "insufficient_quota") {
+        return "no_credit";
+      }
+      return isUsageLimit(provider.code, provider.message) ? "usage_limit" : "rate_limited";
     default:
       return "provider_error";
   }
 }
 
 /** The only fields of a proxy error that go to the log. The SDK error object can hold headers. */
-export function aiErrorLogFields(error: unknown): { status: number | undefined; code: AiErrorCode } {
-  return { status: error instanceof APIError ? error.status : undefined, code: toAiError(error) };
+export function aiErrorLogFields(error: unknown): {
+  status: number | undefined;
+  code: AiErrorCode;
+  providerCode: string | undefined;
+} {
+  const apiError = error instanceof APIError ? error : undefined;
+  return {
+    status: apiError?.status,
+    code: toAiError(error),
+    providerCode: apiError ? providerCode(apiError)?.slice(0, PROVIDER_CODE_LOG_MAX) : undefined,
+  };
 }
