@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { GuardedAiClientFactory, proxyEndpoint } from "../src/ai/ai-client.js";
-import { toAiError } from "../src/ai/ai-errors.js";
+import { aiErrorLogFields, toAiError } from "../src/ai/ai-errors.js";
 import { type FakeAiServer, startFakeAiServer, UnguardedAiClientFactory } from "./support/fake-ai-server.js";
 
 let fake: FakeAiServer;
@@ -57,6 +57,9 @@ describe("the AI client", () => {
       [404, undefined, "model_not_found"],
       [402, undefined, "no_credit"],
       [429, { error: { message: "quota", code: "insufficient_quota" } }, "no_credit"],
+      [429, { type: "error", error: { type: "FreeUsageLimitError", message: "Limit reached." } }, "usage_limit"],
+      [429, { error: { message: "[429]: Free usage limit reached. Subscribe to keep going." } }, "usage_limit"],
+      [429, { error: { type: "rate_limit_error", message: "Too many requests." } }, "rate_limited"],
       [429, undefined, "rate_limited"],
       [500, undefined, "provider_error"],
     ];
@@ -64,6 +67,19 @@ describe("the AI client", () => {
       fake.next({ status, body });
       expect(toAiError(await errorOf(ask())), String(status)).toBe(code);
     }
+  });
+
+  it("aiErrorLogFields keeps the provider error type, but not the key or the headers", async () => {
+    fake.next({ status: 429, body: { type: "error", error: { type: "FreeUsageLimitError", message: "Limit." } } });
+    const fields = aiErrorLogFields(await errorOf(ask()));
+    expect(fields).toEqual({ status: 429, code: "usage_limit", providerCode: "FreeUsageLimitError" });
+
+    fake.next({ status: 429, body: { error: { type: "x".repeat(500) } } });
+    expect(aiErrorLogFields(await errorOf(ask())).providerCode).toHaveLength(100);
+
+    fake.next({ status: 500, body: undefined });
+    // The fake server sends { error: { type: "fake" } } when the test gives no body.
+    expect(aiErrorLogFields(await errorOf(ask()))).toMatchObject({ status: 500, providerCode: "fake" });
   });
 
   it("toAiError maps a refused connection to provider_unreachable", async () => {
