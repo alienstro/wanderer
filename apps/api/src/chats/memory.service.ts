@@ -2,6 +2,7 @@ import { BadRequestException, HttpException, Inject, Injectable, Logger } from "
 import { estimateTokens, MEMORY_MAX, memoryDraftInputSchema, type MemoryDraftResponse } from "@wanderer/shared";
 import { AI_CLIENT_FACTORY, type AiClientFactory } from "../ai/ai-client.js";
 import { aiErrorLogFields, toAiError } from "../ai/ai-errors.js";
+import { EventsService } from "../events/events.service.js";
 import type { Message, User } from "../generated/prisma/client.js";
 import { ProxiesService } from "../proxies/proxies.service.js";
 import { ChatsService } from "./chats.service.js";
@@ -32,6 +33,7 @@ export class MemoryService {
   constructor(
     private readonly chats: ChatsService,
     private readonly proxies: ProxiesService,
+    private readonly events: EventsService,
     @Inject(AI_CLIENT_FACTORY) private readonly clients: AiClientFactory,
   ) {}
 
@@ -69,9 +71,12 @@ export class MemoryService {
       text = completion.choices[0]?.message.content?.trim() ?? "";
     } catch (error) {
       this.logger.warn({ msg: "Proxy summary failed", ...aiErrorLogFields(error) });
-      throw new HttpException({ error: toAiError(error) }, 502);
+      const code = toAiError(error);
+      await this.events.record("summary_failed", { userId: user.id, characterId: character.id, reason: code });
+      throw new HttpException({ error: code }, 502);
     }
     if (!text) {
+      await this.events.record("summary_failed", { userId: user.id, characterId: character.id, reason: "empty_summary" });
       throw new HttpException({ error: "summary_failed" }, 502);
     }
     return { memory: text.slice(0, MEMORY_MAX), throughPosition: last.position };
