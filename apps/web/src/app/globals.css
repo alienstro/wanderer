@@ -258,6 +258,23 @@
     color: var(--color-text);
   }
 
+  /* The grid of character cards. A phone shows two or more columns, so the user sees more than one card at a time. */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 28px 18px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (max-width: 760px) {
+    .card-grid {
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 20px 12px;
+    }
+  }
+
   .se-card {
     display: flex;
     flex-direction: column;
