@@ -41,6 +41,9 @@ const STOP_SETTLE_MS = 500;
  */
 const ERROR_TOAST_ID = "chat-error";
 
+/** The centred column of the messages and the text box, so the text box lines up with the messages. */
+const CHAT_COLUMN = "mx-auto w-full max-w-[832px]";
+
 /** The next step for each AI error. "settings" adds a button that opens the model page. */
 const AI_ERROR_STEP: Record<AiErrorCode, { text: string; settings?: boolean }> = {
   no_active_proxy: { text: "Add a model, then send your message again.", settings: true },
@@ -260,7 +263,7 @@ export function ChatView({ chatId }: { chatId: string }) {
 
       {/* column-reverse keeps the newest message in view without a scroll script. */}
       <div className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto px-7 py-5 max-[760px]:px-3 max-[760px]:py-3">
-        <div role="log" aria-label="Messages" aria-live="polite" className="flex flex-col gap-5 max-[760px]:gap-4">
+        <div role="log" aria-label="Messages" aria-live="polite" className={`${CHAT_COLUMN} flex flex-col gap-5 max-[760px]:gap-4`}>
           {shown.map((message) => (
             <MessageItem
               key={message.id}
@@ -293,37 +296,39 @@ export function ChatView({ chatId }: { chatId: string }) {
         </div>
       </div>
 
-      <footer className="flex flex-col gap-2 px-7 pb-5 max-[760px]:px-3 max-[760px]:pb-3">
-        {canSend ? (
-          <>
-            {!me.activeProxy && (
-              <p className="m-0 text-muted">
-                You have no model yet.{" "}
-                <Link href="/settings/models" className="text-link">
-                  Add a model
-                </Link>{" "}
-                to start chatting.
-              </p>
-            )}
-            <ReplyChoices state={choices} onPick={(choice) => send(choice, false)} />
-            <Composer
-              value={text}
-              onChange={setText}
-              disabled={!me.activeProxy || Boolean(live?.stopped)}
-              streaming={live !== null && !live.stopped}
-              onSend={(content) => send(content, true)}
-              onStop={() => abortRef.current?.abort()}
-              toolbar={
-                <>
-                  <ReplyChoicesSwitch me={me} />
-                  <NewChoicesButton state={choices} />
-                </>
-              }
-            />
-          </>
-        ) : (
-          <p className="m-0 rounded-[16px] border border-line bg-surface px-4 py-3 text-muted">This character is no longer available.</p>
-        )}
+      <footer className="px-7 pb-5 max-[760px]:px-3 max-[760px]:pb-3">
+        <div className={`${CHAT_COLUMN} flex flex-col gap-2`}>
+          {canSend ? (
+            <>
+              {!me.activeProxy && (
+                <p className="m-0 text-muted">
+                  You have no model yet.{" "}
+                  <Link href="/settings/models" className="text-link">
+                    Add a model
+                  </Link>{" "}
+                  to start chatting.
+                </p>
+              )}
+              <ReplyChoices state={choices} onPick={(choice) => send(choice, false)} />
+              <Composer
+                value={text}
+                onChange={setText}
+                disabled={!me.activeProxy || Boolean(live?.stopped)}
+                streaming={live !== null && !live.stopped}
+                onSend={(content) => send(content, true)}
+                onStop={() => abortRef.current?.abort()}
+                toolbar={
+                  <>
+                    <ReplyChoicesSwitch me={me} />
+                    <NewChoicesButton state={choices} />
+                  </>
+                }
+              />
+            </>
+          ) : (
+            <p className="m-0 rounded-[16px] border border-line bg-surface px-4 py-3 text-muted">This character is no longer available.</p>
+          )}
+        </div>
       </footer>
     </div>
   );
