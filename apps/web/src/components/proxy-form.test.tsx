@@ -97,4 +97,54 @@ describe("ProxyForm", () => {
     expect(await screen.findByText("This proxy URL is not allowed.")).toBeInTheDocument();
     expect(screen.getByLabelText(/^Proxy URL/)).toHaveAttribute("aria-invalid", "true");
   });
+  it("Load models sends the URL and the saved proxy id, and a click on a found model fills the Model field", async () => {
+    const fetchMock = stubFetch(200, { ok: true, models: ["deepseek/deepseek-chat", "oc/deepseek-v4.1-flash-free", "qwen/qwen3"] });
+    render(<ProxyForm initial={saved} onSaved={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Load models" }));
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toContain("/proxies/models");
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual({
+      baseUrl: "https://openrouter.ai/api/v1",
+      appendPath: true,
+      apiKey: "",
+      proxyId: "p1",
+    });
+    await userEvent.type(await screen.findByRole("searchbox", { name: "Search models" }), "flash");
+    expect(screen.queryByRole("button", { name: "qwen/qwen3" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "oc/deepseek-v4.1-flash-free" }));
+    expect(screen.getByLabelText(/^Model/)).toHaveValue("oc/deepseek-v4.1-flash-free");
+    expect(screen.queryByRole("searchbox", { name: "Search models" })).not.toBeInTheDocument();
+  });
+
+  it("Load models on edit with a new URL and no key asks for the key and sends no request", async () => {
+    const fetchMock = stubFetch();
+    render(<ProxyForm initial={saved} onSaved={vi.fn()} />);
+    await userEvent.clear(screen.getByLabelText(/^Proxy URL/));
+    await userEvent.type(screen.getByLabelText(/^Proxy URL/), "https://other.example.com/v1");
+    await userEvent.click(screen.getByRole("button", { name: "Load models" }));
+    expect(screen.getByText("Enter the API key to use a new proxy URL.")).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("a failed model list shows the message, and the form keeps its values", async () => {
+    stubFetch(200, { ok: false, error: "invalid_key", message: "The proxy refused the API key." });
+    render(<ProxyForm onSaved={vi.fn()} />);
+    await userEvent.type(screen.getByLabelText(/^Proxy URL/), "https://openrouter.ai/api/v1");
+    await userEvent.type(screen.getByLabelText(/^API key/), "sk-wrong");
+    await userEvent.type(screen.getByLabelText(/^Model/), "my-model");
+    await userEvent.click(screen.getByRole("button", { name: "Load models" }));
+    expect(await screen.findByText("The proxy refused the API key.")).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Model/)).toHaveValue("my-model");
+    expect(screen.getByLabelText(/^API key/)).toHaveValue("sk-wrong");
+  });
+
+  it("Load models on a new form with no key shows the key error and sends no request", async () => {
+    const fetchMock = stubFetch();
+    render(<ProxyForm onSaved={vi.fn()} />);
+    await userEvent.type(screen.getByLabelText(/^Proxy URL/), "https://openrouter.ai/api/v1");
+    await userEvent.click(screen.getByRole("button", { name: "Load models" }));
+    expect(screen.getByText("Enter the API key.")).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

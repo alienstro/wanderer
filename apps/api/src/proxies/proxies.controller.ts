@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import type { MeResponse, ProxyTestResult, ProxyView } from "@wanderer/shared";
+import type { MeResponse, ProxyModelsResult, ProxyTestResult, ProxyView } from "@wanderer/shared";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SessionGuard } from "../auth/session.guard.js";
 import type { User } from "../generated/prisma/client.js";
@@ -21,6 +21,15 @@ export class ProxiesController {
   @Post()
   create(@CurrentUser() user: User, @Body() body: unknown): Promise<ProxyView> {
     return this.proxies.create(user, body);
+  }
+
+  /** POST, so the key is in the body and not in a URL that goes into logs and browser history. */
+  @Post("models")
+  @HttpCode(200)
+  @UseGuards(UserThrottlerGuard)
+  @Throttle(perUserLimit(10))
+  models(@CurrentUser() user: User, @Body() body: unknown): Promise<ProxyModelsResult> {
+    return this.proxies.models(user, body);
   }
 
   @Patch(":id")

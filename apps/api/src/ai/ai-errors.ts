@@ -3,7 +3,7 @@ import { APIConnectionError, APIConnectionTimeoutError, APIError, APIUserAbortEr
 import { BlockedUrlError } from "./url-guard.js";
 
 /** True when the error, or one of the errors in its cause chain, is a BlockedUrlError. */
-function isBlocked(error: unknown): boolean {
+export function isBlocked(error: unknown): boolean {
   let current: unknown = error;
   for (let depth = 0; depth < 6 && current instanceof Error; depth++) {
     if (current instanceof BlockedUrlError) {
@@ -33,21 +33,26 @@ export function toAiError(error: unknown): AiErrorCode {
     return "provider_unreachable";
   }
   if (error instanceof APIError) {
-    switch (error.status) {
-      case 401:
-      case 403:
-        return "invalid_key";
-      case 404:
-        return "model_not_found";
-      case 402:
-        return "no_credit";
-      case 429:
-        return providerCode(error) === "insufficient_quota" ? "no_credit" : "rate_limited";
-      default:
-        return "provider_error";
-    }
+    return statusToAiError(error.status, providerCode(error));
   }
   return "provider_error";
+}
+
+/** Changes the HTTP status of a failed proxy answer into an error code. */
+export function statusToAiError(status: number | undefined, code?: string): AiErrorCode {
+  switch (status) {
+    case 401:
+    case 403:
+      return "invalid_key";
+    case 404:
+      return "model_not_found";
+    case 402:
+      return "no_credit";
+    case 429:
+      return code === "insufficient_quota" ? "no_credit" : "rate_limited";
+    default:
+      return "provider_error";
+  }
 }
 
 /** The only fields of a proxy error that go to the log. The SDK error object can hold headers. */

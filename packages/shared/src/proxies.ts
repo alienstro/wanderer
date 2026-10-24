@@ -108,3 +108,36 @@ export interface ProxyView {
 export type ProxyTestResult =
   | { ok: true; reply: string; latencyMs: number }
   | { ok: false; error: AiErrorCode; message: string };
+
+/** The model list gives this number of model ids or less. */
+export const PROXY_MODELS_LIMIT = 2_000;
+
+/** The error codes for a failed model list. "no_model_list" means that the proxy URL has no list. */
+export type ProxyModelsError = AiErrorCode | "no_model_list";
+
+export const PROXY_MODELS_ERROR_TEXT: Record<ProxyModelsError, string> = {
+  ...AI_ERROR_TEXT,
+  no_model_list: "This proxy URL has no model list. Type the model id.",
+};
+
+/**
+ * The body of POST /proxies/models. The API uses apiKey when it is not empty. Otherwise it uses the saved key
+ * of the proxy with proxyId.
+ */
+export const proxyModelsSchema = z
+  .object({
+    baseUrl: proxyUrlSchema,
+    appendPath: z.boolean().default(true),
+    apiKey: z.string().trim().max(PROXY_KEY_MAX).default(""),
+    proxyId: z.string().optional(),
+  })
+  .refine((body) => body.apiKey !== "" || body.proxyId !== undefined, {
+    message: "Send an API key or a saved proxy",
+    path: ["apiKey"],
+  });
+
+export type ProxyModelsRequest = z.input<typeof proxyModelsSchema>;
+
+export type ProxyModelsResult =
+  | { ok: true; models: string[] }
+  | { ok: false; error: ProxyModelsError; message: string };
