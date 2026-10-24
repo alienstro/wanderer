@@ -60,7 +60,7 @@ function ForYouRow() {
       <h2 id="for-you-h" className="m-0 text-lg font-bold">
         For you
       </h2>
-      <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-[18px] gap-y-7 p-0">
+      <ul className="card-grid">
         {items.map((item) => (
           <li key={item.id} className="flex">
             <CharacterCard card={item} />
@@ -195,7 +195,7 @@ export function DiscoverView({ initial, q, tag, sort }: DiscoverQuery & { initia
               The characters did not load. Reload the page to try again.
             </p>
           ) : items.length > 0 ? (
-            <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-[18px] gap-y-7 p-0">
+            <ul className="card-grid">
               {items.map((card) => (
                 <li key={card.id} className="flex">
                   <CharacterCard card={card} />

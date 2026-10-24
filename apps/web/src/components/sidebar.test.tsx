@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ModelCard } from "./model-card";
 import { RecentChats } from "./recent-chats";
+import { SidebarDrawer } from "./sidebar-drawer";
 import { SidebarNav } from "./sidebar-nav";
 import { UserRow } from "./user-row";
 
@@ -104,6 +105,21 @@ describe("sidebar", () => {
     renderWithClient(<UserRow />);
     await userEvent.click(await screen.findByRole("button", { name: "Account menu" }));
     expect(screen.getByRole("menuitem", { name: "Admin" })).toHaveAttribute("href", "/admin");
+  });
+
+  it("Escape in the account menu closes only the menu, and the phone drawer stays open", async () => {
+    stubApi();
+    renderWithClient(
+      <SidebarDrawer>
+        <UserRow />
+      </SidebarDrawer>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Account menu" }));
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.queryByRole("menuitem", { name: "Settings" })).not.toBeInTheDocument();
+    expect(screen.getByRole("complementary")).toHaveAttribute("data-open", "true");
   });
 
   it("a visitor sees a Log in link to /login and no user row", async () => {
