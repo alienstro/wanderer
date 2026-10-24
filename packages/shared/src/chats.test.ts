@@ -15,6 +15,16 @@ describe("proxyCreateSchema", () => {
     expect(parsed.baseUrl).toBe("https://openrouter.ai/api/v1");
     expect(parsed.appendPath).toBe(true);
     expect(parsed.customPrompt).toBe("");
+    expect(parsed.contextTokens).toBe(16_000);
+  });
+
+  it("accepts a context size of 2,000 and 200,000, and rejects 1,999, 200,001 and 2,500.5", () => {
+    for (const contextTokens of [2_000, 200_000]) {
+      expect(proxyCreateSchema.safeParse({ ...proxy, contextTokens }).success).toBe(true);
+    }
+    for (const contextTokens of [1_999, 200_001, 2_500.5]) {
+      expect(proxyCreateSchema.safeParse({ ...proxy, contextTokens }).success).toBe(false);
+    }
   });
 
   it("rejects http, a user:pass URL, a URL with #, a 501-character URL, and an empty key", () => {
@@ -34,6 +44,11 @@ describe("proxyCreateSchema", () => {
 describe("proxyUpdateSchema", () => {
   it("accepts an empty object", () => {
     expect(proxyUpdateSchema.parse({})).toEqual({});
+  });
+
+  it("rejects a context size of 1,999", () => {
+    expect(proxyUpdateSchema.safeParse({ contextTokens: 1_999 }).success).toBe(false);
+    expect(proxyUpdateSchema.parse({ contextTokens: 32_000 })).toEqual({ contextTokens: 32_000 });
   });
 });
 

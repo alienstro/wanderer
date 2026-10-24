@@ -11,6 +11,7 @@ const saved: ProxyView = {
   appendPath: true,
   model: "deepseek/deepseek-chat",
   customPrompt: "",
+  contextTokens: 16_000,
   keyLast4: "3f9a",
   isActive: true,
   createdAt: "2026-10-21T00:00:00.000Z",
@@ -59,6 +60,30 @@ describe("ProxyForm", () => {
     expect(body).not.toHaveProperty("apiKey");
     expect(body.model).toBe("other-model");
     expect(onSaved).toHaveBeenCalledWith(saved);
+  });
+
+  it("the context size field shows the saved value, and a submit sends the new value as a number", async () => {
+    const fetchMock = stubFetch();
+    render(<ProxyForm initial={saved} onSaved={vi.fn()} />);
+    const size = screen.getByLabelText(/^Context size/);
+    expect(size).toHaveValue(16_000);
+    await userEvent.clear(size);
+    await userEvent.type(size, "32000");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    const body = JSON.parse(String(fetchMock.mock.calls[0]![1]?.body)) as Record<string, unknown>;
+    expect(body.contextTokens).toBe(32_000);
+  });
+
+  it("a context size of 1999 shows an error and sends no request", async () => {
+    const fetchMock = stubFetch();
+    render(<ProxyForm initial={saved} onSaved={vi.fn()} />);
+    const size = screen.getByLabelText(/^Context size/);
+    await userEvent.clear(size);
+    await userEvent.type(size, "1999");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(screen.getByText("Enter a whole number from 2,000 to 200,000.")).toBeInTheDocument();
+    expect(size).toHaveAttribute("aria-invalid", "true");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('a blocked_url answer shows "This proxy URL is not allowed." at the URL field', async () => {

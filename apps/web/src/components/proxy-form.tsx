@@ -1,6 +1,13 @@
 "use client";
 
-import { AI_ERROR_TEXT, proxyCreateSchema, type ProxyView } from "@wanderer/shared";
+import {
+  AI_ERROR_TEXT,
+  PROXY_CONTEXT_DEFAULT,
+  PROXY_CONTEXT_MAX,
+  PROXY_CONTEXT_MIN,
+  proxyCreateSchema,
+  type ProxyView,
+} from "@wanderer/shared";
 import { useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
 import { Field } from "./form-field";
@@ -12,6 +19,8 @@ interface FormState {
   apiKey: string;
   model: string;
   customPrompt: string;
+  /** The text of the number field. The submit sends it as a number. */
+  contextTokens: string;
 }
 
 type FieldErrors = Partial<Record<keyof FormState, string>>;
@@ -23,6 +32,7 @@ const FIELD_MESSAGES: Record<keyof FormState, string> = {
   apiKey: "Enter the API key.",
   model: "Enter the model name.",
   customPrompt: "Use 4,000 characters or less.",
+  contextTokens: `Enter a whole number from ${PROXY_CONTEXT_MIN.toLocaleString("en-US")} to ${PROXY_CONTEXT_MAX.toLocaleString("en-US")}.`,
 };
 
 function initialState(initial?: ProxyView): FormState {
@@ -33,7 +43,13 @@ function initialState(initial?: ProxyView): FormState {
     apiKey: "",
     model: initial?.model ?? "",
     customPrompt: initial?.customPrompt ?? "",
+    contextTokens: String(initial?.contextTokens ?? PROXY_CONTEXT_DEFAULT),
   };
+}
+
+/** The fields as the API takes them. An empty number field becomes NaN, so the schema rejects it. */
+function toBody(state: FormState) {
+  return { ...state, contextTokens: state.contextTokens.trim() === "" ? NaN : Number(state.contextTokens) };
 }
 
 /** The URL that gets the requests, as the API builds it. */
@@ -44,7 +60,8 @@ function endpoint(state: FormState): string {
 
 /** Checks the fields with the shared schema. On edit, an empty key keeps the saved key. */
 function validate(state: FormState, editing: boolean): FieldErrors {
-  const parsed = proxyCreateSchema.safeParse(editing && !state.apiKey ? { ...state, apiKey: "kept" } : state);
+  const body = toBody(state);
+  const parsed = proxyCreateSchema.safeParse(editing && !body.apiKey ? { ...body, apiKey: "kept" } : body);
   const errors: FieldErrors = {};
   for (const issue of parsed.success ? [] : parsed.error.issues) {
     const field = issue.path[0] as keyof FormState;
@@ -60,7 +77,7 @@ export interface ProxyFormProps {
   onCancel?: () => void;
 }
 
-/** The form for one proxy: Name, Proxy URL, "Add /chat/completions", API key, Model, and Custom prompt. */
+/** The form for one proxy: Name, Proxy URL, "Add /chat/completions", API key, Model, Custom prompt, and Context size. */
 export function ProxyForm({ initial, onSaved, onCancel }: ProxyFormProps) {
   const [state, setState] = useState(() => initialState(initial));
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -78,7 +95,7 @@ export function ProxyForm({ initial, onSaved, onCancel }: ProxyFormProps) {
       return;
     }
     // On edit, an absent apiKey keeps the saved key. The API never sends the saved key back.
-    const { apiKey, ...fields } = state;
+    const { apiKey, ...fields } = toBody(state);
     const body = apiKey ? { ...fields, apiKey } : fields;
     setSaving(true);
     try {
@@ -194,6 +211,29 @@ export function ProxyForm({ initial, onSaved, onCancel }: ProxyFormProps) {
             value={state.customPrompt}
             aria-describedby={describedBy}
             onChange={(event) => set({ customPrompt: event.target.value })}
+          />
+        )}
+      </Field>
+
+      <Field
+        name="contextTokens"
+        label="Context size"
+        error={errors.contextTokens}
+        hint="The tokens of chat history that the AI reads. Use the context window of your model or less."
+      >
+        {({ inputId, describedBy }) => (
+          <input
+            id={inputId}
+            className="field"
+            type="number"
+            inputMode="numeric"
+            min={PROXY_CONTEXT_MIN}
+            max={PROXY_CONTEXT_MAX}
+            step={1_000}
+            value={state.contextTokens}
+            aria-invalid={errors.contextTokens ? true : undefined}
+            aria-describedby={describedBy}
+            onChange={(event) => set({ contextTokens: event.target.value })}
           />
         )}
       </Field>

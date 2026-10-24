@@ -3,8 +3,6 @@ import type OpenAI from "openai";
 
 type PromptMessage = OpenAI.Chat.ChatCompletionMessageParam;
 
-/** The context budget in estimated tokens. The system message always goes in. */
-export const CONTEXT_BUDGET_TOKENS = 16_000;
 const CHOICES_COUNT = 4;
 const CHOICE_MAX = 300;
 
@@ -24,6 +22,8 @@ export interface PromptCharacter {
 export interface PromptInput {
   character: PromptCharacter;
   customPrompt: string;
+  /** The context budget of the proxy in estimated tokens. The system message always goes in. */
+  contextTokens: number;
   userName: string;
   /** The messages of the chat, oldest first. The opening is the first message. */
   history: Array<{ role: "user" | "assistant"; content: string }>;
@@ -57,7 +57,7 @@ function fitHistory(input: PromptInput, used: number): PromptMessage[] {
     const message = input.history[index]!;
     const content = fill(message.content, input);
     total += estimateTokens(content);
-    if (kept.length > 0 && total > CONTEXT_BUDGET_TOKENS) {
+    if (kept.length > 0 && total > input.contextTokens) {
       break;
     }
     kept.unshift({ role: message.role, content });

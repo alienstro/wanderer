@@ -69,6 +69,15 @@ describe("streamed replies", () => {
     expect(sent.messages?.slice(1).map((m) => m.content)).toEqual(["*waves* Hi!", "Hi Onnit"]);
   });
 
+  it("with a context size of 2,000, the proxy request drops an old message of 1,000 tokens", async () => {
+    await prisma.proxy.updateMany({ where: { userId: user.user.id }, data: { contextTokens: 2_000 } });
+    await postStream(app, user, sendPath(), { content: `old ${"x".repeat(4_000)}` }).expect(200);
+    await postStream(app, user, sendPath(), { content: `new ${"y".repeat(4_000)}` }).expect(200);
+    const contents = fake.requests.at(-1)!.body.messages?.map((m) => m.content) ?? [];
+    expect(contents.some((content) => content.startsWith("old "))).toBe(false);
+    expect(contents.at(-1)?.startsWith("new ")).toBe(true);
+  });
+
   it("a send with no active proxy gives 409 JSON no_active_proxy and saves no message", async () => {
     await prisma.proxy.deleteMany();
     const res = await postStream(app, user, sendPath(), { content: "Hi" }).expect(409);
