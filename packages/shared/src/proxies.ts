@@ -1,10 +1,10 @@
 import { z } from "zod";
+import { API_KEY_MAX } from "./api-keys.js";
 
 export const PROXY_NAME_MAX = 60;
 export const PROXY_URL_MAX = 500;
 export const PROXY_MODEL_MAX = 200;
 export const PROXY_PROMPT_MAX = 4000;
-export const PROXY_KEY_MAX = 500;
 /** The chat history budget of a proxy, in estimated tokens. The system message always goes in. */
 export const PROXY_CONTEXT_MIN = 2_000;
 export const PROXY_CONTEXT_MAX = 200_000;
@@ -76,10 +76,10 @@ const proxyFields = {
 
 export const proxyCreateSchema = z.object({
   ...proxyFields,
-  apiKey: z.string().trim().min(1).max(PROXY_KEY_MAX),
+  apiKeyId: z.uuid(),
 });
 
-/** An update changes only the fields that it sends. An empty or absent apiKey keeps the saved key. */
+/** An update changes only the fields that it sends. An absent apiKeyId keeps the current key. */
 export const proxyUpdateSchema = z.object({
   name: proxyFields.name.optional(),
   baseUrl: proxyFields.baseUrl.optional(),
@@ -87,13 +87,13 @@ export const proxyUpdateSchema = z.object({
   model: proxyFields.model.optional(),
   customPrompt: z.string().trim().max(PROXY_PROMPT_MAX).optional(),
   contextTokens: contextTokensSchema.optional(),
-  apiKey: z.string().trim().max(PROXY_KEY_MAX).optional(),
+  apiKeyId: z.uuid().optional(),
 });
 
 export type ProxyCreate = z.infer<typeof proxyCreateSchema>;
 export type ProxyUpdate = z.infer<typeof proxyUpdateSchema>;
 
-/** A proxy as the browser sees it. It never has the key, only its last 4 characters. */
+/** A proxy as the browser sees it. It never has the key, only the name and the last 4 characters of its saved key. */
 export interface ProxyView {
   id: string;
   name: string;
@@ -102,7 +102,7 @@ export interface ProxyView {
   model: string;
   customPrompt: string;
   contextTokens: number;
-  keyLast4: string;
+  savedKey: { id: string; name: string; keyLast4: string };
   isActive: boolean;
   createdAt: string;
 }
@@ -124,17 +124,17 @@ export const PROXY_MODELS_ERROR_TEXT: Record<ProxyModelsError, string> = {
 
 /**
  * The body of POST /proxies/models. The API uses apiKey when it is not empty. Otherwise it uses the saved key
- * of the proxy with proxyId.
+ * with apiKeyId.
  */
 export const proxyModelsSchema = z
   .object({
     baseUrl: proxyUrlSchema,
     appendPath: z.boolean().default(true),
-    apiKey: z.string().trim().max(PROXY_KEY_MAX).default(""),
-    proxyId: z.string().optional(),
+    apiKey: z.string().trim().max(API_KEY_MAX).default(""),
+    apiKeyId: z.string().optional(),
   })
-  .refine((body) => body.apiKey !== "" || body.proxyId !== undefined, {
-    message: "Send an API key or a saved proxy",
+  .refine((body) => body.apiKey !== "" || body.apiKeyId !== undefined, {
+    message: "Send an API key or a saved key",
     path: ["apiKey"],
   });
 
