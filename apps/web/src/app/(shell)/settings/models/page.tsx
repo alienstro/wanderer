@@ -1,14 +1,15 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ProxyView } from "@wanderer/shared";
+import type { ApiKeyView, ProxyView } from "@wanderer/shared";
 import { useState } from "react";
+import { ApiKeysSection } from "@/components/api-keys-section";
 import { ProxyForm } from "@/components/proxy-form";
 import { ProxyList } from "@/components/proxy-list";
 import { apiFetch } from "@/lib/api";
 import { useRequireLogin } from "@/lib/use-require-login";
 
-/** The models settings: the user's OpenAI-compatible proxies and the active proxy. */
+/** The models settings: the saved API keys, the user's OpenAI-compatible proxies, and the active proxy. */
 export default function ModelsPage() {
   const me = useRequireLogin();
   const queryClient = useQueryClient();
@@ -18,9 +19,16 @@ export default function ModelsPage() {
     queryFn: () => apiFetch<ProxyView[]>("/proxies"),
     enabled: me !== undefined,
   });
+  const apiKeys = useQuery({
+    queryKey: ["api-keys"],
+    queryFn: () => apiFetch<ApiKeyView[]>("/api-keys"),
+    enabled: me !== undefined,
+  });
 
-  // A change applies at once: the list and the sidebar model card load again.
+  // A change applies at once: the keys, the models, and the sidebar model card load again.
+  // A key change also changes the models, which show the key name, and a model change changes the key counts.
   function refresh() {
+    void queryClient.invalidateQueries({ queryKey: ["api-keys"] });
     void queryClient.invalidateQueries({ queryKey: ["proxies"] });
     void queryClient.invalidateQueries({ queryKey: ["me"] });
   }
@@ -31,8 +39,8 @@ export default function ModelsPage() {
         <div className="flex flex-col gap-1">
           <h1 className="page-title">Models</h1>
           <p className="m-0 max-w-[64ch] text-muted">
-            Add an OpenAI-compatible proxy with your own API key. Wanderer keeps the key encrypted and never shows it
-            again.
+            Save your API keys one time, then add an OpenAI-compatible proxy that uses one. Wanderer keeps each key
+            encrypted and never shows it again.
           </p>
         </div>
         {editing === null && (
@@ -41,10 +49,14 @@ export default function ModelsPage() {
           </button>
         )}
       </div>
-      {editing !== null && (
+      {apiKeys.isError && <p className="m-0 text-error">Your API keys did not load. Reload the page.</p>}
+      {apiKeys.data && <ApiKeysSection apiKeys={apiKeys.data} onChanged={refresh} />}
+      {editing !== null && apiKeys.data && (
         <ProxyForm
           key={editing === "new" ? "new" : editing.id}
+          apiKeys={apiKeys.data}
           initial={editing === "new" ? undefined : editing}
+          onKeyAdded={refresh}
           onCancel={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);

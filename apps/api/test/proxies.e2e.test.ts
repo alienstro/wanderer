@@ -10,11 +10,10 @@ import { type TestUser, userWithSession } from "./support/users.js";
 
 const KEY = "sk-live-secret-3f9a";
 
-const proxyBody = {
+const proxyFields = {
   name: "OpenRouter",
   baseUrl: "https://openrouter.ai/api/v1",
   model: "deepseek/deepseek-chat",
-  apiKey: KEY,
 };
 
 describe("proxies", () => {
@@ -24,6 +23,9 @@ describe("proxies", () => {
   let factory: UnguardedAiClientFactory;
   let one: TestUser;
   let two: TestUser;
+  /** The saved key of user one, and a proxy body that uses it. */
+  let keyId: string;
+  let proxyBody: typeof proxyFields & { apiKeyId: string };
 
   const api = () => request(app.getHttpServer());
   const post = (user: TestUser, path: string, body: object = {}) =>
@@ -44,16 +46,26 @@ describe("proxies", () => {
     await prisma.user.deleteMany();
     one = await userWithSession(app, 1);
     two = await userWithSession(app, 2);
+    keyId = (await saveKey(one, "OpenRouter", KEY)).id;
+    proxyBody = { ...proxyFields, apiKeyId: keyId };
   });
+
+  const saveKey = async (user: TestUser, name: string, apiKey: string): Promise<{ id: string }> =>
+    (await post(user, "/api-keys", { name, apiKey }).expect(201)).body;
 
   afterAll(async () => {
     await app.close();
     await fake.close();
   });
 
-  it("POST /proxies saves a proxy, makes it active, and the answer has keyLast4 and no key field", async () => {
+  it("POST /proxies saves a proxy, makes it active, and the answer has the key name, keyLast4 and no key field", async () => {
     const res = await post(one, "/proxies", proxyBody).expect(201);
-    expect(res.body).toMatchObject({ name: "OpenRouter", keyLast4: "3f9a", isActive: true, appendPath: true });
+    expect(res.body).toMatchObject({
+      name: "OpenRouter",
+      savedKey: { id: keyId, name: "OpenRouter", keyLast4: "3f9a" },
+      isActive: true,
+      appendPath: true,
+    });
     expect(Object.keys(res.body)).not.toContain("apiKey");
     const me = await get(one, "/me").expect(200);
     expect(me.body.activeProxy).toEqual({ id: res.body.id, name: "OpenRouter", model: "deepseek/deepseek-chat" });
@@ -73,13 +85,11 @@ describe("proxies", () => {
       expect(res.text).not.toContain(KEY);
       expect(res.text).not.toMatch(/ciphertext|keyIv|keyTag/i);
     }
-    const row = await prisma.proxy.findUniqueOrThrow({ where: { id: created.body.id } });
-    expect(Buffer.from(row.keyCiphertext).toString("utf8")).not.toContain(KEY);
   });
 
-  it("PATCH with no apiKey keeps the old key, and the next Test sends the old key", async () => {
+  it("PATCH with no apiKeyId keeps the key, and the next Test sends that key", async () => {
     const created = await post(one, "/proxies", proxyBody).expect(201);
-    await patch(one, `/proxies/${created.body.id}`, { model: "other-model", apiKey: "" }).expect(200);
+    await patch(one, `/proxies/${created.body.id}`, { model: "other-model" }).expect(200);
     await post(one, `/proxies/${created.body.id}/test`).expect(200);
     expect(fake.requests.at(-1)?.authorization).toBe(`Bearer ${KEY}`);
     expect(factory.targets.at(-1)).toMatchObject({
@@ -156,8 +166,52 @@ describe("proxies", () => {
   it("Test of a proxy whose key does not decrypt gives invalid_key", async () => {
     const created = await post(one, "/proxies", proxyBody).expect(201);
     // A changed master key looks like a wrong tag: the saved key does not decrypt.
-    await prisma.proxy.update({ where: { id: created.body.id }, data: { keyTag: new Uint8Array(16) } });
+    await prisma.apiKey.update({ where: { id: keyId }, data: { keyTag: new Uint8Array(16) } });
     const res = await post(one, `/proxies/${created.body.id}/test`).expect(200);
     expect(res.body).toEqual({ ok: false, error: "invalid_key", message: "The proxy refused the API key." });
+  });
+
+  it("two models use one saved key, and a replace of the key changes the key that each model sends", async () => {
+    const first = await post(one, "/proxies", proxyBody).expect(201);
+    const second = await post(one, "/proxies", { ...proxyBody, name: "Second", model: "other" }).expect(201);
+    expect(second.body.savedKey.id).toBe(keyId);
+    await patch(one, `/api-keys/${keyId}`, { apiKey: "sk-new-77bb" }).expect(200);
+    for (const id of [first.body.id, second.body.id]) {
+      await post(one, `/proxies/${id}/test`).expect(200);
+      expect(fake.requests.at(-1)?.authorization).toBe("Bearer sk-new-77bb");
+    }
+    expect((await get(one, "/proxies").expect(200)).body[1].savedKey).toEqual({
+      id: keyId,
+      name: "OpenRouter",
+      keyLast4: "77bb",
+    });
+  });
+
+  it("PATCH with another own key moves the model to that key", async () => {
+    const created = await post(one, "/proxies", proxyBody).expect(201);
+    const other = await saveKey(one, "Work", "sk-work-1234");
+    const res = await patch(one, `/proxies/${created.body.id}`, { apiKeyId: other.id }).expect(200);
+    expect(res.body.savedKey).toEqual({ id: other.id, name: "Work", keyLast4: "1234" });
+    await post(one, `/proxies/${created.body.id}/test`).expect(200);
+    expect(fake.requests.at(-1)?.authorization).toBe("Bearer sk-work-1234");
+  });
+
+  it("POST /proxies with the key of another user gives 404 and saves nothing", async () => {
+    const res = await post(two, "/proxies", proxyBody).expect(404);
+    expect(res.body).toEqual({ error: "not_found" });
+    expect(await prisma.proxy.count()).toBe(0);
+  });
+
+  it("PATCH with the key of another user gives 404, and the model keeps its key", async () => {
+    const created = await post(one, "/proxies", proxyBody).expect(201);
+    const foreign = await saveKey(two, "Theirs", "sk-theirs-9999");
+    await patch(one, `/proxies/${created.body.id}`, { apiKeyId: foreign.id }).expect(404);
+    const row = await prisma.proxy.findUniqueOrThrow({ where: { id: created.body.id } });
+    expect(row.apiKeyId).toBe(keyId);
+  });
+
+  it("POST /proxies with no apiKeyId gives 400 invalid_proxy", async () => {
+    const res = await post(one, "/proxies", proxyFields).expect(400);
+    expect(res.body).toEqual({ error: "invalid_proxy", fields: ["apiKeyId"] });
   });
 });

@@ -8,22 +8,27 @@ import {
   proxyUpdateSchema,
   type ProxyView,
 } from "@wanderer/shared";
-import { randomUUID } from "node:crypto";
 import type { z } from "zod";
 import { AI_CLIENT_FACTORY, type AiClientFactory, type AiTarget, proxyEndpoint } from "../ai/ai-client.js";
 import { aiErrorLogFields, toAiError } from "../ai/ai-errors.js";
 import { assertProxyUrl, BlockedUrlError } from "../ai/url-guard.js";
+import { ApiKeysService } from "../api-keys/api-keys.service.js";
+import { KeyDecryptError } from "../api-keys/key-cipher.js";
 import { isUuid } from "../common/uuid.js";
-import type { Proxy, User } from "../generated/prisma/client.js";
+import type { ApiKey, Proxy, User } from "../generated/prisma/client.js";
 import { MeService } from "../me/me.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-import { KEY_CIPHER, KeyCipher, KeyDecryptError } from "./key-cipher.js";
 
 const NOT_FOUND = { error: "not_found" };
 const TEST_MESSAGE = "Reply with the word OK.";
 const TEST_TIMEOUT_MS = 30_000;
 
-function toProxyView(row: Proxy, activeProxyId: string | null): ProxyView {
+/** A proxy with its saved key. Each read of a proxy includes the key row. */
+type ProxyWithKey = Proxy & { apiKey: ApiKey };
+
+const WITH_KEY = { apiKey: true } as const;
+
+function toProxyView(row: ProxyWithKey, activeProxyId: string | null): ProxyView {
   return {
     id: row.id,
     name: row.name,
@@ -32,7 +37,7 @@ function toProxyView(row: Proxy, activeProxyId: string | null): ProxyView {
     model: row.model,
     customPrompt: row.customPrompt,
     contextTokens: row.contextTokens,
-    keyLast4: row.keyLast4,
+    savedKey: { id: row.apiKey.id, name: row.apiKey.name, keyLast4: row.apiKey.keyLast4 },
     isActive: row.id === activeProxyId,
     createdAt: row.createdAt.toISOString(),
   };
@@ -66,42 +71,44 @@ export class ProxiesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly me: MeService,
-    @Inject(KEY_CIPHER) private readonly cipher: KeyCipher,
+    private readonly apiKeys: ApiKeysService,
     @Inject(AI_CLIENT_FACTORY) private readonly clients: AiClientFactory,
   ) {}
 
   async list(user: User): Promise<ProxyView[]> {
-    const rows = await this.prisma.proxy.findMany({ where: { userId: user.id }, orderBy: { createdAt: "asc" } });
+    const rows = await this.prisma.proxy.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "asc" },
+      include: WITH_KEY,
+    });
     return rows.map((row) => toProxyView(row, user.activeProxyId));
   }
 
-  /** Saves a new proxy. The first proxy of a user becomes the active proxy. */
+  /** Saves a new proxy with a saved key of the user. The first proxy of a user becomes the active proxy. */
   async create(user: User, body: unknown): Promise<ProxyView> {
     const input = parse(proxyCreateSchema, body);
     assertSafeUrl(input.baseUrl, input.appendPath);
+    await this.apiKeys.findOwn(user, input.apiKeyId);
     if ((await this.prisma.proxy.count({ where: { userId: user.id } })) >= PROXY_LIMIT) {
       throw new ConflictException({ error: "proxy_limit" });
     }
-    // The AAD of the key holds the proxy ID, so the ID must exist before the encrypt.
-    const id = randomUUID();
-    const { apiKey, ...fields } = input;
     const row = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.proxy.create({ data: { id, userId: user.id, ...fields, ...this.seal(apiKey, id) } });
-      await tx.user.updateMany({ where: { id: user.id, activeProxyId: null }, data: { activeProxyId: id } });
+      const created = await tx.proxy.create({ data: { userId: user.id, ...input }, include: WITH_KEY });
+      await tx.user.updateMany({ where: { id: user.id, activeProxyId: null }, data: { activeProxyId: created.id } });
       return created;
     });
-    return toProxyView(row, user.activeProxyId ?? id);
+    return toProxyView(row, user.activeProxyId ?? row.id);
   }
 
-  /** Changes the fields that the body sends. An empty or absent apiKey keeps the saved key. */
+  /** Changes the fields that the body sends. An absent apiKeyId keeps the current key. */
   async update(user: User, id: string, body: unknown): Promise<ProxyView> {
     const current = await this.findOwn(user, id);
-    const { apiKey, ...fields } = parse(proxyUpdateSchema, body);
+    const fields = parse(proxyUpdateSchema, body);
     assertSafeUrl(fields.baseUrl ?? current.baseUrl, fields.appendPath ?? current.appendPath);
-    const row = await this.prisma.proxy.update({
-      where: { id },
-      data: { ...fields, ...(apiKey ? this.seal(apiKey, id) : {}) },
-    });
+    if (fields.apiKeyId) {
+      await this.apiKeys.findOwn(user, fields.apiKeyId);
+    }
+    const row = await this.prisma.proxy.update({ where: { id }, data: fields, include: WITH_KEY });
     return toProxyView(row, user.activeProxyId);
   }
 
@@ -149,7 +156,7 @@ export class ProxiesService {
   /** The decrypted target of the active proxy, for one call. */
   async loadTarget(user: User): Promise<{ target: AiTarget; customPrompt: string; contextTokens: number }> {
     const row = user.activeProxyId
-      ? await this.prisma.proxy.findFirst({ where: { id: user.activeProxyId, userId: user.id } })
+      ? await this.prisma.proxy.findFirst({ where: { id: user.activeProxyId, userId: user.id }, include: WITH_KEY })
       : null;
     if (!row) {
       throw new ConflictException({ error: "no_active_proxy" });
@@ -166,28 +173,15 @@ export class ProxiesService {
   }
 
   /** The decrypted target for one call. It throws KeyDecryptError when the saved key does not decrypt. */
-  private target(row: Proxy): AiTarget {
-    const apiKey = this.cipher.decrypt(
-      { ciphertext: row.keyCiphertext, iv: row.keyIv, tag: row.keyTag, version: row.keyVersion },
-      row.id,
-    );
+  private target(row: ProxyWithKey): AiTarget {
+    const apiKey = this.apiKeys.decrypt(row.apiKey);
     return { endpoint: proxyEndpoint(row.baseUrl, row.appendPath), apiKey, model: row.model };
   }
 
-  private seal(apiKey: string, proxyId: string) {
-    const sealed = this.cipher.encrypt(apiKey, proxyId);
-    return {
-      // Prisma Bytes takes a Uint8Array on its own ArrayBuffer, so copy each Buffer.
-      keyCiphertext: new Uint8Array(sealed.ciphertext),
-      keyIv: new Uint8Array(sealed.iv),
-      keyTag: new Uint8Array(sealed.tag),
-      keyVersion: sealed.version,
-      keyLast4: apiKey.slice(-4),
-    };
-  }
-
-  private async findOwn(user: User, id: string): Promise<Proxy> {
-    const row = isUuid(id) ? await this.prisma.proxy.findFirst({ where: { id, userId: user.id } }) : null;
+  private async findOwn(user: User, id: string): Promise<ProxyWithKey> {
+    const row = isUuid(id)
+      ? await this.prisma.proxy.findFirst({ where: { id, userId: user.id }, include: WITH_KEY })
+      : null;
     if (!row) {
       throw new NotFoundException(NOT_FOUND);
     }

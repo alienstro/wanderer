@@ -50,12 +50,10 @@ describe("DELETE /me", () => {
     const avatar = await app.get(FilesService).saveAvatar(user.user.id, await pngImage());
     const characterId = await createCharacter(app, user.cookie, { avatarFileId: avatar.id });
     await prisma.chat.create({ data: { userId: user.user.id, characterId, title: "Mira" } });
-    await http()
-      .post("/proxies")
-      .set("Origin", WEB_ORIGIN)
-      .set("Cookie", user.cookie)
-      .send({ name: "Main", baseUrl: "https://example.com/v1", model: "m", apiKey: "sk-test-1234" })
-      .expect(201);
+    const send = (path: string, body: object) =>
+      http().post(path).set("Origin", WEB_ORIGIN).set("Cookie", user.cookie).send(body).expect(201);
+    const key = await send("/api-keys", { name: "Main", apiKey: "sk-test-1234" });
+    await send("/proxies", { name: "Main", baseUrl: "https://example.com/v1", model: "m", apiKeyId: key.body.id });
     return characterId;
   }
 
@@ -74,6 +72,7 @@ describe("DELETE /me", () => {
     expect(await prisma.character.count({ where: { creatorId: id } })).toBe(0);
     expect(await prisma.chat.count({ where: { userId: id } })).toBe(0);
     expect(await prisma.proxy.count({ where: { userId: id } })).toBe(0);
+    expect(await prisma.apiKey.count({ where: { userId: id } })).toBe(0);
     expect(await prisma.session.count({ where: { userId: id } })).toBe(0);
     expect(await prisma.file.count({ where: { ownerId: id } })).toBe(0);
     expect(storage.files.size).toBe(0);

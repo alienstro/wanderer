@@ -50,7 +50,7 @@ function ProxyRow({ proxy, onEdit, onChanged }: { proxy: ProxyView; onEdit: () =
             {proxy.isActive && <span className="rounded-full bg-accent px-2 py-0.5 text-xs text-white">Active</span>}
           </span>
           <span className="truncate text-sm text-muted">
-            {proxy.model} · ••••{proxy.keyLast4}
+            {proxy.model} · {proxy.savedKey.name} ••••{proxy.savedKey.keyLast4}
           </span>
         </div>
         <div className="flex flex-wrap gap-2">

@@ -4,7 +4,6 @@ export const PROXY_NAME_MAX = 60;
 export const PROXY_URL_MAX = 500;
 export const PROXY_MODEL_MAX = 200;
 export const PROXY_PROMPT_MAX = 4000;
-export const PROXY_KEY_MAX = 500;
 /** The chat history budget of a proxy, in estimated tokens. The system message always goes in. */
 export const PROXY_CONTEXT_MIN = 2_000;
 export const PROXY_CONTEXT_MAX = 200_000;
@@ -74,10 +73,10 @@ const proxyFields = {
 
 export const proxyCreateSchema = z.object({
   ...proxyFields,
-  apiKey: z.string().trim().min(1).max(PROXY_KEY_MAX),
+  apiKeyId: z.uuid(),
 });
 
-/** An update changes only the fields that it sends. An empty or absent apiKey keeps the saved key. */
+/** An update changes only the fields that it sends. An absent apiKeyId keeps the current key. */
 export const proxyUpdateSchema = z.object({
   name: proxyFields.name.optional(),
   baseUrl: proxyFields.baseUrl.optional(),
@@ -85,13 +84,13 @@ export const proxyUpdateSchema = z.object({
   model: proxyFields.model.optional(),
   customPrompt: z.string().trim().max(PROXY_PROMPT_MAX).optional(),
   contextTokens: contextTokensSchema.optional(),
-  apiKey: z.string().trim().max(PROXY_KEY_MAX).optional(),
+  apiKeyId: z.uuid().optional(),
 });
 
 export type ProxyCreate = z.infer<typeof proxyCreateSchema>;
 export type ProxyUpdate = z.infer<typeof proxyUpdateSchema>;
 
-/** A proxy as the browser sees it. It never has the key, only its last 4 characters. */
+/** A proxy as the browser sees it. It never has the key, only the name and the last 4 characters of its saved key. */
 export interface ProxyView {
   id: string;
   name: string;
@@ -100,7 +99,7 @@ export interface ProxyView {
   model: string;
   customPrompt: string;
   contextTokens: number;
-  keyLast4: string;
+  savedKey: { id: string; name: string; keyLast4: string };
   isActive: boolean;
   createdAt: string;
 }
