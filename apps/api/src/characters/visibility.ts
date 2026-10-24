@@ -22,14 +22,13 @@ export function characterAccess(
   return row.isAdult && !canSeeAdult(viewer) ? "adult_content" : "ok";
 }
 
+type AccessRow = Parameters<typeof characterAccess>[0];
+
 /**
- * Throws when the viewer cannot see the character. A missing or private character gives 404, so it stays secret.
- * An 18+ character gives 403 with only the error code, so that the web can show the 18+ warning.
+ * Throws when the viewer cannot see the character: 404 for a missing or private character, and 403 with only
+ * the error code for an 18+ character, so that the web can show the 18+ warning.
  */
-export function assertCharacterAccess<T extends Parameters<typeof characterAccess>[0]>(
-  row: T | null,
-  viewer: User | null,
-): asserts row is T {
+export function assertCharacterAccess<T extends AccessRow>(row: T | null, viewer: User | null): asserts row is T {
   const access = row ? characterAccess(row, viewer) : "not_found";
   if (access === "not_found") {
     throw new NotFoundException({ error: "not_found" });

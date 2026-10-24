@@ -3,6 +3,7 @@ import { z } from "zod";
 /** The sort key of the last item of a page. The next page starts after it. */
 export interface CursorKey {
   chatCount: number;
+  likeCount: number;
   createdAt: string;
   id: string;
 }
@@ -15,6 +16,7 @@ export interface CommentCursorKey {
 
 const cursorKeySchema = z.object({
   chatCount: z.number().int().nonnegative(),
+  likeCount: z.number().int().nonnegative(),
   createdAt: z.iso.datetime(),
   id: z.uuid(),
 });

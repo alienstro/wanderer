@@ -3,6 +3,7 @@ import { Markdown } from "@/components/markdown";
 import { fileSrc } from "@/lib/api";
 import { chatsLabel, statusLabel } from "@/lib/format";
 import { CharacterComments } from "./comments";
+import { LikeButton } from "./like-button";
 import { StartChat } from "./start-chat";
 import { YourChats } from "./your-chats";
 
@@ -51,6 +52,7 @@ export function CharacterView({ detail }: { detail: CharacterDetail }) {
                 By <span className="font-semibold text-link">@{detail.creatorHandle}</span>
               </span>
               <span>{chatsLabel(detail.chatCount)}</span>
+              <LikeButton characterId={detail.id} likeCount={detail.likeCount} likedByMe={detail.likedByMe} isOwner={detail.isOwner} />
               {detail.isAdult && <span className="tag bg-[rgba(194,65,75,0.9)] text-white">18+</span>}
               {detail.isOwner && <span className="tag">{statusLabel(detail)}</span>}
             </div>

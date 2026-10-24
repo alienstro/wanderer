@@ -32,6 +32,7 @@ export function toCharacterCard(row: CharacterCardRow): CharacterCard {
     isAdult: row.isAdult,
     tags: toTags(row.tags),
     chatCount: row.chatCount,
+    likeCount: row.likeCount,
     creatorHandle: row.creator.handle ?? "",
   };
 }
@@ -40,7 +41,7 @@ export function toCharacterCard(row: CharacterCardRow): CharacterCard {
  * The definition is null when the creator hides it and the viewer is not the creator. The admin always gets it,
  * because a report can be about the definition.
  */
-export function toCharacterDetail(row: CharacterDetailRow, viewer: User | null): CharacterDetail {
+export function toCharacterDetail(row: CharacterDetailRow, viewer: User | null, likedByMe: boolean): CharacterDetail {
   const isOwner = viewer?.id === row.creatorId;
   return {
     ...toCharacterCard(row),
@@ -54,6 +55,7 @@ export function toCharacterDetail(row: CharacterDetailRow, viewer: User | null):
         ? { personality: row.personality, scenario: row.scenario, exampleDialogs: row.exampleDialogs }
         : null,
     isOwner,
+    likedByMe,
     createdAt: row.createdAt.toISOString(),
   };
 }

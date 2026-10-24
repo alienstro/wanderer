@@ -9,6 +9,7 @@ import { useMe } from "@/lib/query-provider";
 import { AdultWarning } from "./adult-warning";
 import { CharacterView } from "./character-view";
 import { OwnerPanel } from "./owner-panel";
+import { characterQueryKey } from "./query-key";
 
 export type CharacterError = "not_found" | "adult_content";
 
@@ -32,7 +33,7 @@ export function CharacterPage({
   const queryClient = useQueryClient();
   const { data: me, isPending: mePending } = useMe();
   const viewer = me?.id ?? null;
-  const queryKey = ["character", id, viewer];
+  const queryKey = characterQueryKey(id, viewer);
   const query = useQuery({
     queryKey,
     queryFn: () => apiFetch<CharacterDetail>(`/characters/${encodeURIComponent(id)}`),

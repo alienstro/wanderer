@@ -74,14 +74,20 @@ export class CharactersService {
         include: characterDetailInclude,
       })
       .catch(rethrowUniqueError);
-    return toCharacterDetail(row, user);
+    return toCharacterDetail(row, user, false);
   }
 
   /** Gives the character when the viewer can see it. assertCharacterAccess gives the 404 and the 403. */
   async findVisible(id: string, viewer: User | null): Promise<CharacterDetail> {
     const row = await this.findRow(id);
     assertCharacterAccess(row, viewer);
-    return toCharacterDetail(row, viewer);
+    const like = viewer
+      ? await this.prisma.characterLike.findUnique({
+          where: { userId_characterId: { userId: viewer.id, characterId: id } },
+          select: { userId: true },
+        })
+      : null;
+    return toCharacterDetail(row, viewer, like !== null);
   }
 
   /** Changes the fields that the body sends. The other fields keep their saved values. */
@@ -107,7 +113,7 @@ export class CharactersService {
     if (current.avatarFileId && current.avatarFileId !== row.avatarFileId) {
       await this.removeAvatarFile(current.avatarFileId);
     }
-    return toCharacterDetail(row, user);
+    return toCharacterDetail(row, user, false);
   }
 
   /** Deletes the character and its avatar file. */

@@ -42,6 +42,7 @@ model User {
   chats            Chat[]
   reports          Report[]           @relation("Reporter")
   resolvedReports  Report[]           @relation("ResolvedBy")
+  characterLikes   CharacterLike[]
   comments         CharacterComment[]
 
   @@map("users")
@@ -96,6 +97,8 @@ model Character {
   /// One avatar file belongs to one character, so a delete of the file cannot clear another avatar.
   avatarFileId      String?         @unique @map("avatar_file_id") @db.Uuid
   chatCount         Int             @default(0) @map("chat_count")
+  /// A trigger on character_likes keeps this count. The app never writes it.
+  likeCount         Int             @default(0) @map("like_count")
   /// The number of comments that are not deleted. A post adds 1 and a delete takes 1 in the same transaction.
   commentCount      Int             @default(0) @map("comment_count")
   createdAt         DateTime        @default(now()) @map("created_at")
@@ -107,11 +110,27 @@ model Character {
   tags     CharacterTag[]
   chats    Chat[]
   reports  Report[]
+  likes    CharacterLike[]
   comments CharacterComment[]
 
   @@unique([creatorId, title])
   @@index([status, isPublic, isAdult, chatCount, createdAt])
+  @@index([status, isPublic, isAdult, likeCount, createdAt])
   @@map("characters")
+}
+
+/// One like of one user for one character. The key blocks a second like.
+model CharacterLike {
+  userId      String   @map("user_id") @db.Uuid
+  characterId String   @map("character_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@id([userId, characterId])
+  @@index([characterId])
+  @@map("character_likes")
 }
 
 model CharacterOpening {
