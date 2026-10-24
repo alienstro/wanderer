@@ -5,6 +5,7 @@ export const TERMS_VERSION = "2026-10-23";
 
 export const HANDLE_MIN = 3;
 export const HANDLE_MAX = 20;
+export const REPLY_CHOICES_PROMPT_MAX = 500;
 
 /** A handle has 3 to 20 characters: lowercase a-z, 0-9, and _. The schema trims and lowercases the input first. */
 export const handleSchema = z
@@ -34,17 +35,20 @@ export const meResponseSchema = z.object({
   showAdult: z.boolean(),
   /** True when the chat page shows four reply choices after each AI reply. */
   replyChoicesOn: z.boolean(),
+  /** The user instructions for the style and the content of the reply choices. It is empty when the user has none. */
+  replyChoicesPrompt: z.string(),
   /** The proxy that the chat uses, for the model card. It is null when the user has no active proxy. */
   activeProxy: z.object({ id: z.string(), name: z.string(), model: z.string() }).nullable(),
   /** A handle suggestion for the handle step. It is null when the user has a handle. */
   suggestedHandle: z.string().nullable(),
 });
 
-/** PATCH /me changes the handle, "Show 18+", or both. */
+/** PATCH /me changes the handle, "Show 18+", the "Reply choices" switch, the reply choices instructions, or a mix. */
 export const updateMeRequestSchema = z.object({
   handle: handleSchema.optional(),
   showAdult: z.boolean().optional(),
   replyChoicesOn: z.boolean().optional(),
+  replyChoicesPrompt: z.string().trim().max(REPLY_CHOICES_PROMPT_MAX).optional(),
 });
 
 export type UpdateMeRequest = z.infer<typeof updateMeRequestSchema>;

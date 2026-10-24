@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { handleSchema, suggestHandle } from "./auth.js";
+import { handleSchema, REPLY_CHOICES_PROMPT_MAX, suggestHandle, updateMeRequestSchema } from "./auth.js";
 
 describe("handleSchema", () => {
   it('accepts "tian_01"', () => {
@@ -24,5 +24,18 @@ describe("suggestHandle", () => {
 
   it('returns "ab_user" for "ab@x.io"', () => {
     expect(suggestHandle("ab@x.io")).toBe("ab_user");
+  });
+});
+
+describe("updateMeRequestSchema", () => {
+  it("trims replyChoicesPrompt and accepts 500 characters", () => {
+    expect(updateMeRequestSchema.parse({ replyChoicesPrompt: "  Use *asterisks*.  " })).toEqual({
+      replyChoicesPrompt: "Use *asterisks*.",
+    });
+    expect(updateMeRequestSchema.safeParse({ replyChoicesPrompt: "a".repeat(REPLY_CHOICES_PROMPT_MAX) }).success).toBe(true);
+  });
+
+  it("rejects a 501-character replyChoicesPrompt", () => {
+    expect(updateMeRequestSchema.safeParse({ replyChoicesPrompt: "a".repeat(501) }).success).toBe(false);
   });
 });

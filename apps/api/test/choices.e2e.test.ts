@@ -108,4 +108,27 @@ describe("reply choices", () => {
     const me = await request(app.getHttpServer()).get("/me").set("Cookie", user.cookie).expect(200);
     expect(me.body.replyChoicesOn).toBe(false);
   });
+
+  it("PATCH /me { replyChoicesPrompt } changes GET /me, and the next choices follow it", async () => {
+    const me = () => request(app.getHttpServer()).patch("/me").set("Origin", WEB_ORIGIN).set("Cookie", user.cookie);
+    await me().send({ replyChoicesPrompt: "  Write each choice as an action in *asterisks*.  " }).expect(200);
+    const saved = await request(app.getHttpServer()).get("/me").set("Cookie", user.cookie).expect(200);
+    expect(saved.body.replyChoicesPrompt).toBe("Write each choice as an action in *asterisks*.");
+    fake.next({ pieces: [FOUR] });
+    await choices().expect(200);
+    const instruction = String(fake.requests.at(-1)!.body.messages?.at(-1)?.content);
+    expect(instruction).toContain("Write each choice as an action in *asterisks*.");
+    expect(instruction.endsWith("Answer only with a JSON array of four strings.")).toBe(true);
+  });
+
+  it("PATCH /me with a 501-character replyChoicesPrompt gives 400 and saves nothing", async () => {
+    await request(app.getHttpServer())
+      .patch("/me")
+      .set("Origin", WEB_ORIGIN)
+      .set("Cookie", user.cookie)
+      .send({ replyChoicesPrompt: "a".repeat(501) })
+      .expect(400);
+    const me = await request(app.getHttpServer()).get("/me").set("Cookie", user.cookie).expect(200);
+    expect(me.body.replyChoicesPrompt).toBe("");
+  });
 });

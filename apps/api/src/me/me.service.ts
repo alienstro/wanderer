@@ -20,6 +20,7 @@ export function toMeResponse(user: User, activeProxy: ActiveProxy): MeResponse {
     role: user.role,
     showAdult: user.showAdult,
     replyChoicesOn: user.replyChoicesOn,
+    replyChoicesPrompt: user.replyChoicesPrompt,
     activeProxy,
     suggestedHandle: user.handle === null ? suggestHandle(user.email) : null,
   };
@@ -55,7 +56,7 @@ export class MeService {
   }
 
   /**
-   * Saves the handle, "Show 18+", and the "Reply choices" switch. "Show 18+" can turn on only after the 18+ confirm.
+   * Saves the handle, "Show 18+", the "Reply choices" switch, and the reply choices instructions. "Show 18+" can turn on only after the 18+ confirm.
    * The unique index decides a race between two users, so a taken handle gives 409, not 500.
    */
   async update(current: User, request: UpdateMeRequest): Promise<MeResponse> {
@@ -65,7 +66,12 @@ export class MeService {
     try {
       const user = await this.prisma.user.update({
         where: { id: current.id },
-        data: { handle: request.handle, showAdult: request.showAdult, replyChoicesOn: request.replyChoicesOn },
+        data: {
+          handle: request.handle,
+          showAdult: request.showAdult,
+          replyChoicesOn: request.replyChoicesOn,
+          replyChoicesPrompt: request.replyChoicesPrompt,
+        },
         include: { activeProxy: activeProxySelect },
       });
       return toMeResponse(user, user.activeProxy);
