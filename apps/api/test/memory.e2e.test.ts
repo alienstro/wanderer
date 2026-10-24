@@ -23,6 +23,21 @@ describe("chat memory", () => {
       .set("Origin", WEB_ORIGIN)
       .set("Cookie", owner.cookie)
       .send(body);
+  const summarize = (owner = user) =>
+    request(app.getHttpServer())
+      .post(`/chats/${chatId}/memory/summarize`)
+      .set("Origin", WEB_ORIGIN)
+      .set("Cookie", owner.cookie);
+  /** Adds messages 1 to `count` of about 1,000 tokens each. Message n starts with "m<n> ". */
+  const addLongMessages = (count: number) =>
+    prisma.message.createMany({
+      data: Array.from({ length: count }, (_, index) => ({
+        chatId,
+        role: index % 2 === 0 ? ("user" as const) : ("assistant" as const),
+        content: `m${index + 1} ${"x".repeat(3990)}`,
+        position: index + 1,
+      })),
+    });
   const systemSent = () => fake.requests.at(-1)!.body.messages?.[0]?.content as string;
 
   beforeAll(async () => {
@@ -88,5 +103,41 @@ describe("chat memory", () => {
   it("another user gets 404 for the memory of the chat", async () => {
     const other = await userWithSession(app, 2);
     await patch({ memory: "Stolen." }, other).expect(404);
+  });
+
+  it("summarize sends the memory and only the old messages after the marker, gives a draft, and saves nothing", async () => {
+    await addLongMessages(30);
+    await prisma.chat.update({ where: { id: chatId }, data: { memory: "Mira owes {{user}} a sword.", memoryThroughPosition: 3 } });
+    fake.next({ pieces: ["Mira owes User 1 a sword.\nThe ship is in Port Vel."] });
+    const res = await summarize().expect(200);
+    expect(res.body.memory).toBe("Mira owes User 1 a sword.\nThe ship is in Port Vel.");
+    const through = res.body.throughPosition as number;
+    const sent = JSON.stringify(fake.requests.at(-1)!.body.messages);
+    expect(sent).toContain("Mira owes User 1 a sword.");
+    expect(sent).toContain(`m4 `);
+    expect(sent).not.toContain(`m3 `);
+    expect(sent).toContain(`m${through} `);
+    expect(sent).not.toContain(`m${through + 1} `);
+    expect(sent).not.toContain(`m30 `);
+    // The summary input is half of the 16,000-token budget or less.
+    expect(sent.length / 4).toBeLessThan(8_500);
+    const row = await prisma.chat.findUniqueOrThrow({ where: { id: chatId } });
+    expect([row.memory, row.memoryThroughPosition]).toEqual(["Mira owes {{user}} a sword.", 3]);
+  });
+
+  it("summarize gives the saved memory and makes no proxy call when no old message is new", async () => {
+    await prisma.chat.update({ where: { id: chatId }, data: { memory: "Facts." } });
+    const count = fake.requests.length;
+    expect((await summarize().expect(200)).body).toEqual({ memory: "Facts.", throughPosition: null });
+    expect(fake.requests.length).toBe(count);
+  });
+
+  it("summarize gives 502 with the code for a proxy error, and 404 for another user", async () => {
+    await addLongMessages(30);
+    fake.next({ status: 401 });
+    expect((await summarize().expect(502)).body).toEqual({ error: "invalid_key" });
+    const other = await userWithSession(app, 2);
+    await addProxy(app, other);
+    await summarize(other).expect(404);
   });
 });

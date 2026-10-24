@@ -10,6 +10,8 @@ const CHOICE_MAX = 300;
 
 const ROLEPLAY_TEXT =
   "You are {{char}} in a roleplay with {{user}}. Stay in character. Write only the reply of {{char}}. Do not write the words or actions of {{user}}.";
+const SUMMARY_TEXT =
+  "Update the memory of a roleplay between {{char}} and {{user}}. Keep the old facts that are still true. Add the important new facts from the messages: names, promises, debts, places, relations and open goals. Remove the facts that changed. Write short lines. Use no more than 2,000 characters. Answer only with the memory text.";
 const CHOICES_TEXT =
   "Write four short replies that {{user}} could say next, in the voice of {{user}}. Each reply has 25 words or less. Answer only with a JSON array of four strings.";
 
@@ -127,6 +129,22 @@ export function buildChoicesPrompt(input: PromptInput): PromptMessage[] {
     { role: "system", content: system },
     ...fitHistory(input, estimateTokens(system) + estimateTokens(instruction)),
     { role: "user", content: instruction },
+  ];
+}
+
+/** One summary reads half of the context budget of old messages or less, so one click costs less than one reply. */
+export function summaryInputTokens(input: PromptInput): number {
+  return input.contextTokens / 2;
+}
+
+/** The messages for a memory draft: the instruction, then the current memory and the old messages as one user message. */
+export function buildSummaryPrompt(input: PromptInput): PromptMessage[] {
+  const charName = input.character.chatName || input.character.title;
+  const lines = input.history.map((message) => `${message.role === "user" ? "{{user}}" : charName}: ${message.content}`);
+  const body = `## Current memory\n${input.memory.trim() || "(empty)"}\n\n## Messages\n${lines.join("\n\n")}`;
+  return [
+    { role: "system", content: fill(SUMMARY_TEXT, input) },
+    { role: "user", content: fill(body, input) },
   ];
 }
 
