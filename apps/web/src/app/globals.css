@@ -468,6 +468,72 @@
     font-size: inherit;
   }
 
+  /*
+   * A table is a block that scrolls on its own, so a wide shop list does not make the page scroll.
+   * Words do not break inside a cell, so a narrow screen scrolls the table and does not crush the columns.
+   */
+  .markdown table {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    margin: 8px 0;
+    overflow-x: auto;
+    border-collapse: collapse;
+    font-size: 14px;
+    overflow-wrap: normal;
+  }
+
+  .markdown :is(th, td) {
+    padding: 6px 10px;
+    border: 1px solid var(--color-field-line);
+    text-align: start;
+    vertical-align: top;
+  }
+
+  .markdown th {
+    background: var(--color-current);
+    font-weight: 600;
+  }
+
+  @media (max-width: 760px) {
+    .markdown table {
+      font-size: 13px;
+    }
+
+    .markdown :is(th, td) {
+      padding: 5px 8px;
+    }
+  }
+
+  /* A task list item shows its box and no bullet. */
+  .markdown li:has(> input[type="checkbox"]) {
+    margin-left: -1.4em;
+    list-style: none;
+  }
+
+  .markdown li > input[type="checkbox"] {
+    margin: 0 6px 0 0;
+    vertical-align: middle;
+  }
+
+  /* The footnotes of a message, under a line, in smaller text. Screen readers still read the label. */
+  .markdown section[data-footnotes] {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid var(--color-field-line);
+    color: var(--color-muted);
+    font-size: 13px;
+  }
+
+  .markdown section[data-footnotes] > h2 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
   .field {
     display: block;
     width: 100%;

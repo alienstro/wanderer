@@ -1,11 +1,17 @@
 import type { Html, Node, Parent, PhrasingContent, Root, RootContent } from "mdast";
+import { useId } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { type Options as SanitizeSchema } from "rehype-sanitize";
+import remarkGfm, { type Options as GfmOptions } from "remark-gfm";
+
+/** The sanitizer puts this before each `id`, so a user `id` cannot replace a global of the page. */
+const CLOBBER_PREFIX = "user-content-";
 
 /**
- * The elements that Markdown makes, plus `u` for the U button. rehype-raw changes raw HTML into
- * elements first, so this list also stops each other HTML element in the text.
+ * The elements that Markdown and GFM make, plus `u` for the U button. rehype-raw changes raw HTML
+ * into elements first, so this list also stops each other HTML element in the text. There is no
+ * `img`, because the app shows text only and a remote image can track the reader.
  */
 const schema: SanitizeSchema = {
   tagNames: [
@@ -29,11 +35,29 @@ const schema: SanitizeSchema = {
     "h4",
     "h5",
     "h6",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
+    "input",
+    "sup",
+    "section",
   ],
-  attributes: { a: ["href", "title"] },
+  attributes: {
+    a: ["href", "title", "id", "ariaDescribedBy", "ariaLabel", "dataFootnoteRef", "dataFootnoteBackref"],
+    th: ["align"],
+    td: ["align"],
+    // A task list item: a box that is checked or empty, and that the reader cannot change.
+    input: [["type", "checkbox"], ["disabled", true], "checked"],
+    li: ["id"],
+    h2: ["id"],
+    section: ["dataFootnotes"],
+  },
   protocols: { href: ["http", "https", "mailto"] },
   strip: ["script", "style"],
-  clobberPrefix: "user-content-",
+  clobberPrefix: CLOBBER_PREFIX,
 };
 
 /** One open or close HTML tag, such as `<stats>` or `</stats>`. */
@@ -87,19 +111,35 @@ function remarkMarkdownInTags(this: { parse(text: string): Node }) {
   return (tree: Root) => split(tree);
 }
 
-/** Shows user text as Markdown. The sanitizer runs last, so no raw HTML except `u` reaches the page. */
+/** GFM without the single `~` strikethrough, because roleplay text often has "Hello~" or "~sigh~". */
+const gfm: GfmOptions = { singleTilde: false };
+
+/**
+ * Shows user text as Markdown with GFM: tables, ~~strikethrough~~, task lists, bare links, and
+ * footnotes. The sanitizer runs last, so no raw HTML except `u` reaches the page.
+ */
 export function Markdown({ text }: { text: string }) {
+  // Each message gets its own footnote ids, so a note link goes to the note of the same message.
+  const footnotePrefix = `${useId()}-`;
   return (
     <div className="markdown">
       <ReactMarkdown
-        remarkPlugins={[remarkMarkdownInTags]}
+        remarkPlugins={[[remarkGfm, gfm], remarkMarkdownInTags]}
+        remarkRehypeOptions={{ clobberPrefix: footnotePrefix }}
         rehypePlugins={[rehypeRaw, [rehypeSanitize, schema]]}
         components={{
-          a: ({ href, children }) => (
-            <a href={href} target="_blank" rel="noopener noreferrer nofollow">
-              {children}
-            </a>
-          ),
+          a: ({ node: _node, href, children, ...props }) =>
+            // A footnote link goes to a place on the same page, so it stays in the same tab. The
+            // sanitizer changed the id of that place, so the link gets the same prefix.
+            href?.startsWith("#") ? (
+              <a href={`#${CLOBBER_PREFIX}${href.slice(1)}`} {...props}>
+                {children}
+              </a>
+            ) : (
+              <a href={href} target="_blank" rel="noopener noreferrer nofollow">
+                {children}
+              </a>
+            ),
         }}
       >
         {splitTagsFromFences(text)}
