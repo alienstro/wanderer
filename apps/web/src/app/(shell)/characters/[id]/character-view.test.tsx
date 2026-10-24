@@ -55,7 +55,7 @@ describe("character page", () => {
     vi.unstubAllGlobals();
   });
 
-  it('the view shows the title, "Chat with" the chat name, @creator, the bio, the tags, and the openings', () => {
+  it('the view shows the title, "Chat with" the chat name, @creator, the bio, the tags, and no openings', () => {
     stubFetch(() => undefined);
     withClient(<CharacterView detail={detail} />);
     expect(screen.getByRole("heading", { level: 1, name: "Mira Vale" })).toBeInTheDocument();
@@ -63,8 +63,9 @@ describe("character page", () => {
     expect(screen.getByText("@tian")).toBeInTheDocument();
     expect(screen.getByText("ship").tagName).toBe("STRONG");
     expect(screen.getByText("SciFi")).toBeInTheDocument();
-    expect(screen.getByText("The engine coughs.")).toBeInTheDocument();
-    expect(screen.getByText("The lights go out.")).toBeInTheDocument();
+    expect(screen.queryByText("The engine coughs.")).not.toBeInTheDocument();
+    expect(screen.queryByText("The lights go out.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "How the story starts" })).not.toBeInTheDocument();
     expect(screen.getByText(/Calm and dry\./)).toBeInTheDocument();
   });
 

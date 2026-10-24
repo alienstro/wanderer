@@ -10,7 +10,6 @@ const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace: vi.fn() }), usePathname: () => "/characters/c1" }));
 
 const me = { id: "u1", name: "Tian", handle: "tian", activeProxy: null, replyChoicesOn: true };
-const openings = ["The engine coughs.", "The lights go out.", "A storm hits the hull."];
 const chatList = {
   items: [
     {
@@ -24,7 +23,7 @@ const chatList = {
   ],
 };
 
-function stubApi(user: typeof me | null = me) {
+function stubApi(user: typeof me | null = me, list: typeof chatList = chatList) {
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.endsWith("/me")) {
       return user ? Response.json(user) : Response.json({ error: "unauthorized" }, { status: 401 });
@@ -35,7 +34,7 @@ function stubApi(user: typeof me | null = me) {
     if (init?.method === "DELETE") {
       return new Response(null, { status: 204 });
     }
-    return url.includes("/chats?characterId=c1") ? Response.json(chatList) : Response.json({ error: "not_found" }, { status: 404 });
+    return url.includes("/chats?characterId=c1") ? Response.json(list) : Response.json({ error: "not_found" }, { status: 404 });
   });
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
@@ -60,29 +59,35 @@ describe("start a chat", () => {
     vi.unstubAllGlobals();
   });
 
-  it("the first opening is chosen at first, and a click on Start sends openingIndex 0", async () => {
-    const fetchMock = stubApi();
-    withClient(<StartChat characterId="c1" openings={openings} />);
-    expect(screen.getByRole("radio", { name: "The engine coughs." })).toBeChecked();
+  it("a user with no chat sees only Start a new chat, and a click sends POST /chats with only characterId", async () => {
+    const fetchMock = stubApi(me, { items: [] });
+    withClient(<StartChat characterId="c1" />);
     await userEvent.click(await screen.findByRole("button", { name: "Start a new chat" }));
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/chats/new-chat"));
-    expect(postBody(fetchMock)).toEqual({ characterId: "c1", openingIndex: 0 });
+    expect(postBody(fetchMock)).toEqual({ characterId: "c1" });
+    expect(screen.queryByRole("link", { name: "Continue latest chat" })).not.toBeInTheDocument();
   });
 
-  it("a click on the third opening, then Start, sends openingIndex 2 and goes to /chats/<id>", async () => {
-    const fetchMock = stubApi();
-    withClient(<StartChat characterId="c1" openings={openings} />);
-    await userEvent.click(screen.getByRole("radio", { name: "A storm hits the hull." }));
-    await userEvent.click(await screen.findByRole("button", { name: "Start a new chat" }));
-    await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/chats/new-chat"));
-    expect(postBody(fetchMock).openingIndex).toBe(2);
+  it("a user with a chat sees Continue latest chat that opens the newest chat, and Start a new chat", async () => {
+    stubApi();
+    withClient(<StartChat characterId="c1" />);
+    expect(await screen.findByRole("link", { name: "Continue latest chat" })).toHaveAttribute("href", "/chats/chat1");
+    expect(screen.getByRole("button", { name: "Start a new chat" })).toBeInTheDocument();
+  });
+
+  it("the page shows no opening to pick", async () => {
+    stubApi();
+    withClient(<StartChat characterId="c1" />);
+    await screen.findByRole("button", { name: "Start a new chat" });
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
   });
 
   it('a visitor sees "Log in to chat"', async () => {
     stubApi(null);
-    withClient(<StartChat characterId="c1" openings={openings} />);
+    withClient(<StartChat characterId="c1" />);
     expect(await screen.findByRole("link", { name: "Log in to chat" })).toHaveAttribute("href", "/login");
     expect(screen.queryByRole("button", { name: "Start a new chat" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Continue latest chat" })).not.toBeInTheDocument();
   });
 
   it("Your chats lists the chats, and Delete asks for a confirm before the DELETE", async () => {

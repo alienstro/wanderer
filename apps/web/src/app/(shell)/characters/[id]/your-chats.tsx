@@ -56,16 +56,22 @@ function ChatRow({ chat, onDeleted }: { chat: ChatSummary; onDeleted: () => void
   );
 }
 
-/** The chats of this user with this character. It shows nothing for a visitor or when there are no chats. */
-export function YourChats({ characterId }: { characterId: string }) {
-  const queryClient = useQueryClient();
+/** The chats of the signed-in user with this character, newest first. A visitor gets no list. */
+export function useCharacterChats(characterId: string) {
   const { data: me } = useMe();
-  const list = useQuery({
+  return useQuery({
     // The key starts with "chats", so a new chat or a delete loads this list again.
     queryKey: ["chats", "character", characterId],
     queryFn: () => apiFetch<ChatListResponse>(`/chats?characterId=${characterId}`),
     enabled: Boolean(me),
   });
+}
+
+/** The chats of this user with this character. It shows nothing for a visitor or when there are no chats. */
+export function YourChats({ characterId }: { characterId: string }) {
+  const queryClient = useQueryClient();
+  const { data: me } = useMe();
+  const list = useCharacterChats(characterId);
   const items = list.data?.items ?? [];
   if (!me || items.length === 0) {
     return null;
