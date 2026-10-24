@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -48,6 +48,15 @@ function withClient(ui: ReactNode) {
 function postBody(fetchMock: ReturnType<typeof stubApi>) {
   const call = fetchMock.mock.calls.find(([, init]) => init?.method === "POST");
   return JSON.parse(String(call?.[1]?.body)) as Record<string, unknown>;
+}
+
+/** A list of `count` chats, newest first, with the last message "Chat <n>". */
+function manyChats(count: number): typeof chatList {
+  const [first] = chatList.items;
+  if (!first) {
+    throw new Error("chatList needs one item");
+  }
+  return { items: Array.from({ length: count }, (_, n) => ({ ...first, id: `chat${n + 1}`, lastMessage: `Chat ${n + 1}` })) };
 }
 
 describe("start a chat", () => {
@@ -102,5 +111,44 @@ describe("start a chat", () => {
     await vi.waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/chats\/chat1$/), expect.objectContaining({ method: "DELETE" })),
     );
+  });
+
+  it("Your chats with 10 chats shows the first three and a Show all chats button", async () => {
+    stubApi(me, manyChats(10));
+    withClient(<YourChats characterId="c1" />);
+    expect(await screen.findByText("Chat 1")).toBeInTheDocument();
+    expect(screen.getByText("Chat 3")).toBeInTheDocument();
+    expect(screen.queryByText("Chat 4")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Open" })).toHaveLength(3);
+    expect(screen.getByRole("button", { name: "Show all 10 chats" })).toBeInTheDocument();
+  });
+
+  it("Show all chats opens a dialog with all 10 chats, and Close or Escape closes it", async () => {
+    stubApi(me, manyChats(10));
+    withClient(<YourChats characterId="c1" />);
+    await userEvent.click(await screen.findByRole("button", { name: "Show all 10 chats" }));
+    const dialog = screen.getByRole("dialog", { name: "Your chats" });
+    expect(within(dialog).getAllByRole("link", { name: "Open" })).toHaveLength(10);
+    expect(within(dialog).getByText("Chat 10")).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Show all 10 chats" }));
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("Your chats with 3 chats shows all three and no Show all button", async () => {
+    stubApi(me, manyChats(3));
+    withClient(<YourChats characterId="c1" />);
+    expect(await screen.findByText("Chat 3")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Show all/ })).not.toBeInTheDocument();
+  });
+
+  it("Your chats shows the formatting of the last message, such as italic", async () => {
+    const [first] = chatList.items;
+    stubApi(me, { items: first ? [{ ...first, lastMessage: "*The lights flicker.* **Run.**" }] : [] });
+    withClient(<YourChats characterId="c1" />);
+    expect((await screen.findByText("The lights flicker.")).tagName).toBe("EM");
+    expect(screen.getByText("Run.").tagName).toBe("STRONG");
   });
 });

@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { Markdown } from "./markdown";
+import { InlineMarkdown, Markdown } from "./markdown";
 
 describe("Markdown", () => {
   it("**bold**, *italic*, <u>under</u>, and [link](https://a.b) render as strong, em, u, and a", () => {
@@ -90,5 +90,30 @@ describe("Markdown", () => {
     const { container } = render(<Markdown text={"Use `roll`.\n\n```\nd20\n```"} />);
     expect(container.querySelector("p code")).toHaveTextContent("roll");
     expect(container.querySelector("pre code")?.textContent).toBe("d20\n");
+  });
+});
+
+describe("InlineMarkdown", () => {
+  it("keeps italic, bold, strikethrough, underline, and code on one line, with no paragraph", () => {
+    // The chat view has no ~~ syntax, so the preview gets a strikethrough from a <del> tag, as the chat does.
+    const { container } = render(<InlineMarkdown text={"*waves* **Hi** <del>no</del> <u>yes</u> `d20`"} />);
+    expect(container.querySelector("em")?.textContent).toBe("waves");
+    expect(container.querySelector("strong")?.textContent).toBe("Hi");
+    expect(container.querySelector("del")?.textContent).toBe("no");
+    expect(container.querySelector("u")?.textContent).toBe("yes");
+    expect(container.querySelector("code")?.textContent).toBe("d20");
+    expect(container.querySelector("p")).toBeNull();
+  });
+
+  it("joins the lines with a space and shows a heading, a list, and a link as plain text", () => {
+    const { container } = render(<InlineMarkdown text={"# Day 1\n- a [map](https://example.com)\n\nEnd"} />);
+    expect(container.textContent).toBe("Day 1 a map End");
+    expect(container.querySelector("h1, ul, li, a")).toBeNull();
+  });
+
+  it("drops a script tag and keeps the text around it", () => {
+    const { container } = render(<InlineMarkdown text={"Hi <script>alert(1)</script>there"} />);
+    expect(container.querySelector("script")).toBeNull();
+    expect(container.textContent).toBe("Hi there");
   });
 });

@@ -1,4 +1,4 @@
-import type { Html, Node, Parent, Root, RootContent } from "mdast";
+import type { Html, Node, Parent, PhrasingContent, Root, RootContent } from "mdast";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { type Options as SanitizeSchema } from "rehype-sanitize";
@@ -105,5 +105,41 @@ export function Markdown({ text }: { text: string }) {
         {splitTagsFromFences(text)}
       </ReactMarkdown>
     </div>
+  );
+}
+
+/** The text parts of each block, in order. A code block becomes inline code, so it stays on the line. */
+function lineParts(node: RootContent | Root): PhrasingContent[][] {
+  if (node.type === "paragraph" || node.type === "heading") return [node.children];
+  if (node.type === "code") return [[{ type: "inlineCode", value: node.value }]];
+  if (node.type === "html") return [[node]];
+  return "children" in node ? (node.children as RootContent[]).flatMap(lineParts) : [];
+}
+
+/** Puts the text of all blocks in one paragraph, with a space between two blocks. */
+function remarkOneLine() {
+  return (tree: Root) => {
+    const children = lineParts(tree).flatMap((part, index): PhrasingContent[] => (index ? [{ type: "text", value: " " }, ...part] : part));
+    tree.children = [{ type: "paragraph", children }];
+  };
+}
+
+/** The formatting that a one-line preview keeps. Other elements give only their text. */
+const INLINE_ELEMENTS = ["strong", "em", "del", "u", "code"];
+
+/**
+ * Shows user text as one line of Markdown, for a preview such as the last message of a chat.
+ * It keeps bold, italic, strikethrough, underline, and code. The same sanitizer as `Markdown` runs.
+ */
+export function InlineMarkdown({ text }: { text: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkOneLine]}
+      rehypePlugins={[rehypeRaw, [rehypeSanitize, schema]]}
+      allowedElements={INLINE_ELEMENTS}
+      unwrapDisallowed
+    >
+      {text}
+    </ReactMarkdown>
   );
 }

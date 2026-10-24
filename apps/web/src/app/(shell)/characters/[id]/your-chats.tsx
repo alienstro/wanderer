@@ -3,7 +3,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ChatListResponse, ChatSummary } from "@wanderer/shared";
 import Link from "next/link";
-import { useState } from "react";
+import { useId, useState } from "react";
+import { InlineMarkdown } from "@/components/markdown";
 import { apiFetch } from "@/lib/api";
 import { messagesLabel } from "@/lib/format";
 import { useMe } from "@/lib/query-provider";
@@ -25,7 +26,9 @@ function ChatRow({ chat, onDeleted }: { chat: ChatSummary; onDeleted: () => void
     <li className="flex flex-col gap-2 rounded-[16px] border border-line bg-surface px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-col">
-          <span className="truncate">{chat.lastMessage}</span>
+          <span className="truncate [&_em]:text-muted">
+            <InlineMarkdown text={chat.lastMessage} />
+          </span>
           <span className="text-sm text-muted">
             {new Date(chat.lastMessageAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })} ·{" "}
             {messagesLabel(chat.messageCount)}
@@ -67,25 +70,67 @@ export function useCharacterChats(characterId: string) {
   });
 }
 
+/** The page shows this number of chats. The other chats open in a dialog, so a long list does not push the page down. */
+const PREVIEW_COUNT = 3;
+
+/** All the chats of the user with this character, in a list that scrolls inside the dialog. */
+function AllChatsDialog({ items, onDeleted, onClose }: { items: ChatSummary[]; onDeleted: () => void; onClose: () => void }) {
+  const titleId = useId();
+  return (
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="flex max-h-[80dvh] w-full max-w-[640px] flex-col gap-4 panel p-5 shadow-[0_16px_40px_rgba(0,0,0,0.6)]"
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.key === "Escape" && onClose()}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <h2 id={titleId} className="m-0 text-lg font-bold">
+            Your chats
+          </h2>
+          <button type="button" className="pill pill-soft" onClick={onClose} autoFocus>
+            Close
+          </button>
+        </div>
+        <ul className="m-0 flex min-h-0 list-none flex-col gap-2.5 overflow-y-auto p-0">
+          {items.map((chat) => (
+            <ChatRow key={chat.id} chat={chat} onDeleted={onDeleted} />
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 /** The chats of this user with this character. It shows nothing for a visitor or when there are no chats. */
 export function YourChats({ characterId }: { characterId: string }) {
   const queryClient = useQueryClient();
   const { data: me } = useMe();
   const list = useCharacterChats(characterId);
+  const [showAll, setShowAll] = useState(false);
   const items = list.data?.items ?? [];
   if (!me || items.length === 0) {
     return null;
   }
+  const onDeleted = () => void queryClient.invalidateQueries({ queryKey: ["chats"] });
   return (
     <section aria-labelledby="your-chats-h" className="flex flex-col gap-3">
       <h2 id="your-chats-h" className="m-0 text-lg font-bold">
         Your chats
       </h2>
       <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
-        {items.map((chat) => (
-          <ChatRow key={chat.id} chat={chat} onDeleted={() => void queryClient.invalidateQueries({ queryKey: ["chats"] })} />
+        {items.slice(0, PREVIEW_COUNT).map((chat) => (
+          <ChatRow key={chat.id} chat={chat} onDeleted={onDeleted} />
         ))}
       </ul>
+      {items.length > PREVIEW_COUNT && (
+        <button type="button" className="pill pill-soft self-start" onClick={() => setShowAll(true)}>
+          Show all {items.length} chats
+        </button>
+      )}
+      {showAll && <AllChatsDialog items={items} onDeleted={onDeleted} onClose={() => setShowAll(false)} />}
     </section>
   );
 }
