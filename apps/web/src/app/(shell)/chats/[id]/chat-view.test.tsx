@@ -43,6 +43,7 @@ const detail: ChatDetail = {
   messages: [message("m0", "assistant", "*waves* Hi!", 0), message("m1", "user", "Hello", 1)],
   memory: { text: "", throughPosition: null },
   canSend: true,
+  opening: { index: 0, count: 1 },
 };
 
 function stubApi(chat: ChatDetail = detail) {
@@ -349,5 +350,103 @@ describe("chat page", () => {
     await vi.waitFor(() => expect(chatLoads()).toBe(2), { timeout: 2000 });
     expect(await screen.findByText("Half a reply")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Send" })).toBeInTheDocument();
+  });
+
+  describe("the opening picker", () => {
+    const openings = ["*waves* Hi!", "*frowns* You again?", "*sleeps*"];
+    const openingOnly = (index: number): ChatDetail => ({
+      ...detail,
+      chat: { ...detail.chat, lastMessage: openings[index] ?? "", messageCount: 1 },
+      messages: [message("m0", "assistant", openings[index] ?? "", 0)],
+      opening: { index, count: 3 },
+    });
+
+    /** The API of an opening-only chat. `answer` gives the response of the PATCH. */
+    function stubOpenings(answer: (index: number) => Promise<Response> | Response = (index) => Response.json(openingOnly(index))) {
+      let current = openingOnly(0);
+      const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.endsWith("/me")) {
+          return Response.json(me);
+        }
+        if (url.endsWith("/chats/chat1/opening") && init?.method === "PATCH") {
+          const { openingIndex } = JSON.parse(String(init.body)) as { openingIndex: number };
+          const res = await answer(openingIndex);
+          if (res.ok) {
+            current = openingOnly(openingIndex);
+          }
+          return res;
+        }
+        return url.endsWith("/chats/chat1") ? Response.json(current) : Response.json({ error: "not_found" }, { status: 404 });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      return fetchMock;
+    }
+
+    it("an opening-only chat with 3 openings shows 1 / 3 and only Next opening", async () => {
+      stubOpenings();
+      withClient(<ChatView chatId="chat1" />);
+      expect(await screen.findByText("1 / 3")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Next opening" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Previous opening" })).not.toBeInTheDocument();
+    });
+
+    it("Next opening sends PATCH with openingIndex 1 and shows 2 / 3, then Previous opening goes back to 1 / 3", async () => {
+      const fetchMock = stubOpenings();
+      withClient(<ChatView chatId="chat1" />);
+      await userEvent.click(await screen.findByRole("button", { name: "Next opening" }));
+      expect(await screen.findByText("2 / 3")).toBeInTheDocument();
+      expect(screen.getByText("You again?", { exact: false })).toBeInTheDocument();
+      const patch = fetchMock.mock.calls.find(([url, init]) => url.endsWith("/opening") && init?.method === "PATCH");
+      expect(JSON.parse(String(patch?.[1]?.body))).toEqual({ openingIndex: 1 });
+      await userEvent.click(screen.getByRole("button", { name: "Previous opening" }));
+      expect(await screen.findByText("1 / 3")).toBeInTheDocument();
+    });
+
+    it("the arrows are disabled while the PATCH runs", async () => {
+      let finish = () => {};
+      stubOpenings((index) => new Promise((resolve) => (finish = () => resolve(Response.json(openingOnly(index))))));
+      withClient(<ChatView chatId="chat1" />);
+      await userEvent.click(await screen.findByRole("button", { name: "Next opening" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Next opening" })).toBeDisabled());
+      finish();
+      expect(await screen.findByText("2 / 3")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Next opening" })).toBeEnabled();
+    });
+
+    it("a 409 opening_locked loads the chat again", async () => {
+      const fetchMock = stubOpenings(() => Response.json({ error: "opening_locked" }, { status: 409 }));
+      withClient(<ChatView chatId="chat1" />);
+      await userEvent.click(await screen.findByRole("button", { name: "Next opening" }));
+      const chatLoads = () => fetchMock.mock.calls.filter(([url, init]) => url.endsWith("/chats/chat1") && !init?.method).length;
+      await waitFor(() => expect(chatLoads()).toBe(2));
+    });
+
+    it("another error shows a short message and keeps the opening", async () => {
+      stubOpenings(() => Response.json({ error: "server_error" }, { status: 500 }));
+      withClient(<ChatView chatId="chat1" />);
+      await userEvent.click(await screen.findByRole("button", { name: "Next opening" }));
+      expect(await screen.findByText("The opening did not change. Try again.")).toBeInTheDocument();
+      expect(screen.getByText("1 / 3")).toBeInTheDocument();
+    });
+
+    it("no arrows when the chat has a user message, when the character has one opening, or when canSend is false", async () => {
+      stubApi({ ...detail, opening: { index: 0, count: 3 } });
+      const first = withClient(<ChatView chatId="chat1" />);
+      expect(await screen.findByText("Hello")).toBeInTheDocument();
+      expect(screen.queryByText("1 / 3")).not.toBeInTheDocument();
+      first.unmount();
+
+      stubApi({ ...openingOnly(0), opening: { index: 0, count: 1 } });
+      const second = withClient(<ChatView chatId="chat1" />);
+      expect(await screen.findByText("Hi!", { exact: false })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Next opening" })).not.toBeInTheDocument();
+      expect(screen.queryByText("1 / 1")).not.toBeInTheDocument();
+      second.unmount();
+
+      stubApi({ ...openingOnly(0), canSend: false });
+      withClient(<ChatView chatId="chat1" />);
+      expect(await screen.findByText("Hi!", { exact: false })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Next opening" })).not.toBeInTheDocument();
+    });
   });
 });

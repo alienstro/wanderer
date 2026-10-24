@@ -33,6 +33,7 @@ const detail: ChatDetail = {
   messages: [message("m0", "assistant", "Hi!", 0)],
   memory: { text: "", throughPosition: null },
   canSend: true,
+  opening: { index: 0, count: 1 },
 };
 
 const SETS = [

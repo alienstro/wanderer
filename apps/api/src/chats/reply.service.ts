@@ -6,6 +6,7 @@ import { aiErrorLogFields, toAiError } from "../ai/ai-errors.js";
 import type { Message, User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { ProxiesService } from "../proxies/proxies.service.js";
+import { ChatLocks } from "./chat-locks.js";
 import { ChatsService, toMessageView } from "./chats.service.js";
 import { buildReplyPrompt } from "./prompt.js";
 import { openSse, type SseWriter } from "./sse.js";
@@ -46,10 +47,9 @@ interface Generated {
 @Injectable()
 export class ReplyService {
   private readonly logger = new Logger(ReplyService.name);
-  /** The "<user ID>:<chat ID>" keys of the running streams. The API runs as one container, so memory is enough. */
-  private readonly busy = new Set<string>();
 
   constructor(
+    private readonly locks: ChatLocks,
     private readonly prisma: PrismaService,
     private readonly chats: ChatsService,
     private readonly proxies: ProxiesService,
@@ -63,21 +63,11 @@ export class ReplyService {
    */
   async stream(input: ReplyInput): Promise<void> {
     const content = input.mode.kind === "send" ? this.parseContent(input.mode.body) : null;
-    // The busy mark comes before the loads, so a second request never reads a history that a first one still changes.
-    // The key holds the user ID, so another user never meets the owner's mark and gets 404 from the load.
-    const busyKey = `${input.user.id}:${input.chatId}`;
-    if (this.busy.has(busyKey)) {
-      throw new ConflictException({ error: "chat_busy" });
-    }
-    this.busy.add(busyKey);
-    try {
-      await this.streamOwned(input, content);
-    } finally {
-      this.busy.delete(busyKey);
-    }
+    // The lock comes before the loads, so a second request never reads a history that a first one still changes.
+    await this.locks.run(input.user.id, input.chatId, () => this.streamOwned(input, content));
   }
 
-  /** Loads the chat and the proxy, then streams the reply. The caller holds the busy mark of the chat. */
+  /** Loads the chat and the proxy, then streams the reply. The caller holds the lock of the chat. */
   private async streamOwned(input: ReplyInput, content: string | null): Promise<void> {
     const { user, res, mode } = input;
     const { chat, character, history } = await this.chats.loadForReply(input.chatId, user);
