@@ -51,7 +51,7 @@ export function SidebarDrawer({ children }: { children: ReactNode }) {
         <button
           ref={menuRef}
           type="button"
-          className="icon-btn"
+          className="icon-btn tap-target"
           aria-label="Open menu"
           aria-expanded={open}
           aria-controls={id}

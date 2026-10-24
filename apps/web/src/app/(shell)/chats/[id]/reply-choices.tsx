@@ -112,7 +112,7 @@ export function ReplyChoicesSwitch({ me }: { me: MeResponse }) {
 
   return (
     <span className="flex items-center gap-2 text-sm text-muted">
-      <button type="button" role="switch" aria-checked={on} aria-label="Reply choices" className="switch" onClick={toggle}>
+      <button type="button" role="switch" aria-checked={on} aria-label="Reply choices" className="switch tap-target" onClick={toggle}>
         <span className="track">
           <span className="knob" />
         </span>

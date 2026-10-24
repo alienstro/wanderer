@@ -246,10 +246,10 @@ export function ChatView({ chatId }: { chatId: string }) {
   return (
     // On a phone the chat fills the screen under the 56 px top bar of SidebarDrawer.
     <div className="flex h-screen flex-col max-[760px]:h-[calc(100dvh-56px)]">
-      <header className="flex items-center gap-3 border-b border-line px-7 py-3.5 max-[760px]:px-4">
+      <header className="flex items-center gap-3 border-b border-line px-7 py-3.5 max-[760px]:gap-2.5 max-[760px]:px-3 max-[760px]:py-2">
         <Avatar name={character.name} src={character.src} size={44} />
         <div className="flex min-w-0 flex-col">
-          <h1 className="m-0 truncate text-lg font-bold">{summary.title}</h1>
+          <h1 className="m-0 truncate text-lg font-bold max-[760px]:text-base">{summary.title}</h1>
           <Link href={`/characters/${summary.character.id}`} className="text-sm text-link">
             Character page
           </Link>
@@ -262,8 +262,8 @@ export function ChatView({ chatId }: { chatId: string }) {
       </header>
 
       {/* column-reverse keeps the newest message in view without a scroll script. */}
-      <div className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto px-7 py-5 max-[760px]:px-4">
-        <div role="log" aria-label="Messages" aria-live="polite" className={`${CHAT_COLUMN} flex flex-col gap-5`}>
+      <div className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto px-7 py-5 max-[760px]:px-3 max-[760px]:py-3">
+        <div role="log" aria-label="Messages" aria-live="polite" className={`${CHAT_COLUMN} flex flex-col gap-5 max-[760px]:gap-4`}>
           {shown.map((message) => (
             <MessageItem
               key={message.id}
@@ -296,7 +296,7 @@ export function ChatView({ chatId }: { chatId: string }) {
         </div>
       </div>
 
-      <footer className="px-7 pb-5 max-[760px]:px-4">
+      <footer className="px-7 pb-5 max-[760px]:px-3 max-[760px]:pb-3">
         <div className={`${CHAT_COLUMN} flex flex-col gap-2`}>
           {canSend ? (
             <>

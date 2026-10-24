@@ -55,10 +55,10 @@ export function MessageItem({ message, speaker, editable, canRegenerate, onSave,
   }
 
   return (
-    <article className={`flex gap-3 ${mine ? "flex-row-reverse" : ""}`}>
+    <article className={`flex gap-3 max-[760px]:gap-2 ${mine ? "flex-row-reverse" : ""}`}>
       <Avatar name={speaker.name} src={speaker.src} size={36} />
-      {/* An AI reply fills the chat column. The user's box fits its text, up to 82% of the column, and the edit box takes that 82%. */}
-      <div className={`flex min-w-0 flex-col gap-1.5 ${mine ? `max-w-[82%] items-end ${editing ? "w-full" : ""}` : "flex-1"}`}>
+      {/* An AI reply fills the chat column. The user's box fits its text, up to 82% of the column (the full width on a phone), and the edit box takes that width. */}
+      <div className={`flex min-w-0 flex-col gap-1.5 ${mine ? `max-w-[82%] items-end max-[760px]:max-w-full ${editing ? "w-full" : ""}` : "flex-1"}`}>
         <span className="text-[13px] font-semibold text-muted">{speaker.name}</span>
         {editing ? (
           <div className="flex w-full flex-col gap-2">
@@ -87,7 +87,7 @@ export function MessageItem({ message, speaker, editable, canRegenerate, onSave,
           </div>
         ) : (
           <div
-            className={`px-4 text-[15px] leading-[1.65] [overflow-wrap:anywhere] [&_em]:text-muted [&_p+p]:mt-3 ${
+            className={`px-4 text-[15px] leading-[1.65] max-[760px]:px-3 max-[760px]:text-[14px] max-[760px]:leading-[1.55] [overflow-wrap:anywhere] [&_em]:text-muted [&_p+p]:mt-3 ${
               mine ? "rounded-[20px_6px_20px_20px] bg-[#26262b] py-2.5" : "rounded-[6px_20px_20px_20px] border border-line bg-surface py-3 text-[#ececee]"
             } ${typing ? "self-start" : ""}`}
           >
