@@ -7,6 +7,7 @@ import { AuthModule } from "./auth/auth.module.js";
 import { CharactersModule } from "./characters/characters.module.js";
 import { ChatsModule } from "./chats/chats.module.js";
 import { CommentsModule } from "./comments/comments.module.js";
+import { EventsModule } from "./events/events.module.js";
 import { ApiKeysModule } from "./api-keys/api-keys.module.js";
 import { ENV, type Env } from "./config/env.js";
 import { serializeRequest } from "./config/logging.js";
@@ -41,6 +42,7 @@ export class AppModule {
           { name: USER_THROTTLER, ttl: 60_000, limit: Number.MAX_SAFE_INTEGER },
         ]),
         PrismaModule,
+        EventsModule,
         AuthModule,
         FilesModule,
         CharactersModule,
