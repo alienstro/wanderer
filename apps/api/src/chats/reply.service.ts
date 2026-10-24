@@ -82,7 +82,7 @@ export class ReplyService {
     const { user, res, mode } = input;
     const { chat, character, history } = await this.chats.loadForReply(input.chatId, user);
     const replaced = mode.kind === "regenerate" ? regenerateTarget(history) : null;
-    const { target, customPrompt } = await this.proxies.loadTarget(user);
+    const { target, customPrompt, contextTokens } = await this.proxies.loadTarget(user);
     let sse: SseWriter | null = null;
     try {
       const userMessage = content === null ? null : await this.saveMessage(chat.id, "user", content, nextPosition(history));
@@ -93,7 +93,14 @@ export class ReplyService {
       const promptHistory = replaced ? history.filter((message) => message.id !== replaced.id) : history;
       sse = openSse(res, this.timing.heartbeatMs);
       sse.send({ type: "start", userMessage: userMessage && toMessageView(userMessage) });
-      const prompt = buildReplyPrompt({ character, customPrompt, userName: user.name, history: promptHistory });
+      const prompt = buildReplyPrompt({
+        character,
+        customPrompt,
+        contextTokens,
+        memory: chat.memory,
+        userName: user.name,
+        history: promptHistory,
+      });
       const result = await this.generate(target, prompt, res, sse);
       // An empty result keeps the old reply. Only a reply with text replaces it.
       const reply = result.text.trim()

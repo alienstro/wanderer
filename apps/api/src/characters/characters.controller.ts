@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UploadedFile,
   UseGuards,
@@ -17,6 +18,7 @@ import {
   type CharacterCard,
   type CharacterDetail,
   type CharacterInput,
+  type CharacterLikeState,
   type CharacterListResponse,
   type MyCharacterCard,
   characterListQuerySchema,
@@ -28,15 +30,17 @@ import { FilesService } from "../files/files.service.js";
 import type { User } from "../generated/prisma/client.js";
 import { AllowMultipart } from "../security/origin.guard.js";
 import { parseCharacterInput } from "./character-input.js";
+import { CharacterLikesService } from "./character-likes.service.js";
 import { CharacterListService } from "./character-list.service.js";
 import { CharactersService } from "./characters.service.js";
-import { readTavernCard } from "./tavern-card.js";
+import { mapTavernCard, readTavernCard } from "./tavern-card.js";
 
 @Controller("characters")
 export class CharactersController {
   constructor(
     private readonly characters: CharactersService,
     private readonly lists: CharacterListService,
+    private readonly likes: CharacterLikesService,
     private readonly files: FilesService,
   ) {}
 
@@ -82,6 +86,19 @@ export class CharactersController {
     return { draft, avatarFileId: avatar.id };
   }
 
+  /** Reads the JSON of a Tavern card into a form draft. It creates no character and no avatar. app.ts sets the body limit. */
+  @Post("import-json")
+  @HttpCode(200)
+  @UseGuards(SessionGuard)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  importJson(@Body() body: unknown): { draft: Partial<CharacterInput> } {
+    const draft = mapTavernCard(body);
+    if (!draft) {
+      throw new BadRequestException({ error: "no_character_card" });
+    }
+    return { draft };
+  }
+
   @Get(":id")
   @UseGuards(OptionalSessionGuard)
   read(@OptionalUser() viewer: User | null, @Param("id") id: string): Promise<CharacterDetail> {
@@ -99,6 +116,19 @@ export class CharactersController {
   @UseGuards(SessionGuard)
   remove(@CurrentUser() user: User, @Param("id") id: string): Promise<void> {
     return this.characters.remove(id, user);
+  }
+
+  /** PUT and DELETE are idempotent, so a retry cannot reverse the action, as a toggle would. */
+  @Put(":id/like")
+  @UseGuards(SessionGuard)
+  like(@CurrentUser() user: User, @Param("id") id: string): Promise<CharacterLikeState> {
+    return this.likes.like(id, user);
+  }
+
+  @Delete(":id/like")
+  @UseGuards(SessionGuard)
+  unlike(@CurrentUser() user: User, @Param("id") id: string): Promise<CharacterLikeState> {
+    return this.likes.unlike(id, user);
   }
 }
 

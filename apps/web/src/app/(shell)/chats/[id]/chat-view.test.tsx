@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ChatDetail, ChatStreamEvent, MessageView } from "@wanderer/shared";
 import type { ReactNode } from "react";
@@ -41,6 +41,7 @@ const detail: ChatDetail = {
     messageCount: 2,
   },
   messages: [message("m0", "assistant", "*waves* Hi!", 0), message("m1", "user", "Hello", 1)],
+  memory: { text: "", throughPosition: null },
   canSend: true,
 };
 
@@ -48,6 +49,10 @@ function stubApi(chat: ChatDetail = detail) {
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.endsWith("/me")) {
       return Response.json(me);
+    }
+    if (url.endsWith("/chats/chat1/memory") && init?.method === "PATCH") {
+      const body = JSON.parse(String(init.body)) as { memory: string };
+      return Response.json({ text: body.memory, throughPosition: null });
     }
     if (url.includes("/messages/") && init?.method === "PATCH") {
       const body = JSON.parse(String(init.body)) as { content: string };
@@ -277,6 +282,20 @@ describe("chat page", () => {
       ),
     );
     expect(await within(log).findByText("Hello again")).toBeInTheDocument();
+  });
+
+  it("the Memory button shows the saved memory, and a save updates the copy of the page", async () => {
+    stubApi({ ...detail, memory: { text: "Old fact.", throughPosition: null } });
+    withClient(<ChatView chatId="chat1" />);
+    await userEvent.click(await screen.findByRole("button", { name: "Memory" }));
+    const box = screen.getByLabelText("Memory text");
+    expect(box).toHaveValue("Old fact.");
+    await userEvent.clear(box);
+    await userEvent.type(box, "New fact.");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Memory" })).not.toBeInTheDocument());
+    await userEvent.click(screen.getByRole("button", { name: "Memory" }));
+    expect(screen.getByLabelText("Memory text")).toHaveValue("New fact.");
   });
 
   it('canSend false shows "This character is no longer available." and no text box', async () => {

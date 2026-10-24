@@ -11,6 +11,7 @@ import { ApiError, apiFetch, fileSrc } from "@/lib/api";
 import { streamChat } from "@/lib/chat-stream";
 import { useRequireLogin } from "@/lib/use-require-login";
 import { Composer } from "./composer";
+import { MemoryButton } from "./memory-panel";
 import { MessageItem } from "./message-item";
 import { NewChoicesButton, ReplyChoices, ReplyChoicesSwitch, useReplyChoices } from "./reply-choices";
 
@@ -247,6 +248,11 @@ export function ChatView({ chatId }: { chatId: string }) {
             Character page
           </Link>
         </div>
+        <MemoryButton
+          chatId={chatId}
+          memory={chat.data.memory}
+          onSaved={(memory) => patchChat((detail) => ({ ...detail, memory }))}
+        />
       </header>
 
       {/* column-reverse keeps the newest message in view without a scroll script. */}

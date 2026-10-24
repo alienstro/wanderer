@@ -130,6 +130,7 @@ describe("CharacterForm", () => {
       isAdult: false,
       tags: [],
       chatCount: 0,
+      likeCount: 0,
       creatorHandle: "tian",
       bio: "Bio",
       status: "published" as const,
@@ -138,6 +139,7 @@ describe("CharacterForm", () => {
       openings: ["Hi."],
       definition: { personality: "Calm.", scenario: "", exampleDialogs: "" },
       isOwner: true,
+      likedByMe: false,
       createdAt: "2026-10-21T00:00:00.000Z",
     };
     render(<CharacterForm initial={published} onSaved={vi.fn()} />);

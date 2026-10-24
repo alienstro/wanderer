@@ -50,6 +50,25 @@ describe("reply choices", () => {
     expect(sent.messages?.at(-1)?.content).toContain("Write four short replies that User 1 could say next");
   });
 
+  it("the prompt keeps only the newest history that fits in the context size of the proxy", async () => {
+    await prisma.proxy.updateMany({ where: { userId: user.user.id }, data: { contextTokens: 2_000 } });
+    // Three messages of about 1,000 tokens each, after the opening.
+    await prisma.message.createMany({
+      data: [1, 2, 3].map((position) => ({
+        chatId,
+        role: position % 2 === 0 ? ("assistant" as const) : ("user" as const),
+        content: `${position} ${"x".repeat(4_000)}`,
+        position,
+      })),
+    });
+    fake.next({ pieces: [FOUR] });
+    await choices().expect(200);
+    const sent = fake.requests.at(-1)!.body.messages!;
+    // The system message, the newest message, and the choices instruction.
+    expect(sent.length).toBe(3);
+    expect(sent[1]?.content.startsWith("3 ")).toBe(true);
+  });
+
   it("prose, then a fenced array, gives the choices after one more try", async () => {
     fake.next({ pieces: ["Sure! Here are some ideas."] }, { pieces: ["```json\n", FOUR, "\n```"] });
     const res = await choices().expect(200);
@@ -88,5 +107,28 @@ describe("reply choices", () => {
       .expect(200);
     const me = await request(app.getHttpServer()).get("/me").set("Cookie", user.cookie).expect(200);
     expect(me.body.replyChoicesOn).toBe(false);
+  });
+
+  it("PATCH /me { replyChoicesPrompt } changes GET /me, and the next choices follow it", async () => {
+    const me = () => request(app.getHttpServer()).patch("/me").set("Origin", WEB_ORIGIN).set("Cookie", user.cookie);
+    await me().send({ replyChoicesPrompt: "  Write each choice as an action in *asterisks*.  " }).expect(200);
+    const saved = await request(app.getHttpServer()).get("/me").set("Cookie", user.cookie).expect(200);
+    expect(saved.body.replyChoicesPrompt).toBe("Write each choice as an action in *asterisks*.");
+    fake.next({ pieces: [FOUR] });
+    await choices().expect(200);
+    const instruction = String(fake.requests.at(-1)!.body.messages?.at(-1)?.content);
+    expect(instruction).toContain("Write each choice as an action in *asterisks*.");
+    expect(instruction.endsWith("Answer only with a JSON array of four strings.")).toBe(true);
+  });
+
+  it("PATCH /me with a 501-character replyChoicesPrompt gives 400 and saves nothing", async () => {
+    await request(app.getHttpServer())
+      .patch("/me")
+      .set("Origin", WEB_ORIGIN)
+      .set("Cookie", user.cookie)
+      .send({ replyChoicesPrompt: "a".repeat(501) })
+      .expect(400);
+    const me = await request(app.getHttpServer()).get("/me").set("Cookie", user.cookie).expect(200);
+    expect(me.body.replyChoicesPrompt).toBe("");
   });
 });

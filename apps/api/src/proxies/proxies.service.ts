@@ -31,6 +31,7 @@ function toProxyView(row: Proxy, activeProxyId: string | null): ProxyView {
     appendPath: row.appendPath,
     model: row.model,
     customPrompt: row.customPrompt,
+    contextTokens: row.contextTokens,
     keyLast4: row.keyLast4,
     isActive: row.id === activeProxyId,
     createdAt: row.createdAt.toISOString(),
@@ -146,7 +147,7 @@ export class ProxiesService {
   }
 
   /** The decrypted target of the active proxy, for one call. */
-  async loadTarget(user: User): Promise<{ target: AiTarget; customPrompt: string }> {
+  async loadTarget(user: User): Promise<{ target: AiTarget; customPrompt: string; contextTokens: number }> {
     const row = user.activeProxyId
       ? await this.prisma.proxy.findFirst({ where: { id: user.activeProxyId, userId: user.id } })
       : null;
@@ -154,7 +155,7 @@ export class ProxiesService {
       throw new ConflictException({ error: "no_active_proxy" });
     }
     try {
-      return { target: this.target(row), customPrompt: row.customPrompt };
+      return { target: this.target(row), customPrompt: row.customPrompt, contextTokens: row.contextTokens };
     } catch (error) {
       if (error instanceof KeyDecryptError) {
         // The master key changed. The user must enter the API key again.

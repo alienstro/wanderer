@@ -17,6 +17,7 @@ const me: MeResponse = {
   role: "user",
   showAdult: false,
   replyChoicesOn: true,
+  replyChoicesPrompt: "",
   activeProxy: null,
   suggestedHandle: null,
 };
@@ -82,6 +83,19 @@ describe("SettingsView", () => {
     renderView();
     await userEvent.click(screen.getByRole("switch", { name: "Reply choices" }));
     expect(lastCall(fetchMock)).toMatchObject({ url: "/me", method: "PATCH", body: { replyChoicesOn: false } });
+  });
+
+  it("shows the saved reply choices instructions with a count, and saves new text with PATCH /me", async () => {
+    const fetchMock = stubFetch(200, { ...me, replyChoicesPrompt: "Use *asterisks*." });
+    renderView({ ...me, replyChoicesPrompt: "Be brief." });
+    const input = screen.getByLabelText("Reply choices instructions");
+    expect((input as HTMLTextAreaElement).value).toBe("Be brief.");
+    expect(screen.getByText("9/500")).toBeTruthy();
+    await userEvent.clear(input);
+    await userEvent.type(input, "Use *asterisks*.");
+    await userEvent.click(screen.getByRole("button", { name: "Save instructions" }));
+    expect(lastCall(fetchMock)).toMatchObject({ url: "/me", method: "PATCH", body: { replyChoicesPrompt: "Use *asterisks*." } });
+    expect(await screen.findByText("Saved.")).toBeTruthy();
   });
 
   it("links to the Models page", () => {

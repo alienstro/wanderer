@@ -30,7 +30,7 @@ export default function MyCharactersPage() {
       {list.data && list.data.length === 0 && (
         <div className="flex flex-col items-center gap-2.5 panel px-6 py-14 text-center">
           <p className="m-0 text-[17px] font-semibold">You have no characters yet.</p>
-          <p className="m-0 text-muted">Make one, or import a Tavern PNG card.</p>
+          <p className="m-0 text-muted">Make one, or import a character card.</p>
         </div>
       )}
       {list.data && list.data.length > 0 && (

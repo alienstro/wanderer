@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
 import { type MeResponse, suggestHandle, type UpdateMeRequest } from "@wanderer/shared";
+import { deleteCommentsOf } from "../comments/comments.service.js";
 import { Prisma, type User } from "../generated/prisma/client.js";
 import { FilesService } from "../files/files.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -19,6 +20,7 @@ export function toMeResponse(user: User, activeProxy: ActiveProxy): MeResponse {
     role: user.role,
     showAdult: user.showAdult,
     replyChoicesOn: user.replyChoicesOn,
+    replyChoicesPrompt: user.replyChoicesPrompt,
     activeProxy,
     suggestedHandle: user.handle === null ? suggestHandle(user.email) : null,
   };
@@ -32,12 +34,16 @@ export class MeService {
   ) {}
 
   /**
-   * Deletes the account. The cascades remove the characters, chats, proxies, sessions, and file rows.
-   * Reports by the user and about their characters stay without the link. The file bytes go last.
+   * Deletes the account. The cascades remove the characters, chats, comments, proxies, sessions, and file rows.
+   * The comments first leave the comment counts. Reports by the user and about their characters stay without
+   * the link. The file bytes go last.
    */
   async remove(user: User): Promise<void> {
     const paths = await this.files.pathsOf(user.id);
-    await this.prisma.user.delete({ where: { id: user.id } });
+    await this.prisma.$transaction(async (tx) => {
+      await deleteCommentsOf(tx, user.id);
+      await tx.user.delete({ where: { id: user.id } });
+    });
     await this.files.removeBytes(paths);
   }
 
@@ -50,7 +56,7 @@ export class MeService {
   }
 
   /**
-   * Saves the handle, "Show 18+", and the "Reply choices" switch. "Show 18+" can turn on only after the 18+ confirm.
+   * Saves the handle, "Show 18+", the "Reply choices" switch, and the reply choices instructions. "Show 18+" can turn on only after the 18+ confirm.
    * The unique index decides a race between two users, so a taken handle gives 409, not 500.
    */
   async update(current: User, request: UpdateMeRequest): Promise<MeResponse> {
@@ -60,7 +66,12 @@ export class MeService {
     try {
       const user = await this.prisma.user.update({
         where: { id: current.id },
-        data: { handle: request.handle, showAdult: request.showAdult, replyChoicesOn: request.replyChoicesOn },
+        data: {
+          handle: request.handle,
+          showAdult: request.showAdult,
+          replyChoicesOn: request.replyChoicesOn,
+          replyChoicesPrompt: request.replyChoicesPrompt,
+        },
         include: { activeProxy: activeProxySelect },
       });
       return toMeResponse(user, user.activeProxy);

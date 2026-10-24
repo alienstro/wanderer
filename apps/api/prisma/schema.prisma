@@ -1,8 +1,10 @@
 generator client {
-  provider     = "prisma-client"
-  output       = "../src/generated/prisma"
-  moduleFormat = "esm"
-  runtime      = "nodejs"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  moduleFormat    = "esm"
+  runtime         = "nodejs"
+  /// Report needs a partial unique index, so that one user can report a character and its comments.
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -15,31 +17,35 @@ enum Role {
 }
 
 model User {
-  id               String    @id @default(uuid()) @db.Uuid
-  email            String    @unique
-  googleSub        String    @unique @map("google_sub")
-  name             String
-  pictureUrl       String?   @map("picture_url")
-  handle           String?   @unique
-  role             Role      @default(user)
-  bannedAt         DateTime? @map("banned_at")
+  id                 String    @id @default(uuid()) @db.Uuid
+  email              String    @unique
+  googleSub          String    @unique @map("google_sub")
+  name               String
+  pictureUrl         String?   @map("picture_url")
+  handle             String?   @unique
+  role               Role      @default(user)
+  bannedAt           DateTime? @map("banned_at")
   /// True when the user sees 18+ characters. It can be true only when adultConfirmedAt is set.
-  showAdult        Boolean   @default(false) @map("show_adult")
-  adultConfirmedAt DateTime? @map("adult_confirmed_at")
+  showAdult          Boolean   @default(false) @map("show_adult")
+  adultConfirmedAt   DateTime? @map("adult_confirmed_at")
   /// True when the chat page shows four reply choices after each AI reply.
-  replyChoicesOn   Boolean   @default(true) @map("reply_choices_on")
-  activeProxyId    String?   @unique @map("active_proxy_id") @db.Uuid
-  createdAt        DateTime  @default(now()) @map("created_at")
+  replyChoicesOn     Boolean   @default(true) @map("reply_choices_on")
+  /// The user instructions for the style and the content of the reply choices. Empty means none.
+  replyChoicesPrompt String    @default("") @map("reply_choices_prompt")
+  activeProxyId      String?   @unique @map("active_proxy_id") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at")
 
   sessions         Session[]
   termsAcceptances TermsAcceptance[]
   characters       Character[]
   files            File[]
-  proxies          Proxy[]   @relation("ProxyOwner")
-  activeProxy      Proxy?    @relation("ActiveProxy", fields: [activeProxyId], references: [id], onDelete: SetNull)
+  proxies          Proxy[]            @relation("ProxyOwner")
+  activeProxy      Proxy?             @relation("ActiveProxy", fields: [activeProxyId], references: [id], onDelete: SetNull)
   chats            Chat[]
-  reports          Report[]  @relation("Reporter")
-  resolvedReports  Report[]  @relation("ResolvedBy")
+  reports          Report[]           @relation("Reporter")
+  resolvedReports  Report[]           @relation("ResolvedBy")
+  characterLikes   CharacterLike[]
+  comments         CharacterComment[]
 
   @@map("users")
 }
@@ -93,6 +99,10 @@ model Character {
   /// One avatar file belongs to one character, so a delete of the file cannot clear another avatar.
   avatarFileId      String?         @unique @map("avatar_file_id") @db.Uuid
   chatCount         Int             @default(0) @map("chat_count")
+  /// A trigger on character_likes keeps this count. The app never writes it.
+  likeCount         Int             @default(0) @map("like_count")
+  /// The number of comments that are not deleted. A post adds 1 and a delete takes 1 in the same transaction.
+  commentCount      Int             @default(0) @map("comment_count")
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
 
@@ -102,10 +112,27 @@ model Character {
   tags     CharacterTag[]
   chats    Chat[]
   reports  Report[]
+  likes    CharacterLike[]
+  comments CharacterComment[]
 
   @@unique([creatorId, title])
   @@index([status, isPublic, isAdult, chatCount, createdAt])
+  @@index([status, isPublic, isAdult, likeCount, createdAt])
   @@map("characters")
+}
+
+/// One like of one user for one character. The key blocks a second like.
+model CharacterLike {
+  userId      String   @map("user_id") @db.Uuid
+  characterId String   @map("character_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@id([userId, characterId])
+  @@index([characterId])
+  @@map("character_likes")
 }
 
 model CharacterOpening {
@@ -168,6 +195,7 @@ model Proxy {
   appendPath    Boolean  @default(true) @map("append_path")
   model         String
   customPrompt  String   @default("") @map("custom_prompt")
+  contextTokens Int      @default(16000) @map("context_tokens")
   keyCiphertext Bytes    @map("key_ciphertext")
   keyIv         Bytes    @map("key_iv")
   keyTag        Bytes    @map("key_tag")
@@ -184,12 +212,16 @@ model Proxy {
 }
 
 model Chat {
-  id            String   @id @default(uuid()) @db.Uuid
-  userId        String   @map("user_id") @db.Uuid
-  characterId   String   @map("character_id") @db.Uuid
-  title         String
-  lastMessageAt DateTime @default(now()) @map("last_message_at")
-  createdAt     DateTime @default(now()) @map("created_at")
+  id                    String   @id @default(uuid()) @db.Uuid
+  userId                String   @map("user_id") @db.Uuid
+  characterId           String   @map("character_id") @db.Uuid
+  title                 String
+  /// The facts that the character keeps after their messages leave the history window. Max 2,000 characters.
+  memory                String   @default("")
+  /// The last message position that a saved summary covers. Null when no summary is saved.
+  memoryThroughPosition Int?     @map("memory_through_position")
+  lastMessageAt         DateTime @default(now()) @map("last_message_at")
+  createdAt             DateTime @default(now()) @map("created_at")
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
@@ -234,6 +266,12 @@ enum ReportStatus {
   closed
 }
 
+/// What a report is about. A comment report stays a comment report after a delete of its comment.
+enum ReportTarget {
+  character
+  comment
+}
+
 enum ReportAction {
   none
   hidden
@@ -241,13 +279,34 @@ enum ReportAction {
   banned
 }
 
-/// A report about a character. It stays for the admin after a delete of the character or of the reporter.
+/// A plain-text comment on a character page. A delete sets deletedAt, so a report keeps the text for the admin.
+model CharacterComment {
+  id          String    @id @default(uuid()) @db.Uuid
+  characterId String    @map("character_id") @db.Uuid
+  authorId    String    @map("author_id") @db.Uuid
+  body        String
+  createdAt   DateTime  @default(now()) @map("created_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reports   Report[]
+
+  @@index([characterId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([authorId])
+  @@map("character_comments")
+}
+
+/// A report about a character, or about a comment when commentId is set. It stays for the admin after a delete of the character or of the reporter.
 model Report {
   id             String        @id @default(uuid()) @db.Uuid
   characterId    String?       @map("character_id") @db.Uuid
   /// The title when the user sent the report, so the admin history keeps it after a delete.
   characterTitle String        @map("character_title")
   reporterId     String?       @map("reporter_id") @db.Uuid
+  target         ReportTarget  @default(character)
+  /// Set for a report about a comment. characterId then names the character of the comment.
+  commentId      String?       @map("comment_id") @db.Uuid
   reason         ReportReason
   note           String        @default("")
   status         ReportStatus  @default(open)
@@ -256,11 +315,13 @@ model Report {
   resolvedAt     DateTime?     @map("resolved_at")
   createdAt      DateTime      @default(now()) @map("created_at")
 
-  character  Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
-  reporter   User?      @relation("Reporter", fields: [reporterId], references: [id], onDelete: SetNull)
-  resolvedBy User?      @relation("ResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  character  Character?        @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  comment    CharacterComment? @relation(fields: [commentId], references: [id], onDelete: SetNull)
+  reporter   User?             @relation("Reporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  resolvedBy User?             @relation("ResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
 
-  @@unique([characterId, reporterId])
+  @@unique([characterId, reporterId], map: "reports_character_id_reporter_id_key", where: raw("target = 'character'"))
+  @@unique([commentId, reporterId])
   @@index([status, createdAt])
   @@index([reporterId, createdAt])
   @@map("reports")

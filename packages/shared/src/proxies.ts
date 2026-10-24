@@ -5,6 +5,10 @@ export const PROXY_URL_MAX = 500;
 export const PROXY_MODEL_MAX = 200;
 export const PROXY_PROMPT_MAX = 4000;
 export const PROXY_KEY_MAX = 500;
+/** The chat history budget of a proxy, in estimated tokens. The system message always goes in. */
+export const PROXY_CONTEXT_MIN = 2_000;
+export const PROXY_CONTEXT_MAX = 200_000;
+export const PROXY_CONTEXT_DEFAULT = 16_000;
 /** A user can keep this number of proxies or less. */
 export const PROXY_LIMIT = 20;
 
@@ -57,12 +61,15 @@ export const proxyUrlSchema = z
   }, "The proxy URL must be an https URL")
   .transform((value) => value.replace(/\/+$/, ""));
 
+const contextTokensSchema = z.number().int().min(PROXY_CONTEXT_MIN).max(PROXY_CONTEXT_MAX);
+
 const proxyFields = {
   name: z.string().trim().min(1).max(PROXY_NAME_MAX),
   baseUrl: proxyUrlSchema,
   appendPath: z.boolean().default(true),
   model: z.string().trim().min(1).max(PROXY_MODEL_MAX),
   customPrompt: z.string().trim().max(PROXY_PROMPT_MAX).default(""),
+  contextTokens: contextTokensSchema.default(PROXY_CONTEXT_DEFAULT),
 };
 
 export const proxyCreateSchema = z.object({
@@ -77,6 +84,7 @@ export const proxyUpdateSchema = z.object({
   appendPath: z.boolean().optional(),
   model: proxyFields.model.optional(),
   customPrompt: z.string().trim().max(PROXY_PROMPT_MAX).optional(),
+  contextTokens: contextTokensSchema.optional(),
   apiKey: z.string().trim().max(PROXY_KEY_MAX).optional(),
 });
 
@@ -91,6 +99,7 @@ export interface ProxyView {
   appendPath: boolean;
   model: string;
   customPrompt: string;
+  contextTokens: number;
   keyLast4: string;
   isActive: boolean;
   createdAt: string;

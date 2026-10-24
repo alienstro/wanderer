@@ -40,6 +40,19 @@ export interface AdminReport {
   character: { id: string; creatorId: string; creatorHandle: string | null; status: string } | null;
   /** Null when the reporter deleted their account. */
   reporterHandle: string | null;
+  /** "comment" for a report about a comment. The actions then apply to the comment and to its author. */
+  target: "character" | "comment";
+  /** The reported comment. Null for a character report, and for a comment that is gone with its author. */
+  comment: AdminReportComment | null;
+}
+
+export interface AdminReportComment {
+  id: string;
+  body: string;
+  authorId: string;
+  authorHandle: string | null;
+  /** True when the author, the creator, or an admin deleted the comment. */
+  deleted: boolean;
 }
 
 export interface AdminReportList {

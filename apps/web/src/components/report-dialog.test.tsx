@@ -74,3 +74,40 @@ describe("ReportButton", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
+
+describe("ReportButton for a comment", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  async function openCommentDialog() {
+    render(<ReportButton commentId="m1" />);
+    await userEvent.click(screen.getByRole("button", { name: "Report" }));
+    return screen.getByRole("dialog", { name: "Report this comment" });
+  }
+
+  it("shows only the 3 reasons that apply to a comment", async () => {
+    stubFetch();
+    await openCommentDialog();
+    expect(screen.getAllByRole("radio").map((radio) => radio.getAttribute("value"))).toEqual(["minors", "hate", "other"]);
+  });
+
+  it("sends the report to the comment route", async () => {
+    const fetchMock = stubFetch();
+    await openCommentDialog();
+    await userEvent.click(screen.getByRole("radio", { name: "Hate or harassment" }));
+    await userEvent.click(screen.getByRole("button", { name: "Send report" }));
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe("/comments/m1/report");
+    expect(JSON.parse(String(init?.body))).toEqual({ reason: "hate", note: "" });
+    expect(await screen.findByText("Thanks. The admin will look at it.")).toBeTruthy();
+  });
+
+  it("names the comment in the 409 text", async () => {
+    stubFetch(409, { error: "already_reported" });
+    await openCommentDialog();
+    await userEvent.click(screen.getByRole("radio", { name: "Other" }));
+    await userEvent.click(screen.getByRole("button", { name: "Send report" }));
+    expect(await screen.findByText("You already reported this comment.")).toBeTruthy();
+  });
+});

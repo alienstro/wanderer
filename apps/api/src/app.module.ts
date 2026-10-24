@@ -6,6 +6,7 @@ import { AdminModule } from "./admin/admin.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { CharactersModule } from "./characters/characters.module.js";
 import { ChatsModule } from "./chats/chats.module.js";
+import { CommentsModule } from "./comments/comments.module.js";
 import { ENV, type Env } from "./config/env.js";
 import { serializeRequest } from "./config/logging.js";
 import { FilesModule } from "./files/files.module.js";
@@ -47,6 +48,7 @@ export class AppModule {
         ProxiesModule,
         ReportsModule,
         ChatsModule,
+        CommentsModule,
       ],
       controllers: [HealthController],
       providers: [

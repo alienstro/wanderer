@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { cardText, pngImage, withCompressedItxtChunk, withTextChunk } from "../../test/support/images.js";
-import { readTavernCard } from "./tavern-card.js";
+import { mapTavernCard, readTavernCard } from "./tavern-card.js";
 
 const v2Card = {
   spec: "chara_card_v2",
@@ -83,5 +83,42 @@ describe("readTavernCard", () => {
     expect(readTavernCard(withTextChunk(png, "chara", "!!!not base64!!!"))).toBeNull();
     expect(readTavernCard(withTextChunk(png, "chara", Buffer.from("{broken").toString("base64")))).toBeNull();
     expect(readTavernCard(Buffer.from("not a png at all"))).toBeNull();
+  });
+});
+
+describe("mapTavernCard", () => {
+  const draft = {
+    title: "Mira",
+    bio: "My first card.",
+    personality: "A ship mechanic.\n\nCalm and dry.",
+    scenario: "A cargo ship near Titan.",
+    openings: ["The engine coughs."],
+    exampleDialogs: "<START>\n{{char}}: Hey.",
+    tags: ["sci-fi"],
+  };
+
+  it("a V2 card JSON gives the same draft as the PNG import", () => {
+    expect(mapTavernCard(v2Card)).toEqual(draft);
+  });
+
+  it("a V3 card JSON reads the fields from data", () => {
+    expect(mapTavernCard({ spec: "chara_card_v3", spec_version: "3.0", data: v2Card.data })).toEqual(draft);
+  });
+
+  it("a V1 card JSON reads the fields from the top level", () => {
+    expect(mapTavernCard(v2Card.data)).toEqual(draft);
+  });
+
+  it("a JSON with no name, or with a name and no other card field, gives null", () => {
+    expect(mapTavernCard({ spec: "chara_card_v2", data: { ...v2Card.data, name: "" } })).toBeNull();
+    expect(mapTavernCard({ name: "Mira" })).toBeNull();
+    expect(mapTavernCard({ hello: "world" })).toBeNull();
+  });
+
+  it("a JSON that is not an object gives null", () => {
+    expect(mapTavernCard(null)).toBeNull();
+    expect(mapTavernCard("Mira")).toBeNull();
+    expect(mapTavernCard(["Mira"])).toBeNull();
+    expect(mapTavernCard({ data: "Mira" })).toBeNull();
   });
 });

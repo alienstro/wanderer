@@ -1,12 +1,36 @@
 "use client";
 
-import { REPORT_NOTE_MAX, REPORT_REASON_LABELS, REPORT_REASONS, type ReportReason } from "@wanderer/shared";
+import {
+  COMMENT_REPORT_REASONS,
+  REPORT_NOTE_MAX,
+  REPORT_REASON_LABELS,
+  REPORT_REASONS,
+  type ReportReason,
+} from "@wanderer/shared";
 import { type FormEvent, useId, useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
 
-function errorText(error: unknown): string {
+/** A report is about a character or about a comment. */
+type ReportTarget = { characterId: string; commentId?: never } | { commentId: string; characterId?: never };
+
+/** The route, the words, and the reasons for each kind of report. */
+function targetOf(target: ReportTarget) {
+  return target.commentId !== undefined
+    ? {
+        path: `/comments/${encodeURIComponent(target.commentId)}/report`,
+        noun: "comment",
+        reasons: COMMENT_REPORT_REASONS as readonly ReportReason[],
+      }
+    : {
+        path: `/characters/${encodeURIComponent(target.characterId)}/report`,
+        noun: "character",
+        reasons: REPORT_REASONS as readonly ReportReason[],
+      };
+}
+
+function errorText(error: unknown, noun: string): string {
   if (error instanceof ApiError && error.code === "already_reported") {
-    return "You already reported this character.";
+    return `You already reported this ${noun}.`;
   }
   if (error instanceof ApiError && error.code === "report_limit") {
     return "You sent too many reports today. Try again tomorrow.";
@@ -14,20 +38,24 @@ function errorText(error: unknown): string {
   return "The report was not sent. Try again.";
 }
 
-/** The Report button of the character page. It opens a dialog with the reasons and an optional note. */
-export function ReportButton({ characterId }: { characterId: string }) {
+/**
+ * The Report button of a character or of a comment. It opens a dialog with the reasons and an optional note.
+ * `className` replaces the style of the button.
+ */
+export function ReportButton({ className, ...target }: ReportTarget & { className?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className="pill pill-soft self-start" onClick={() => setOpen(true)}>
+      <button type="button" className={className ?? "pill pill-soft self-start"} onClick={() => setOpen(true)}>
         Report
       </button>
-      {open && <ReportDialog characterId={characterId} onClose={() => setOpen(false)} />}
+      {open && <ReportDialog target={target} onClose={() => setOpen(false)} />}
     </>
   );
 }
 
-function ReportDialog({ characterId, onClose }: { characterId: string; onClose: () => void }) {
+function ReportDialog({ target, onClose }: { target: ReportTarget; onClose: () => void }) {
+  const { path, noun, reasons } = targetOf(target);
   const titleId = useId();
   const noteId = useId();
   const [reason, setReason] = useState<ReportReason | null>(null);
@@ -44,13 +72,13 @@ function ReportDialog({ characterId, onClose }: { characterId: string; onClose: 
     setBusy(true);
     setError(null);
     try {
-      await apiFetch(`/characters/${encodeURIComponent(characterId)}/report`, {
+      await apiFetch(path, {
         method: "POST",
         body: JSON.stringify({ reason, note }),
       });
       setSent(true);
     } catch (caught) {
-      setError(errorText(caught));
+      setError(errorText(caught, noun));
     } finally {
       setBusy(false);
     }
@@ -68,7 +96,7 @@ function ReportDialog({ characterId, onClose }: { characterId: string; onClose: 
       >
         <div className="flex items-center justify-between gap-3">
           <h2 id={titleId} className="m-0 text-lg font-bold">
-            Report this character
+            Report this {noun}
           </h2>
           <button type="button" className="pill pill-soft" onClick={onClose} autoFocus>
             Close
@@ -80,7 +108,7 @@ function ReportDialog({ characterId, onClose }: { characterId: string; onClose: 
           <form className="flex flex-col gap-4" onSubmit={(event) => void send(event)}>
             <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
               <legend className="label mb-2">Reason</legend>
-              {REPORT_REASONS.map((value) => (
+              {reasons.map((value) => (
                 <label key={value} className="flex items-center gap-2.5">
                   <input
                     type="radio"
