@@ -67,7 +67,7 @@ describe("form extras", () => {
     render(<CharacterForm onSaved={vi.fn()} />);
     await userEvent.type(screen.getByLabelText(/^Scenario/), "A cargo ship.");
 
-    await userEvent.upload(screen.getByLabelText("Import a Tavern PNG"), pngFile(100, "card.png"));
+    await userEvent.upload(screen.getByLabelText("Import a character card"), pngFile(100, "card.png"));
 
     expect(await screen.findByDisplayValue("Mira")).toBeInTheDocument();
     expect(screen.getByLabelText("Message 1 text")).toHaveValue("Hi.");
@@ -76,20 +76,20 @@ describe("form extras", () => {
     expect(screen.getByRole("img", { name: "Your avatar" })).toHaveAttribute("src", "/files/f2");
   });
 
-  it('a 400 import answer shows "This PNG has no character card."', async () => {
+  it('a 400 import answer shows "This file has no character card."', async () => {
     stubFetch(() => Response.json({ error: "no_character_card" }, { status: 400 }));
     render(<CharacterForm onSaved={vi.fn()} />);
 
-    await userEvent.upload(screen.getByLabelText("Import a Tavern PNG"), pngFile(100, "plain.png"));
+    await userEvent.upload(screen.getByLabelText("Import a character card"), pngFile(100, "plain.png"));
 
-    expect(await screen.findByText("This PNG has no character card.")).toBeInTheDocument();
+    expect(await screen.findByText("This file has no character card.")).toBeInTheDocument();
   });
 
   it("a 400 invalid_image import answer shows the image message", async () => {
     stubFetch(() => Response.json({ error: "invalid_image" }, { status: 400 }));
     render(<CharacterForm onSaved={vi.fn()} />);
 
-    await userEvent.upload(screen.getByLabelText("Import a Tavern PNG"), pngFile(100, "broken.png"));
+    await userEvent.upload(screen.getByLabelText("Import a character card"), pngFile(100, "broken.png"));
 
     expect(await screen.findByText("Use a PNG, JPEG, or WebP image of 5 MB or less.")).toBeInTheDocument();
   });

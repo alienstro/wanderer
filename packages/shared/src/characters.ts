@@ -33,6 +33,8 @@ export const TAGS_MAX = 10;
 export const SEARCH_MAX = 100;
 /** The largest image upload: 5 MB. */
 export const IMAGE_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+/** The largest character card JSON that the import reads: 2 MB. */
+export const CARD_JSON_MAX_BYTES = 2 * 1024 * 1024;
 
 /** The fields of the create and edit form. The same schema runs in the browser and in the API. */
 export const characterInputSchema = z.object({

@@ -30,7 +30,7 @@ import { AllowMultipart } from "../security/origin.guard.js";
 import { parseCharacterInput } from "./character-input.js";
 import { CharacterListService } from "./character-list.service.js";
 import { CharactersService } from "./characters.service.js";
-import { readTavernCard } from "./tavern-card.js";
+import { mapTavernCard, readTavernCard } from "./tavern-card.js";
 
 @Controller("characters")
 export class CharactersController {
@@ -80,6 +80,19 @@ export class CharactersController {
     }
     const avatar = await withImageCheck(() => this.files.saveAvatar(user.id, file.buffer));
     return { draft, avatarFileId: avatar.id };
+  }
+
+  /** Reads the JSON of a Tavern card into a form draft. It creates no character and no avatar. app.ts sets the body limit. */
+  @Post("import-json")
+  @HttpCode(200)
+  @UseGuards(SessionGuard)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  importJson(@Body() body: unknown): { draft: Partial<CharacterInput> } {
+    const draft = mapTavernCard(body);
+    if (!draft) {
+      throw new BadRequestException({ error: "no_character_card" });
+    }
+    return { draft };
   }
 
   @Get(":id")
