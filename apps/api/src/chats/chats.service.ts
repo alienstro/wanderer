@@ -35,6 +35,29 @@ type ChatWithCharacter = Chat & {
   character: { id: string; title: string; chatName: string; avatarFileId: string | null };
 };
 
+/** The chat detail also needs the number of openings, so the page can draw the counter. */
+const detailInclude = {
+  character: { select: { ...characterSelect, _count: { select: { openings: true } } } },
+  messages: { orderBy: { position: "asc" } },
+} as const;
+
+type DetailChat = ChatWithCharacter & {
+  character: Parameters<typeof characterAccess>[0] & { _count: { openings: number } };
+  messages: Message[];
+};
+
+/** The creator can delete openings after the chat starts, so the index stops at the last opening. */
+function toChatDetail(chat: DetailChat, user: User): ChatDetail {
+  const count = chat.character._count.openings;
+  return {
+    chat: toChatSummary(chat, chat.messages.at(-1), chat.messages.length),
+    messages: chat.messages.map(toMessageView),
+    memory: toChatMemory(chat),
+    canSend: characterAccess(chat.character, user) === "ok",
+    opening: { index: Math.max(0, Math.min(chat.openingIndex, count - 1)), count },
+  };
+}
+
 export function toMessageView(row: Message): MessageView {
   return {
     id: row.id,
@@ -102,12 +125,13 @@ export class ChatsService {
           userId: user.id,
           characterId,
           title: character.chatName || character.title,
+          openingIndex,
           messages: { create: { role: "assistant", content: opening.text, position: 0 } },
         },
-        include: { character: { select: characterSelect }, messages: true },
+        include: detailInclude,
       });
     });
-    return { chat: toChatSummary(chat, chat.messages[0], chat.messages.length), messages: chat.messages.map(toMessageView), memory: toChatMemory(chat), canSend: true };
+    return toChatDetail(chat, user);
   }
 
   async list(user: User, characterId: string | undefined): Promise<ChatListResponse> {
@@ -129,14 +153,7 @@ export class ChatsService {
   }
 
   async get(user: User, id: string): Promise<ChatDetail> {
-    const chat = await this.findOwn(user, id);
-    const messages = chat.messages.map(toMessageView);
-    return {
-      chat: toChatSummary(chat, chat.messages.at(-1), messages.length),
-      messages,
-      memory: toChatMemory(chat),
-      canSend: characterAccess(chat.character, user) === "ok",
-    };
+    return toChatDetail(await this.findOwn(user, id), user);
   }
 
   async remove(user: User, id: string): Promise<void> {
@@ -203,7 +220,7 @@ export class ChatsService {
     const chat = isUuid(id)
       ? await this.prisma.chat.findFirst({
           where: { id, userId: user.id },
-          include: { character: { select: characterSelect }, messages: { orderBy: { position: "asc" } } },
+          include: detailInclude,
         })
       : null;
     if (!chat) {

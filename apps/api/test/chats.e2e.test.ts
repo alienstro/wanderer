@@ -59,6 +59,26 @@ describe("chats", () => {
     expect(character.chatCount).toBe(1);
   });
 
+  it("POST /chats without openingIndex starts with opening 0", async () => {
+    const res = await send("post", reader, "/chats", { characterId }).expect(201);
+    expect(res.body.messages).toEqual([expect.objectContaining({ content: "The engine coughs again.", position: 0 })]);
+    expect(res.body.opening).toEqual({ index: 0, count: 2 });
+  });
+
+  it("POST /chats with openingIndex 1 sends opening { index: 1, count: 2 }, and GET sends the same", async () => {
+    const res = await startChat(reader, 1).expect(201);
+    expect(res.body.opening).toEqual({ index: 1, count: 2 });
+    const detail = await get(reader, `/chats/${res.body.chat.id}`).expect(200);
+    expect(detail.body.opening).toEqual({ index: 1, count: 2 });
+  });
+
+  it("GET /chats/:id clamps opening.index when the creator deleted openings", async () => {
+    const res = await startChat(reader, 1).expect(201);
+    await prisma.chat.update({ where: { id: res.body.chat.id }, data: { openingIndex: 5 } });
+    const detail = await get(reader, `/chats/${res.body.chat.id}`).expect(200);
+    expect(detail.body.opening).toEqual({ index: 1, count: 2 });
+  });
+
   it("POST /chats with openingIndex 5 for a character with 2 openings gives 400 invalid_opening", async () => {
     const res = await startChat(reader, 5).expect(400);
     expect(res.body.error).toBe("invalid_opening");

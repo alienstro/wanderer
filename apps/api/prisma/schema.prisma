@@ -220,6 +220,8 @@ model Chat {
   memory                String   @default("")
   /// The last message position that a saved summary covers. Null when no summary is saved.
   memoryThroughPosition Int?     @map("memory_through_position")
+  /// The position of the character opening that message 0 holds. The user changes it until the first user message.
+  openingIndex          Int      @default(0) @map("opening_index")
   lastMessageAt         DateTime @default(now()) @map("last_message_at")
   createdAt             DateTime @default(now()) @map("created_at")
 
