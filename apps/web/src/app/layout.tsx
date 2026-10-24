@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cinzel, Inter } from "next/font/google";
 import type { ReactNode } from "react";
 import { Toaster } from "@/components/toaster";
@@ -13,6 +13,13 @@ export const metadata: Metadata = {
   title: "Wanderer",
   description: "Text roleplay with AI characters.",
   icons: { icon: "/logo.webp" },
+};
+
+// resizes-content makes the phone keyboard shrink the page, so the chat message box stays on the screen.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

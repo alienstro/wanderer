@@ -401,22 +401,6 @@
     font-size: 13px;
   }
 
-  @media (max-width: 760px) {
-    .side-nav {
-      flex-direction: row;
-      flex-wrap: wrap;
-    }
-
-    .nav {
-      width: auto;
-    }
-
-    .side-foot {
-      margin-top: 0;
-      margin-left: auto;
-    }
-  }
-
   .field {
     display: block;
     width: 100%;

@@ -239,7 +239,8 @@ export function ChatView({ chatId }: { chatId: string }) {
     void run(`/chats/${chatId}/messages`, { content }, null, { text: content, fromBox });
 
   return (
-    <div className="flex h-screen flex-col max-[760px]:h-[85dvh]">
+    // On a phone the chat fills the screen under the 56 px top bar of SidebarDrawer.
+    <div className="flex h-screen flex-col max-[760px]:h-[calc(100dvh-56px)]">
       <header className="flex items-center gap-3 border-b border-line px-7 py-3.5 max-[760px]:px-4">
         <Avatar name={character.name} src={character.src} size={44} />
         <div className="flex min-w-0 flex-col">
