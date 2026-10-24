@@ -28,9 +28,10 @@ describe("CharacterCard", () => {
     expect(screen.getByRole("link")).toHaveAttribute("href", "/characters/c1");
   });
 
-  it("a card shows the chat count, up to 3 tags, @creator, and an 18+ badge only for an 18+ character", () => {
+  it("a card shows the chat and like counts, up to 3 tags, @creator, and an 18+ badge only for an 18+ character", () => {
     const { rerender } = render(<CharacterCard card={card} />);
     expect(screen.getByText("1.2K chats")).toBeInTheDocument();
+    expect(screen.getByText("0 likes")).toBeInTheDocument();
     expect(screen.getByText("SciFi")).toBeInTheDocument();
     expect(screen.getByText("Noir")).toBeInTheDocument();
     expect(screen.queryByText("Horror")).not.toBeInTheDocument();

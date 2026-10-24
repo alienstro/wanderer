@@ -90,6 +90,13 @@ describe("DiscoverView", () => {
     expect(replace).toHaveBeenCalledWith("/discover?tag=noir", { scroll: false });
   });
 
+  it("a click on Most liked puts sort=most_liked in the URL", async () => {
+    stubFetch();
+    renderView({ items: [card(1)], nextCursor: null });
+    await userEvent.click(screen.getByRole("button", { name: "Most liked" }));
+    expect(replace).toHaveBeenCalledWith("/discover?sort=most_liked", { scroll: false });
+  });
+
   it("a second click goes back to All", async () => {
     stubFetch();
     renderView({ items: [card(1)], nextCursor: null }, { tag: "noir" });

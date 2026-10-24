@@ -12,6 +12,11 @@ export function chatsLabel(count: number): string {
   return `${compact.format(count)} ${count === 1 ? "chat" : "chats"}`;
 }
 
+/** "1 like", "12 likes", "1.2K likes". */
+export function likesLabel(count: number): string {
+  return `${compact.format(count)} ${count === 1 ? "like" : "likes"}`;
+}
+
 /** "1 message", "12 messages", "1.2K messages". */
 export function messagesLabel(count: number): string {
   return `${compact.format(count)} ${count === 1 ? "message" : "messages"}`;
