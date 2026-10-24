@@ -27,6 +27,9 @@ export const memoryInputSchema = z.object({
   throughPosition: z.number().int().min(0).nullable().optional(),
 });
 
+/** The panel sends its unsaved text and draft marker, so a summary does not lose them. Each field is optional. */
+export const memoryDraftInputSchema = memoryInputSchema.partial();
+
 export type CreateChat = z.infer<typeof createChatSchema>;
 export type MessageInput = z.infer<typeof messageInputSchema>;
 export type MemoryInput = z.infer<typeof memoryInputSchema>;

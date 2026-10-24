@@ -95,4 +95,17 @@ describe("MemoryButton", () => {
     await userEvent.click(screen.getByRole("button", { name: "Summarize" }));
     expect(await screen.findByText("The proxy refused the API key.")).toBeTruthy();
   });
+
+  it("Summarize sends the unsaved text, and a second Summarize also sends the draft marker", async () => {
+    const fetchMock = stubFetch({ body: { memory: "Draft.", throughPosition: 12 } }, { body: { memory: "Draft 2.", throughPosition: 20 } });
+    const { box } = await openPanel();
+    await userEvent.clear(box);
+    await userEvent.type(box, "Typed fact.");
+    await userEvent.click(screen.getByRole("button", { name: "Summarize" }));
+    await screen.findByText("Draft, not saved");
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ memory: "Typed fact." });
+    await userEvent.click(screen.getByRole("button", { name: "Summarize" }));
+    await vi.waitFor(() => expect(box.value).toBe("Draft 2."));
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({ memory: "Draft.", throughPosition: 12 });
+  });
 });

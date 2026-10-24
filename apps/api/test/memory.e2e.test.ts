@@ -23,11 +23,12 @@ describe("chat memory", () => {
       .set("Origin", WEB_ORIGIN)
       .set("Cookie", owner.cookie)
       .send(body);
-  const summarize = (owner = user) =>
+  const summarize = (owner = user, body: object = {}) =>
     request(app.getHttpServer())
       .post(`/chats/${chatId}/memory/summarize`)
       .set("Origin", WEB_ORIGIN)
-      .set("Cookie", owner.cookie);
+      .set("Cookie", owner.cookie)
+      .send(body);
   /** Adds messages 1 to `count` of about 1,000 tokens each. Message n starts with "m<n> ". */
   const addLongMessages = (count: number) =>
     prisma.message.createMany({
@@ -139,5 +140,18 @@ describe("chat memory", () => {
     const other = await userWithSession(app, 2);
     await addProxy(app, other);
     await summarize(other).expect(404);
+  });
+
+  it("summarize uses the unsaved text and marker of the panel from the body", async () => {
+    await addLongMessages(30);
+    await prisma.chat.update({ where: { id: chatId }, data: { memory: "Saved fact.", memoryThroughPosition: 3 } });
+    fake.next({ pieces: ["Draft."] });
+    await summarize(user, { memory: "Typed fact.", throughPosition: 6 }).expect(200);
+    const sent = JSON.stringify(fake.requests.at(-1)!.body.messages);
+    expect(sent).toContain("Typed fact.");
+    expect(sent).not.toContain("Saved fact.");
+    expect(sent).toContain("m7 ");
+    expect(sent).not.toContain("m6 ");
+    await summarize(user, { memory: "x".repeat(2001) }).expect(400);
   });
 });

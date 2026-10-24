@@ -62,8 +62,12 @@ export class ChatsController {
   @UseGuards(UserThrottlerGuard)
   @Throttle(perUserLimit(CALLS_EACH_MINUTE))
   @HttpCode(200)
-  summarizeMemory(@CurrentUser() user: User, @Param("id") id: string): Promise<MemoryDraftResponse> {
-    return this.memory.draft(user, id);
+  summarizeMemory(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() body: unknown,
+  ): Promise<MemoryDraftResponse> {
+    return this.memory.draft(user, id, body);
   }
 
   /** Saves the user message and streams the AI reply as Server-Sent Events. */

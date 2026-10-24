@@ -68,7 +68,10 @@ user gives 404.
   gives 400 when `throughPosition` is greater than the last message position.
   It returns the new `memory` object.
 - `POST /chats/:id/memory/summarize` returns a `MemoryDraftResponse` and saves
-  nothing. It uses the same throttle as `/choices`.
+  nothing. It uses the same throttle as `/choices`. The optional body
+  `{ memory, throughPosition }` holds the unsaved text and the draft marker of the
+  panel. They replace the saved values for this draft only, so a click does not lose
+  an unsaved edit.
 
 ### What "Summarize" sends
 

@@ -43,13 +43,23 @@ function MemoryPanel({ chatId, memory, onSaved, onClose }: MemoryProps & { onClo
   const over = text.length > MEMORY_MAX;
   const path = `/chats/${encodeURIComponent(chatId)}/memory`;
 
+  /** The text, and the draft marker only when the text comes from a draft. */
+  function panelBody() {
+    return draftThrough === undefined ? { memory: text } : { memory: text, throughPosition: draftThrough };
+  }
+
   async function summarize() {
     setBusy(true);
     setError(null);
     setNote(null);
     try {
-      const draft = await apiFetch<MemoryDraftResponse>(`${path}/summarize`, { method: "POST" });
-      if (draft.memory === memory.text && draft.throughPosition === memory.throughPosition) {
+      // The body keeps the unsaved text and the draft marker, so the draft does not lose them.
+      const draft = await apiFetch<MemoryDraftResponse>(`${path}/summarize`, {
+        method: "POST",
+        body: JSON.stringify(panelBody()),
+      });
+      const through = draftThrough === undefined ? memory.throughPosition : draftThrough;
+      if (draft.memory === text && draft.throughPosition === through) {
         setNote("No new messages to summarize.");
         return;
       }
@@ -67,8 +77,7 @@ function MemoryPanel({ chatId, memory, onSaved, onClose }: MemoryProps & { onClo
     setBusy(true);
     setError(null);
     try {
-      const body = draftThrough === undefined ? { memory: text } : { memory: text, throughPosition: draftThrough };
-      const result = await apiFetch<ChatMemory>(path, { method: "PATCH", body: JSON.stringify(body) });
+      const result = await apiFetch<ChatMemory>(path, { method: "PATCH", body: JSON.stringify(panelBody()) });
       onSaved(result);
       onClose();
     } catch (caught) {
