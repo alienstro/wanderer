@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import {
   type ChatDetail,
   type ChatListResponse,
+  type ChatMemory,
   type ChatSummary,
   createChatSchema,
   LAST_MESSAGE_MAX,
@@ -42,6 +43,10 @@ export function toMessageView(row: Message): MessageView {
     editedAt: row.editedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
   };
+}
+
+function toChatMemory(chat: Chat): ChatMemory {
+  return { text: chat.memory, throughPosition: chat.memoryThroughPosition };
 }
 
 function toChatSummary(chat: ChatWithCharacter, last: Message | undefined, messageCount: number): ChatSummary {
@@ -101,7 +106,7 @@ export class ChatsService {
         include: { character: { select: characterSelect }, messages: true },
       });
     });
-    return { chat: toChatSummary(chat, chat.messages[0], chat.messages.length), messages: chat.messages.map(toMessageView), canSend: true };
+    return { chat: toChatSummary(chat, chat.messages[0], chat.messages.length), messages: chat.messages.map(toMessageView), memory: toChatMemory(chat), canSend: true };
   }
 
   async list(user: User, characterId: string | undefined): Promise<ChatListResponse> {
@@ -128,6 +133,7 @@ export class ChatsService {
     return {
       chat: toChatSummary(chat, chat.messages.at(-1), messages.length),
       messages,
+      memory: toChatMemory(chat),
       canSend: characterAccess(chat.character, user) === "ok",
     };
   }

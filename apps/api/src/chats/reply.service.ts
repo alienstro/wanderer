@@ -93,7 +93,14 @@ export class ReplyService {
       const promptHistory = replaced ? history.filter((message) => message.id !== replaced.id) : history;
       sse = openSse(res, this.timing.heartbeatMs);
       sse.send({ type: "start", userMessage: userMessage && toMessageView(userMessage) });
-      const prompt = buildReplyPrompt({ character, customPrompt, contextTokens, userName: user.name, history: promptHistory });
+      const prompt = buildReplyPrompt({
+        character,
+        customPrompt,
+        contextTokens,
+        memory: chat.memory,
+        userName: user.name,
+        history: promptHistory,
+      });
       const result = await this.generate(target, prompt, res, sse);
       // An empty result keeps the old reply. Only a reply with text replaces it.
       const reply = result.text.trim()
