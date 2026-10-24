@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Res, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import type { ChatDetail, ChatListResponse, ChoicesResponse, MessageView } from "@wanderer/shared";
+import type { ChatDetail, ChatListResponse, ChatMemory, ChoicesResponse, MessageView } from "@wanderer/shared";
 import type { Response } from "express";
 import { CurrentUser } from "../auth/current-user.decorator.js";
 import { SessionGuard } from "../auth/session.guard.js";
@@ -41,6 +41,11 @@ export class ChatsController {
   @HttpCode(204)
   remove(@CurrentUser() user: User, @Param("id") id: string): Promise<void> {
     return this.chats.remove(user, id);
+  }
+
+  @Patch(":id/memory")
+  updateMemory(@CurrentUser() user: User, @Param("id") id: string, @Body() body: unknown): Promise<ChatMemory> {
+    return this.chats.updateMemory(user, id, body);
   }
 
   /** Saves the user message and streams the AI reply as Server-Sent Events. */

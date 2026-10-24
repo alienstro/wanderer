@@ -17,6 +17,12 @@ describe("chat memory", () => {
   let user: TestUser;
   let chatId: string;
 
+  const patch = (body: object, owner = user) =>
+    request(app.getHttpServer())
+      .patch(`/chats/${chatId}/memory`)
+      .set("Origin", WEB_ORIGIN)
+      .set("Cookie", owner.cookie)
+      .send(body);
   const systemSent = () => fake.requests.at(-1)!.body.messages?.[0]?.content as string;
 
   beforeAll(async () => {
@@ -56,5 +62,31 @@ describe("chat memory", () => {
       .set("Cookie", user.cookie)
       .expect(200);
     expect(systemSent().endsWith("## Memory\nMira owes User 1 a sword.")).toBe(true);
+  });
+
+  it("PATCH /chats/:id/memory saves the trimmed text and the marker, and a save without a marker keeps the old one", async () => {
+    const saved = await patch({ memory: "  Mira owes {{user}} a sword.  ", throughPosition: 0 }).expect(200);
+    expect(saved.body).toEqual({ text: "Mira owes {{user}} a sword.", throughPosition: 0 });
+    expect((await patch({ memory: "Mira paid the debt." }).expect(200)).body).toEqual({
+      text: "Mira paid the debt.",
+      throughPosition: 0,
+    });
+    const row = await prisma.chat.findUniqueOrThrow({ where: { id: chatId } });
+    expect([row.memory, row.memoryThroughPosition]).toEqual(["Mira paid the debt.", 0]);
+  });
+
+  it("a text over 2,000 characters gives 400 invalid_memory and saves nothing", async () => {
+    const res = await patch({ memory: "x".repeat(2001) }).expect(400);
+    expect(res.body).toEqual({ error: "invalid_memory" });
+    expect((await prisma.chat.findUniqueOrThrow({ where: { id: chatId } })).memory).toBe("");
+  });
+
+  it("a marker after the last message gives 400 invalid_memory", async () => {
+    expect((await patch({ memory: "Facts.", throughPosition: 5 }).expect(400)).body).toEqual({ error: "invalid_memory" });
+  });
+
+  it("another user gets 404 for the memory of the chat", async () => {
+    const other = await userWithSession(app, 2);
+    await patch({ memory: "Stolen." }, other).expect(404);
   });
 });

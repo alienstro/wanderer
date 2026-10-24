@@ -6,6 +6,7 @@ import {
   type ChatSummary,
   createChatSchema,
   LAST_MESSAGE_MAX,
+  memoryInputSchema,
   messageInputSchema,
   type MessageView,
 } from "@wanderer/shared";
@@ -141,6 +142,21 @@ export class ChatsService {
   async remove(user: User, id: string): Promise<void> {
     await this.findOwn(user, id);
     await this.prisma.chat.delete({ where: { id } });
+  }
+
+  /** Saves the memory. A body without `throughPosition` keeps the saved marker. */
+  async updateMemory(user: User, id: string, body: unknown): Promise<ChatMemory> {
+    const parsed = memoryInputSchema.safeParse(body);
+    const chat = await this.findOwn(user, id);
+    const lastPosition = chat.messages.at(-1)?.position ?? 0;
+    if (!parsed.success || (parsed.data.throughPosition ?? 0) > lastPosition) {
+      throw new BadRequestException({ error: "invalid_memory" });
+    }
+    const row = await this.prisma.chat.update({
+      where: { id: chat.id },
+      data: { memory: parsed.data.memory, memoryThroughPosition: parsed.data.throughPosition },
+    });
+    return toChatMemory(row);
   }
 
   /** Changes the text of a user message. An edit does not start a new reply. */
