@@ -34,7 +34,16 @@ export function UserRow() {
   }
 
   return (
-    <div className="relative" onKeyDown={(event) => event.key === "Escape" && setOpen(false)}>
+    <div
+      className="relative"
+      onKeyDown={(event) => {
+        // The menu takes the Escape key, so the phone drawer around it stays open.
+        if (open && event.key === "Escape") {
+          event.stopPropagation();
+          setOpen(false);
+        }
+      }}
+    >
       <button
         type="button"
         aria-label="Account menu"

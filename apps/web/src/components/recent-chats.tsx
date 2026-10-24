@@ -24,7 +24,7 @@ export function RecentChats() {
     return null;
   }
   return (
-    <section aria-labelledby="recent-h" className="flex flex-col gap-1 max-[760px]:hidden">
+    <section aria-labelledby="recent-h" className="flex flex-col gap-1">
       <h2 id="recent-h" className="m-0 px-3 text-xs font-semibold tracking-wide text-subtle uppercase">
         Recent
       </h2>

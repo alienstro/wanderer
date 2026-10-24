@@ -52,6 +52,11 @@ export class ChatsController {
     return this.chats.remove(user, id);
   }
 
+  @Patch(":id/opening")
+  setOpening(@CurrentUser() user: User, @Param("id") id: string, @Body() body: unknown): Promise<ChatDetail> {
+    return this.chats.setOpening(user, id, body);
+  }
+
   @Patch(":id/memory")
   updateMemory(@CurrentUser() user: User, @Param("id") id: string, @Body() body: unknown): Promise<ChatMemory> {
     return this.chats.updateMemory(user, id, body);

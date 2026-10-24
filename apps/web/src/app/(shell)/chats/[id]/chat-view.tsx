@@ -13,6 +13,7 @@ import { useRequireLogin } from "@/lib/use-require-login";
 import { Composer } from "./composer";
 import { MemoryButton } from "./memory-panel";
 import { MessageItem } from "./message-item";
+import { OpeningSwitcher } from "./opening-switcher";
 import { NewChoicesButton, ReplyChoices, ReplyChoicesSwitch, useReplyChoices } from "./reply-choices";
 
 /** The reply that streams now. replaceId is the reply that a Regenerate replaces. */
@@ -46,6 +47,7 @@ const AI_ERROR_STEP: Record<AiErrorCode, { text: string; settings?: boolean }> =
   invalid_key: { text: "Check the API key of your model in Settings.", settings: true },
   model_not_found: { text: "Check the model name in Settings.", settings: true },
   no_credit: { text: "Add credit on the proxy site, then try again." },
+  usage_limit: { text: "Add credit or a plan on the proxy site, or pick a different model.", settings: true },
   rate_limited: { text: "Wait a minute, then try again." },
   timeout: { text: "Try again. If the problem continues, use a faster model." },
   blocked_url: { text: "Use a different proxy URL in Settings.", settings: true },
@@ -225,7 +227,7 @@ export function ChatView({ chatId }: { chatId: string }) {
     return <p className="m-0 px-7 pt-7 text-muted">Loading the chat…</p>;
   }
 
-  const { chat: summary, messages, canSend } = chat.data;
+  const { chat: summary, messages, canSend, opening } = chat.data;
   const character = {
     name: summary.character.chatName || summary.character.title,
     src: summary.character.avatarUrl ? fileSrc(summary.character.avatarUrl) : null,
@@ -239,7 +241,8 @@ export function ChatView({ chatId }: { chatId: string }) {
     void run(`/chats/${chatId}/messages`, { content }, null, { text: content, fromBox });
 
   return (
-    <div className="flex h-screen flex-col max-[760px]:h-[85dvh]">
+    // On a phone the chat fills the screen under the 56 px top bar of SidebarDrawer.
+    <div className="flex h-screen flex-col max-[760px]:h-[calc(100dvh-56px)]">
       <header className="flex items-center gap-3 border-b border-line px-7 py-3.5 max-[760px]:px-4">
         <Avatar name={character.name} src={character.src} size={44} />
         <div className="flex min-w-0 flex-col">
@@ -270,6 +273,16 @@ export function ChatView({ chatId }: { chatId: string }) {
               onRegenerate={regenerate}
             />
           ))}
+          {/* The user picks the opening until the first message. The server refuses a change after it. */}
+          {canSend && idle && messages.length === 1 && opening.count > 1 && (
+            <OpeningSwitcher
+              chatId={chatId}
+              index={opening.index}
+              count={opening.count}
+              onChanged={(next) => queryClient.setQueryData<ChatDetail>(queryKey, next)}
+              onLocked={() => void queryClient.invalidateQueries({ queryKey })}
+            />
+          )}
           {live?.sending && <MessageItem message={{ role: "user", content: live.sending }} speaker={user} />}
           {live && <MessageItem message={{ role: "assistant", content: live.text }} speaker={character} typing={!live.text && !live.stopped} />}
           {canSend && idle && last?.role === "user" && (

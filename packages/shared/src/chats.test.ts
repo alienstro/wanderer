@@ -6,7 +6,7 @@ const proxy = {
   name: "OpenRouter",
   baseUrl: "https://openrouter.ai/api/v1/",
   model: "deepseek/deepseek-chat",
-  apiKey: "sk-test-3f9a",
+  apiKeyId: "0b6f3c2e-1d7a-4f6e-8a51-3c9d2e7f4a10",
 };
 
 describe("proxyCreateSchema", () => {
@@ -27,13 +27,13 @@ describe("proxyCreateSchema", () => {
     }
   });
 
-  it("rejects http, a user:pass URL, a URL with #, a 501-character URL, and an empty key", () => {
+  it("rejects http, a user:pass URL, a URL with #, a 501-character URL, and a key ID that is not a UUID", () => {
     const bad = [
       { ...proxy, baseUrl: "http://openrouter.ai/api/v1" },
       { ...proxy, baseUrl: "https://user:pass@openrouter.ai/api/v1" },
       { ...proxy, baseUrl: "https://openrouter.ai/api/v1#x" },
       { ...proxy, baseUrl: `https://openrouter.ai/${"a".repeat(480)}` },
-      { ...proxy, apiKey: "" },
+      { ...proxy, apiKeyId: "not-a-uuid" },
     ];
     for (const body of bad) {
       expect(proxyCreateSchema.safeParse(body).success).toBe(false);

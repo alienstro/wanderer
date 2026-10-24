@@ -30,8 +30,8 @@ describe("CharacterCard", () => {
 
   it("a card shows the chat and like counts, up to 3 tags, @creator, and an 18+ badge only for an 18+ character", () => {
     const { rerender } = render(<CharacterCard card={card} />);
-    expect(screen.getByText("1.2K chats")).toBeInTheDocument();
-    expect(screen.getByText("0 likes")).toBeInTheDocument();
+    expect(screen.getByText("1.2K")).toHaveTextContent("1.2K chats");
+    expect(screen.getByText("0")).toHaveTextContent("0 likes");
     expect(screen.getByText("SciFi")).toBeInTheDocument();
     expect(screen.getByText("Noir")).toBeInTheDocument();
     expect(screen.queryByText("Horror")).not.toBeInTheDocument();

@@ -72,7 +72,7 @@ export function CharacterView({ detail }: { detail: CharacterDetail }) {
         </div>
       </section>
 
-      <StartChat characterId={detail.id} openings={detail.openings} />
+      <StartChat characterId={detail.id} />
 
       <YourChats characterId={detail.id} />
 

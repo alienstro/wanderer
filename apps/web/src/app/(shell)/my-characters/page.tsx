@@ -34,7 +34,7 @@ export default function MyCharactersPage() {
         </div>
       )}
       {list.data && list.data.length > 0 && (
-        <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-[18px] gap-y-7 p-0">
+        <ul className="card-grid">
           {list.data.map((card) => (
             <li key={card.id} className="flex">
               <CharacterCard card={card} extraBadge={statusLabel(card)} />

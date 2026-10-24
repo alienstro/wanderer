@@ -8,13 +8,21 @@ export const LAST_MESSAGE_MAX = 140;
 /** The memory of a chat keeps facts after their messages leave the history window. */
 export const MEMORY_MAX = 2000;
 
+const openingIndexSchema = z
+  .number()
+  .int()
+  .min(0)
+  .max(OPENINGS_MAX - 1);
+
+/** A new chat starts with opening 0 when the body has no `openingIndex`. */
 export const createChatSchema = z.object({
   characterId: z.uuid(),
-  openingIndex: z
-    .number()
-    .int()
-    .min(0)
-    .max(OPENINGS_MAX - 1),
+  openingIndex: openingIndexSchema.default(0),
+});
+
+/** The user changes the opening of a chat until the first user message. */
+export const openingInputSchema = z.object({
+  openingIndex: openingIndexSchema,
 });
 
 export const messageInputSchema = z.object({
@@ -33,6 +41,7 @@ export const memoryDraftInputSchema = memoryInputSchema.partial();
 export type CreateChat = z.infer<typeof createChatSchema>;
 export type MessageInput = z.infer<typeof messageInputSchema>;
 export type MemoryInput = z.infer<typeof memoryInputSchema>;
+export type OpeningInput = z.infer<typeof openingInputSchema>;
 
 export interface ChatMemory {
   text: string;
@@ -71,6 +80,8 @@ export interface ChatDetail {
   memory: ChatMemory;
   /** False when the character is now private or blocked for the user. The user can read but not send. */
   canSend: boolean;
+  /** The opening that message 0 holds, and the number of openings that the character has now. */
+  opening: { index: number; count: number };
 }
 
 export interface ChatListResponse {

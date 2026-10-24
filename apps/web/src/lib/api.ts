@@ -1,8 +1,12 @@
-/** An answer from the API with a status that is not 2xx. code is the "error" value of the body, when it has one. */
+/**
+ * An answer from the API with a status that is not 2xx. code is the "error" value of the body, when it has one.
+ * body is the parsed JSON body, for an error that carries more data than its code.
+ */
 export class ApiError extends Error {
   constructor(
     readonly status: number,
     readonly code: string | null,
+    readonly body: unknown = null,
   ) {
     super(code ? `API error ${status}: ${code}` : `API error ${status}`);
     this.name = "ApiError";
@@ -19,16 +23,16 @@ export function fileSrc(path: string): string {
   return `${apiUrl()}${path}`;
 }
 
-async function errorCode(res: Response): Promise<string | null> {
+async function readError(res: Response): Promise<ApiError> {
   try {
     const body: unknown = await res.json();
-    if (typeof body === "object" && body !== null && "error" in body && typeof body.error === "string") {
-      return body.error;
-    }
+    const code =
+      typeof body === "object" && body !== null && "error" in body && typeof body.error === "string" ? body.error : null;
+    return new ApiError(res.status, code, body);
   } catch {
     // The body is not JSON.
+    return new ApiError(res.status, null);
   }
-  return null;
 }
 
 /** Sends a request to the API with the session cookie. It throws ApiError for a status that is not 2xx. */
@@ -40,7 +44,7 @@ export async function apiResponse(path: string, init: RequestInit = {}): Promise
   }
   const res = await fetch(`${apiUrl()}${path}`, { ...init, headers, credentials: "include" });
   if (!res.ok) {
-    throw new ApiError(res.status, await errorCode(res));
+    throw await readError(res);
   }
   return res;
 }

@@ -14,19 +14,20 @@ function createCharacter(creatorId: string) {
   return prisma.character.create({ data: { creatorId, title: "Mira", bio: "Bio", personality: "Calm" } });
 }
 
-function createProxy(userId: string) {
-  return prisma.proxy.create({
+async function createProxy(userId: string) {
+  const apiKey = await prisma.apiKey.create({
     data: {
       userId,
       name: "Main",
-      baseUrl: "https://api.example.com/v1",
-      model: "gpt-test",
       keyCiphertext: Buffer.from("c"),
       keyIv: Buffer.alloc(12),
       keyTag: Buffer.alloc(16),
-      keyVersion: 1,
+      keyVersion: 2,
       keyLast4: "3f9a",
     },
+  });
+  return prisma.proxy.create({
+    data: { userId, name: "Main", baseUrl: "https://api.example.com/v1", model: "gpt-test", apiKeyId: apiKey.id },
   });
 }
 

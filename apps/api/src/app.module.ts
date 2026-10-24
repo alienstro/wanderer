@@ -7,6 +7,7 @@ import { AuthModule } from "./auth/auth.module.js";
 import { CharactersModule } from "./characters/characters.module.js";
 import { ChatsModule } from "./chats/chats.module.js";
 import { CommentsModule } from "./comments/comments.module.js";
+import { ApiKeysModule } from "./api-keys/api-keys.module.js";
 import { ENV, type Env } from "./config/env.js";
 import { serializeRequest } from "./config/logging.js";
 import { FilesModule } from "./files/files.module.js";
@@ -45,6 +46,7 @@ export class AppModule {
         CharactersModule,
         AdminModule,
         MeModule,
+        ApiKeysModule,
         ProxiesModule,
         ReportsModule,
         ChatsModule,

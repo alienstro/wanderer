@@ -40,6 +40,7 @@ model User {
   characters       Character[]
   files            File[]
   proxies          Proxy[]            @relation("ProxyOwner")
+  apiKeys          ApiKey[]
   activeProxy      Proxy?             @relation("ActiveProxy", fields: [activeProxyId], references: [id], onDelete: SetNull)
   chats            Chat[]
   reports          Report[]           @relation("Reporter")
@@ -196,6 +197,26 @@ model Proxy {
   model         String
   customPrompt  String   @default("") @map("custom_prompt")
   contextTokens Int      @default(16000) @map("context_tokens")
+  apiKeyId      String   @map("api_key_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user     User   @relation("ProxyOwner", fields: [userId], references: [id], onDelete: Cascade)
+  activeOf User?  @relation("ActiveProxy")
+  /// A key that a proxy uses cannot be deleted. The user picks another key first. NO ACTION checks at the end of
+  /// the statement, so the cascade of a user delete can remove the proxies and the keys in any order.
+  apiKey   ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: NoAction)
+
+  @@index([userId])
+  @@index([apiKeyId])
+  @@map("proxies")
+}
+
+/// A saved API key. Many proxies of one user can use it. The key is encrypted, and the AAD holds the key ID.
+model ApiKey {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  name          String
   keyCiphertext Bytes    @map("key_ciphertext")
   keyIv         Bytes    @map("key_iv")
   keyTag        Bytes    @map("key_tag")
@@ -204,11 +225,11 @@ model Proxy {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  user     User  @relation("ProxyOwner", fields: [userId], references: [id], onDelete: Cascade)
-  activeOf User? @relation("ActiveProxy")
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  proxies Proxy[]
 
   @@index([userId])
-  @@map("proxies")
+  @@map("api_keys")
 }
 
 model Chat {
@@ -220,6 +241,8 @@ model Chat {
   memory                String   @default("")
   /// The last message position that a saved summary covers. Null when no summary is saved.
   memoryThroughPosition Int?     @map("memory_through_position")
+  /// The position of the character opening that message 0 holds. The user changes it until the first user message.
+  openingIndex          Int      @default(0) @map("opening_index")
   lastMessageAt         DateTime @default(now()) @map("last_message_at")
   createdAt             DateTime @default(now()) @map("created_at")
 

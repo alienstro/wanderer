@@ -1,10 +1,10 @@
 import { z } from "zod";
+import { API_KEY_MAX } from "./api-keys.js";
 
 export const PROXY_NAME_MAX = 60;
 export const PROXY_URL_MAX = 500;
 export const PROXY_MODEL_MAX = 200;
 export const PROXY_PROMPT_MAX = 4000;
-export const PROXY_KEY_MAX = 500;
 /** The chat history budget of a proxy, in estimated tokens. The system message always goes in. */
 export const PROXY_CONTEXT_MIN = 2_000;
 export const PROXY_CONTEXT_MAX = 200_000;
@@ -18,6 +18,7 @@ export const AI_ERROR_CODES = [
   "invalid_key",
   "model_not_found",
   "no_credit",
+  "usage_limit",
   "rate_limited",
   "timeout",
   "blocked_url",
@@ -32,6 +33,7 @@ export const AI_ERROR_TEXT: Record<AiErrorCode, string> = {
   invalid_key: "The proxy refused the API key.",
   model_not_found: "The proxy does not know this model.",
   no_credit: "The proxy account has no credit.",
+  usage_limit: "The proxy account reached its usage limit.",
   rate_limited: "The proxy has too many requests. Try again soon.",
   timeout: "The proxy did not answer in time.",
   blocked_url: "This proxy URL is not allowed.",
@@ -74,10 +76,10 @@ const proxyFields = {
 
 export const proxyCreateSchema = z.object({
   ...proxyFields,
-  apiKey: z.string().trim().min(1).max(PROXY_KEY_MAX),
+  apiKeyId: z.uuid(),
 });
 
-/** An update changes only the fields that it sends. An empty or absent apiKey keeps the saved key. */
+/** An update changes only the fields that it sends. An absent apiKeyId keeps the current key. */
 export const proxyUpdateSchema = z.object({
   name: proxyFields.name.optional(),
   baseUrl: proxyFields.baseUrl.optional(),
@@ -85,13 +87,13 @@ export const proxyUpdateSchema = z.object({
   model: proxyFields.model.optional(),
   customPrompt: z.string().trim().max(PROXY_PROMPT_MAX).optional(),
   contextTokens: contextTokensSchema.optional(),
-  apiKey: z.string().trim().max(PROXY_KEY_MAX).optional(),
+  apiKeyId: z.uuid().optional(),
 });
 
 export type ProxyCreate = z.infer<typeof proxyCreateSchema>;
 export type ProxyUpdate = z.infer<typeof proxyUpdateSchema>;
 
-/** A proxy as the browser sees it. It never has the key, only its last 4 characters. */
+/** A proxy as the browser sees it. It never has the key, only the name and the last 4 characters of its saved key. */
 export interface ProxyView {
   id: string;
   name: string;
@@ -100,7 +102,7 @@ export interface ProxyView {
   model: string;
   customPrompt: string;
   contextTokens: number;
-  keyLast4: string;
+  savedKey: { id: string; name: string; keyLast4: string };
   isActive: boolean;
   createdAt: string;
 }
@@ -108,3 +110,36 @@ export interface ProxyView {
 export type ProxyTestResult =
   | { ok: true; reply: string; latencyMs: number }
   | { ok: false; error: AiErrorCode; message: string };
+
+/** The model list gives this number of model ids or less. */
+export const PROXY_MODELS_LIMIT = 2_000;
+
+/** The error codes for a failed model list. "no_model_list" means that the proxy URL has no list. */
+export type ProxyModelsError = AiErrorCode | "no_model_list";
+
+export const PROXY_MODELS_ERROR_TEXT: Record<ProxyModelsError, string> = {
+  ...AI_ERROR_TEXT,
+  no_model_list: "This proxy URL has no model list. Type the model id.",
+};
+
+/**
+ * The body of POST /proxies/models. The API uses apiKey when it is not empty. Otherwise it uses the saved key
+ * with apiKeyId.
+ */
+export const proxyModelsSchema = z
+  .object({
+    baseUrl: proxyUrlSchema,
+    appendPath: z.boolean().default(true),
+    apiKey: z.string().trim().max(API_KEY_MAX).default(""),
+    apiKeyId: z.string().optional(),
+  })
+  .refine((body) => body.apiKey !== "" || body.apiKeyId !== undefined, {
+    message: "Send an API key or a saved key",
+    path: ["apiKey"],
+  });
+
+export type ProxyModelsRequest = z.input<typeof proxyModelsSchema>;
+
+export type ProxyModelsResult =
+  | { ok: true; models: string[] }
+  | { ok: false; error: ProxyModelsError; message: string };

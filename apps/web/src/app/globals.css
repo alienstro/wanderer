@@ -258,6 +258,23 @@
     color: var(--color-text);
   }
 
+  /* The grid of character cards. A phone shows two or more columns, so the user sees more than one card at a time. */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 28px 18px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (max-width: 760px) {
+    .card-grid {
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 20px 12px;
+    }
+  }
+
   .se-card {
     display: flex;
     flex-direction: column;
@@ -401,20 +418,20 @@
     font-size: 13px;
   }
 
-  @media (max-width: 760px) {
-    .side-nav {
-      flex-direction: row;
-      flex-wrap: wrap;
-    }
+  /* A code block is one box. A long line wraps, so a status block fits a phone screen. */
+  .markdown pre {
+    margin: 8px 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--color-current);
+    font-size: 13px;
+    white-space: pre-wrap;
+  }
 
-    .nav {
-      width: auto;
-    }
-
-    .side-foot {
-      margin-top: 0;
-      margin-left: auto;
-    }
+  .markdown pre code {
+    padding: 0;
+    border-radius: 0;
+    background: none;
   }
 
   .field {
