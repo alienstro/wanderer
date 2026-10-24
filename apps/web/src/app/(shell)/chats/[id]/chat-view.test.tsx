@@ -264,6 +264,20 @@ describe("chat page", () => {
     expect(screen.queryByRole("button", { name: "Open Settings" })).not.toBeInTheDocument();
   });
 
+  it("an error event usage_limit shows a usage-limit toast that does not say to wait a minute", async () => {
+    stubApi();
+    streamMock.mockImplementation(async (_path, _body, { onEvent }) => {
+      onEvent({ type: "start", userMessage: message("m2", "user", "Hi", 2) });
+      onEvent({ type: "error", error: "usage_limit", message: null });
+    });
+    withClient(<ChatView chatId="chat1" />);
+    await typeAndSend("Hi");
+    expect(await screen.findByText("The proxy account reached its usage limit.")).toBeInTheDocument();
+    expect(screen.getByText("Add credit or a plan on the proxy site, or pick a different model.")).toBeInTheDocument();
+    expect(screen.queryByText(/wait a minute/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open Settings" })).toBeInTheDocument();
+  });
+
   it("Edit, then Save, sends PATCH with the new text, and an assistant message has no Edit", async () => {
     const fetchMock = stubApi();
     withClient(<ChatView chatId="chat1" />);

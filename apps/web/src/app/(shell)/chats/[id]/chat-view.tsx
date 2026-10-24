@@ -46,6 +46,7 @@ const AI_ERROR_STEP: Record<AiErrorCode, { text: string; settings?: boolean }> =
   invalid_key: { text: "Check the API key of your model in Settings.", settings: true },
   model_not_found: { text: "Check the model name in Settings.", settings: true },
   no_credit: { text: "Add credit on the proxy site, then try again." },
+  usage_limit: { text: "Add credit or a plan on the proxy site, or pick a different model.", settings: true },
   rate_limited: { text: "Wait a minute, then try again." },
   timeout: { text: "Try again. If the problem continues, use a faster model." },
   blocked_url: { text: "Use a different proxy URL in Settings.", settings: true },

@@ -20,6 +20,20 @@ function providerCode(error: APIError): string | undefined {
   return typeof code === "string" ? code : undefined;
 }
 
+/**
+ * A usage limit of a provider account, such as "FreeUsageLimitError" of OpenCode. A wait of a minute does not reset it.
+ * Some proxies put the provider error into the message only, so the message is the second check.
+ */
+const USAGE_LIMIT = /usage[\s_-]?limit/i;
+
+function isUsageLimit(error: APIError): boolean {
+  const message = (error.error as { message?: unknown } | undefined)?.message;
+  return USAGE_LIMIT.test(providerCode(error) ?? "") || (typeof message === "string" && USAGE_LIMIT.test(message));
+}
+
+/** The longest provider code that goes to the log. The provider sets the value, so the log limits its length. */
+const PROVIDER_CODE_LOG_MAX = 100;
+
 /** Changes an error of a proxy call into a clear error code. The code never holds the key. */
 export function toAiError(error: unknown): AiErrorCode {
   if (isBlocked(error)) {
@@ -42,7 +56,10 @@ export function toAiError(error: unknown): AiErrorCode {
       case 402:
         return "no_credit";
       case 429:
-        return providerCode(error) === "insufficient_quota" ? "no_credit" : "rate_limited";
+        if (providerCode(error) === "insufficient_quota") {
+          return "no_credit";
+        }
+        return isUsageLimit(error) ? "usage_limit" : "rate_limited";
       default:
         return "provider_error";
     }
@@ -51,6 +68,15 @@ export function toAiError(error: unknown): AiErrorCode {
 }
 
 /** The only fields of a proxy error that go to the log. The SDK error object can hold headers. */
-export function aiErrorLogFields(error: unknown): { status: number | undefined; code: AiErrorCode } {
-  return { status: error instanceof APIError ? error.status : undefined, code: toAiError(error) };
+export function aiErrorLogFields(error: unknown): {
+  status: number | undefined;
+  code: AiErrorCode;
+  providerCode: string | undefined;
+} {
+  const apiError = error instanceof APIError ? error : undefined;
+  return {
+    status: apiError?.status,
+    code: toAiError(error),
+    providerCode: apiError ? providerCode(apiError)?.slice(0, PROVIDER_CODE_LOG_MAX) : undefined,
+  };
 }
