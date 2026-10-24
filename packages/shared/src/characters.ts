@@ -80,6 +80,7 @@ export type CharacterCard = {
   isAdult: boolean;
   tags: Tag[];
   chatCount: number;
+  likeCount: number;
   creatorHandle: string;
 };
 
@@ -92,9 +93,14 @@ export type CharacterDetail = CharacterCard & {
   /** Null when the creator hides the definition and the viewer is not the creator. */
   definition: { personality: string; scenario: string; exampleDialogs: string } | null;
   isOwner: boolean;
+  /** True when the viewer likes the character. False for a visitor. */
+  likedByMe: boolean;
   createdAt: string;
 };
 
 export type MyCharacterCard = CharacterCard & { status: CharacterStatus; isPublic: boolean };
 
 export type CharacterListResponse = { items: CharacterCard[]; nextCursor: string | null };
+
+/** The answer of `PUT` and `DELETE /characters/:id/like`. */
+export type CharacterLikeState = { likeCount: number; likedByMe: boolean };

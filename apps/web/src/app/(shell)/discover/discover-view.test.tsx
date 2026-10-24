@@ -17,6 +17,7 @@ function card(n: number): CharacterCard {
     isAdult: false,
     tags: [],
     chatCount: 0,
+    likeCount: 0,
     creatorHandle: "tian",
   };
 }

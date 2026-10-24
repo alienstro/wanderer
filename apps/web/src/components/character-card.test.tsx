@@ -16,6 +16,7 @@ const card: Card = {
     { slug: "horror", label: "Horror" },
   ],
   chatCount: 1234,
+  likeCount: 0,
   creatorHandle: "tian",
 };
 

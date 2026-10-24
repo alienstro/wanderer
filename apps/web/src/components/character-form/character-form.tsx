@@ -96,6 +96,7 @@ function PreviewCard({ state, creatorHandle }: { state: FormState; creatorHandle
           isAdult: state.isAdult,
           tags: TAGS.filter((tag) => state.tags.includes(tag.slug)),
           chatCount: 0,
+          likeCount: 0,
           creatorHandle,
         }}
       />

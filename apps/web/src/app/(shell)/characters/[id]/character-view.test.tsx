@@ -18,6 +18,7 @@ const detail: CharacterDetail = {
   isAdult: false,
   tags: [{ slug: "sci-fi", label: "SciFi" }],
   chatCount: 3,
+  likeCount: 0,
   creatorHandle: "tian",
   bio: "A **ship** mechanic.",
   status: "published",
@@ -26,6 +27,7 @@ const detail: CharacterDetail = {
   openings: ["The engine coughs.", "The lights go out."],
   definition: { personality: "Calm and dry.", scenario: "A cargo ship.", exampleDialogs: "" },
   isOwner: false,
+  likedByMe: false,
   createdAt: "2026-10-21T00:00:00.000Z",
 };
 
