@@ -14,6 +14,7 @@ const FOR_YOU_SIZE = 12;
 interface KeyRow {
   id: string;
   chat_count: number;
+  like_count: number;
   created_at: Date;
 }
 
@@ -55,23 +56,29 @@ export class CharacterListService {
       )`);
     }
 
-    const mostChats = query.sort === "most_chats";
+    // The count sorts put the count before the time. The column names are fixed text, not user input.
+    const count =
+      query.sort === "most_chats"
+        ? { column: Prisma.raw("c.chat_count"), after: after?.chatCount }
+        : query.sort === "most_liked"
+          ? { column: Prisma.raw("c.like_count"), after: after?.likeCount }
+          : null;
     if (after) {
       // The cursor keeps the time as an ISO string in UTC. The column is a timestamp in UTC with no zone.
       const createdAt = Prisma.sql`CAST(${after.createdAt} AS timestamp(3))`;
       conditions.push(
-        mostChats
-          ? Prisma.sql`(c.chat_count, c.created_at, c.id) < (${after.chatCount}, ${createdAt}, CAST(${after.id} AS uuid))`
+        count
+          ? Prisma.sql`(${count.column}, c.created_at, c.id) < (${count.after}, ${createdAt}, CAST(${after.id} AS uuid))`
           : Prisma.sql`(c.created_at, c.id) < (${createdAt}, CAST(${after.id} AS uuid))`,
       );
     }
-    const orderBy = mostChats
-      ? Prisma.sql`c.chat_count DESC, c.created_at DESC, c.id DESC`
+    const orderBy = count
+      ? Prisma.sql`${count.column} DESC, c.created_at DESC, c.id DESC`
       : Prisma.sql`c.created_at DESC, c.id DESC`;
 
     // One extra row tells if a next page exists.
     const keys = await this.prisma.$queryRaw<KeyRow[]>`
-      SELECT c.id, c.chat_count, c.created_at
+      SELECT c.id, c.chat_count, c.like_count, c.created_at
       FROM characters c JOIN users u ON u.id = c.creator_id
       WHERE ${Prisma.join(conditions, " AND ")}
       ORDER BY ${orderBy}
@@ -91,7 +98,12 @@ export class CharacterListService {
     const last = page.at(-1);
     const nextCursor =
       keys.length > PAGE_SIZE && last
-        ? encodeCursor({ chatCount: last.chat_count, createdAt: last.created_at.toISOString(), id: last.id } satisfies CursorKey)
+        ? encodeCursor({
+            chatCount: last.chat_count,
+            likeCount: last.like_count,
+            createdAt: last.created_at.toISOString(),
+            id: last.id,
+          } satisfies CursorKey)
         : null;
     return { items, nextCursor };
   }
