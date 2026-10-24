@@ -24,9 +24,16 @@ export class ChoicesService {
 
   /** Tries one more time after a bad answer. Then it gives 502, and the web hides the choices. */
   async make(user: User, chatId: string): Promise<ChoicesResponse> {
-    const { character, history } = await this.chats.loadForReply(chatId, user);
+    const { chat, character, history } = await this.chats.loadForReply(chatId, user);
     const { target, customPrompt, contextTokens } = await this.proxies.loadTarget(user);
-    const messages = buildChoicesPrompt({ character, customPrompt, contextTokens, userName: user.name, history });
+    const messages = buildChoicesPrompt({
+      character,
+      customPrompt,
+      contextTokens,
+      memory: chat.memory,
+      userName: user.name,
+      history,
+    });
     const client = this.clients.create(target);
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
       let text: string;
