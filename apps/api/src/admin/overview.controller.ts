@@ -1,5 +1,5 @@
 import { Controller, Get, Query, UseGuards } from "@nestjs/common";
-import type { OverviewStats } from "@wanderer/shared";
+import type { OverviewHealth, OverviewProblemList, OverviewStats, TopCharacterList } from "@wanderer/shared";
 import { AdminGuard } from "../auth/admin.guard.js";
 import { SessionGuard } from "../auth/session.guard.js";
 import { OverviewService, parseOverviewQuery } from "./overview.service.js";
@@ -13,5 +13,20 @@ export class OverviewController {
   @Get("stats")
   stats(@Query() query: unknown): Promise<OverviewStats> {
     return this.overview.stats(parseOverviewQuery(query));
+  }
+
+  @Get("problems")
+  problems(@Query() query: unknown): Promise<OverviewProblemList> {
+    return this.overview.problems(parseOverviewQuery(query));
+  }
+
+  @Get("top-characters")
+  topCharacters(@Query() query: unknown): Promise<TopCharacterList> {
+    return this.overview.topCharacters(parseOverviewQuery(query));
+  }
+
+  @Get("health")
+  health(): Promise<OverviewHealth> {
+    return this.overview.health();
   }
 }

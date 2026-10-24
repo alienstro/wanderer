@@ -2,14 +2,30 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import {
   OVERVIEW_METRICS,
   OVERVIEW_PERIOD_DAYS,
+  OVERVIEW_PROBLEM_TYPES,
+  type OverviewHealth,
+  type OverviewHealthStatus,
   type OverviewMetric,
+  type OverviewProblemList,
+  type OverviewProblemType,
   type OverviewQuery,
   overviewQuerySchema,
   type OverviewSeries,
   type OverviewStats,
+  type TopCharacter,
+  type TopCharacterList,
 } from "@wanderer/shared";
 import { type AppEventType, Prisma } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+
+/** The problem list shows this number of problems or less. */
+const PROBLEMS_MAX = 50;
+/** Each top-character list shows this number of characters or less. */
+const TOP_MAX = 5;
+/** The health status looks at the AI replies of this time. */
+const HEALTH_WINDOW_MS = 60 * 60 * 1000;
+/** With fewer tries, a few failures of one user do not make the status "down". */
+const DOWN_MIN_TRIES = 5;
 
 /** The metric of each app event type. */
 const EVENT_METRIC: Record<AppEventType, OverviewMetric> = {
@@ -74,6 +90,21 @@ const EVENTS_SOURCE: CountSource = {
   where: Prisma.empty,
 };
 
+/** The start of the period: midnight in `tz`, as a UTC time with no zone, like the created_at columns. */
+function periodStart({ period, tz }: OverviewQuery): Prisma.Sql {
+  return Prisma.sql`(date_trunc('day', now() AT TIME ZONE ${tz}) - make_interval(days => ${OVERVIEW_PERIOD_DAYS[period] - 1}::int))
+    AT TIME ZONE ${tz} AT TIME ZONE 'UTC'`;
+}
+
+/** "down" when half or more of 5 or more tries failed. "some_problems" when 10% or more failed. */
+function healthStatus(replies: number, failed: number): OverviewHealthStatus {
+  const tries = replies + failed;
+  if (tries >= DOWN_MIN_TRIES && failed * 2 >= tries) {
+    return "down";
+  }
+  return failed > 0 && failed * 10 >= tries ? "some_problems" : "ok";
+}
+
 /** Gives the parsed query, or 400 invalid_period. */
 export function parseOverviewQuery(query: unknown): OverviewQuery {
   const parsed = overviewQuerySchema.safeParse(query ?? {});
@@ -104,6 +135,62 @@ export class OverviewService {
     return { period: query.period, days, metrics: ordered as Record<OverviewMetric, OverviewSeries> };
   }
 
+  /** The newest failures of the period. Logins are not problems. */
+  async problems(query: OverviewQuery): Promise<OverviewProblemList> {
+    const rows = await this.prisma.appEvent.findMany({
+      where: { type: { in: [...OVERVIEW_PROBLEM_TYPES] }, createdAt: { gte: await this.start(query) } },
+      select: {
+        id: true,
+        type: true,
+        reason: true,
+        createdAt: true,
+        user: { select: { id: true, handle: true } },
+        character: { select: { id: true, title: true } },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: PROBLEMS_MAX,
+    });
+    return {
+      problems: rows.map((row) => ({ ...row, type: row.type as OverviewProblemType, createdAt: row.createdAt.toISOString() })),
+    };
+  }
+
+  /** The characters with the most new chats, and with the most new likes, in the period. */
+  async topCharacters(query: OverviewQuery): Promise<TopCharacterList> {
+    const since = await this.start(query);
+    const where = { createdAt: { gte: since } };
+    const orderBy = [{ _count: { characterId: "desc" } }, { characterId: "asc" }] as const;
+    const [chats, likes] = await Promise.all([
+      this.prisma.chat.groupBy({ by: ["characterId"], where, _count: { characterId: true }, orderBy: [...orderBy], take: TOP_MAX }),
+      this.prisma.characterLike.groupBy({ by: ["characterId"], where, _count: { characterId: true }, orderBy: [...orderBy], take: TOP_MAX }),
+    ]);
+    const ids = [...new Set([...chats, ...likes].map((row) => row.characterId))];
+    const characters = await this.prisma.character.findMany({ where: { id: { in: ids } }, select: { id: true, title: true } });
+    const titles = new Map(characters.map((character) => [character.id, character.title]));
+    const toTop = (rows: Array<{ characterId: string; _count: { characterId: number } }>): TopCharacter[] =>
+      rows.map((row) => ({ id: row.characterId, title: titles.get(row.characterId) ?? "", count: row._count.characterId }));
+    return { byChats: toTop(chats), byLikes: toTop(likes) };
+  }
+
+  /**
+   * The status of the AI replies of the last 60 minutes. A saved reply after the opening counts as a reply. A failed
+   * reply with some text also saves a message, so it can count in both numbers.
+   */
+  async health(): Promise<OverviewHealth> {
+    const createdAt = { gte: new Date(Date.now() - HEALTH_WINDOW_MS) };
+    const [replies, failedReplies] = await Promise.all([
+      this.prisma.message.count({ where: { role: "assistant", position: { gt: 0 }, createdAt } }),
+      this.prisma.appEvent.count({ where: { type: "ai_reply_failed", createdAt } }),
+    ]);
+    return { status: healthStatus(replies, failedReplies), replies, failedReplies };
+  }
+
+  private async start(query: OverviewQuery): Promise<Date> {
+    const [row] = await this.prisma.$queryRaw<Array<{ start: string }>>`
+      SELECT to_char(${periodStart(query)}, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS start`;
+    return new Date(row?.start ?? 0);
+  }
+
   /** The dates of the period in the time zone, the oldest first. The last date is today. */
   private async days({ period, tz }: OverviewQuery): Promise<string[]> {
     const rows = await this.prisma.$queryRaw<Array<{ day: string }>>`
@@ -120,14 +207,11 @@ export class OverviewService {
    * Counts the rows of the period for each key and day, plus a total for each key. The columns hold UTC times
    * with no zone, so the query changes them to the local day of `tz`. The start check can use the created_at index.
    */
-  private count({ period, tz }: OverviewQuery, source: CountSource): Promise<CountRow[]> {
+  private count(query: OverviewQuery, source: CountSource): Promise<CountRow[]> {
     return this.prisma.$queryRaw<CountRow[]>`
-      WITH bounds AS (
-        SELECT (date_trunc('day', now() AT TIME ZONE ${tz}) - make_interval(days => ${OVERVIEW_PERIOD_DAYS[period] - 1}::int))
-          AT TIME ZONE ${tz} AT TIME ZONE 'UTC' AS start_at
-      )
+      WITH bounds AS (SELECT ${periodStart(query)} AS start_at)
       SELECT ${source.key} AS key,
-        to_char(date_trunc('day', (${source.at} AT TIME ZONE 'UTC') AT TIME ZONE ${tz}), 'YYYY-MM-DD') AS day,
+        to_char(date_trunc('day', (${source.at} AT TIME ZONE 'UTC') AT TIME ZONE ${query.tz}), 'YYYY-MM-DD') AS day,
         ${source.value}::int AS n
       FROM ${source.from}, bounds
       WHERE ${source.at} >= bounds.start_at ${source.where}

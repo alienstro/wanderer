@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PROXY_MODELS_ERROR_TEXT } from "./proxies.js";
 
 export const OVERVIEW_PERIODS = ["today", "7d", "30d"] as const;
 export type OverviewPeriod = (typeof OVERVIEW_PERIODS)[number];
@@ -66,4 +67,72 @@ export interface OverviewStats {
   /** One date for each day of the period, such as 2026-10-25, the oldest first. */
   days: string[];
   metrics: Record<OverviewMetric, OverviewSeries>;
+}
+
+/** The kinds of problems. Each is an app event type, except login. */
+export const OVERVIEW_PROBLEM_TYPES = [
+  "ai_reply_failed",
+  "choices_failed",
+  "summary_failed",
+  "proxy_test_failed",
+  "model_list_failed",
+] as const;
+export type OverviewProblemType = (typeof OVERVIEW_PROBLEM_TYPES)[number];
+
+export const OVERVIEW_PROBLEM_LABELS: Record<OverviewProblemType, string> = {
+  ai_reply_failed: "Failed AI reply",
+  choices_failed: "Failed reply choices",
+  summary_failed: "Failed memory summary",
+  proxy_test_failed: "Failed proxy test",
+  model_list_failed: "Failed model list",
+};
+
+/** The reasons that only an app event has. The AI error codes have their text in PROXY_MODELS_ERROR_TEXT. */
+const EVENT_REASON_TEXT: Record<string, string> = {
+  internal_error: "Wanderer had an internal error.",
+  bad_choices: "The AI did not give four choices.",
+  empty_summary: "The AI gave an empty summary.",
+};
+
+/** The plain-language reason of a problem, such as "The proxy did not answer in time." */
+export function problemReasonText(reason: string): string {
+  return (PROXY_MODELS_ERROR_TEXT as Record<string, string>)[reason] ?? EVENT_REASON_TEXT[reason] ?? "Unknown reason.";
+}
+
+/** One failure. It holds ids and codes only, never chat text, keys or URLs. A null user or character was deleted. */
+export interface OverviewProblem {
+  id: string;
+  type: OverviewProblemType;
+  reason: string;
+  createdAt: string;
+  user: { id: string; handle: string | null } | null;
+  character: { id: string; title: string } | null;
+}
+
+/** GET /admin/overview/problems: the newest problems of the period. */
+export interface OverviewProblemList {
+  problems: OverviewProblem[];
+}
+
+export interface TopCharacter {
+  id: string;
+  title: string;
+  /** The number of new chats or new likes in the period. */
+  count: number;
+}
+
+/** GET /admin/overview/top-characters */
+export interface TopCharacterList {
+  byChats: TopCharacter[];
+  byLikes: TopCharacter[];
+}
+
+export const OVERVIEW_HEALTH_LABELS = { ok: "OK", some_problems: "Some problems", down: "Down" } as const;
+export type OverviewHealthStatus = keyof typeof OVERVIEW_HEALTH_LABELS;
+
+/** GET /admin/overview/health: the AI replies of the last 60 minutes. */
+export interface OverviewHealth {
+  status: OverviewHealthStatus;
+  replies: number;
+  failedReplies: number;
 }
