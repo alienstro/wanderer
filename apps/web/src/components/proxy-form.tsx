@@ -9,11 +9,15 @@ import {
   PROXY_CONTEXT_MAX,
   PROXY_CONTEXT_MIN,
   proxyCreateSchema,
+  type ProxyModelsRequest,
+  type ProxyModelsResult,
+  proxyUrlSchema,
   type ProxyView,
 } from "@wanderer/shared";
 import { useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
 import { Field } from "./form-field";
+import { ModelPicker } from "./model-picker";
 
 /** The select value that shows the fields for a new saved key. */
 const NEW_KEY = "new";
@@ -95,6 +99,11 @@ function validate(state: FormState): FieldErrors {
   return errors;
 }
 
+/** The model list needs a key: the typed new key, or a saved key that the API reads. */
+function modelsKeyError(state: FormState): string | undefined {
+  return state.apiKeyId === NEW_KEY && !state.newKey.trim() ? FIELD_MESSAGES.newKey : undefined;
+}
+
 export interface ProxyFormProps {
   /** The saved keys of the user, for the key select. */
   apiKeys: ApiKeyView[];
@@ -113,7 +122,49 @@ export function ProxyForm({ apiKeys, initial, onSaved, onKeyAdded, onCancel }: P
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [models, setModels] = useState<string[] | null>(null);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [modelsError, setModelsError] = useState<string | null>(null);
   const set = (patch: Partial<FormState>) => setState((current) => ({ ...current, ...patch }));
+
+  /** Asks the API for the models of the proxy, with the typed new key or the picked saved key. */
+  async function loadModels() {
+    const url = proxyUrlSchema.safeParse(state.baseUrl);
+    const baseUrl = url.success ? undefined : FIELD_MESSAGES.baseUrl;
+    const newKey = modelsKeyError(state);
+    setErrors((current) => ({ ...current, baseUrl, newKey }));
+    setModels(null);
+    setModelsError(null);
+    if (baseUrl || newKey) {
+      return;
+    }
+    const body: ProxyModelsRequest = {
+      baseUrl: state.baseUrl,
+      appendPath: state.appendPath,
+      ...(state.apiKeyId === NEW_KEY ? { apiKey: state.newKey } : { apiKeyId: state.apiKeyId }),
+    };
+    setLoadingModels(true);
+    try {
+      const result = await apiFetch<ProxyModelsResult>("/proxies/models", { method: "POST", body: JSON.stringify(body) });
+      if (!result.ok) {
+        setModelsError(result.message);
+      } else if (result.models.length === 0) {
+        setModelsError("The proxy gave no models. Type the model id.");
+      } else {
+        setModels(result.models);
+      }
+    } catch (error) {
+      if (error instanceof ApiError && error.code === "blocked_url") {
+        setErrors((current) => ({ ...current, baseUrl: AI_ERROR_TEXT.blocked_url }));
+      } else if (error instanceof ApiError && error.status === 429) {
+        setModelsError("You loaded the models too many times. Try again in one minute.");
+      } else {
+        setModelsError("The models did not load. Try again.");
+      }
+    } finally {
+      setLoadingModels(false);
+    }
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -283,17 +334,36 @@ export function ProxyForm({ apiKeys, initial, onSaved, onKeyAdded, onCancel }: P
 
       <Field name="model" label="Model" required error={errors.model}>
         {({ inputId, describedBy }) => (
-          <input
-            id={inputId}
-            className="field"
-            value={state.model}
-            aria-invalid={errors.model ? true : undefined}
-            aria-describedby={describedBy}
-            placeholder="deepseek/deepseek-chat"
-            onChange={(event) => set({ model: event.target.value })}
-          />
+          <div className="flex gap-2">
+            <input
+              id={inputId}
+              className="field flex-1"
+              value={state.model}
+              aria-invalid={errors.model ? true : undefined}
+              aria-describedby={describedBy}
+              placeholder="deepseek/deepseek-chat"
+              onChange={(event) => set({ model: event.target.value })}
+            />
+            <button type="button" className="pill pill-soft" disabled={loadingModels} onClick={loadModels}>
+              {loadingModels ? "Loading…" : "Load models"}
+            </button>
+          </div>
         )}
       </Field>
+      {modelsError && (
+        <p role="alert" className="m-0 text-[13px] text-error">
+          {modelsError}
+        </p>
+      )}
+      {models && (
+        <ModelPicker
+          models={models}
+          onPick={(model) => {
+            set({ model });
+            setModels(null);
+          }}
+        />
+      )}
 
       <Field name="customPrompt" label="Custom prompt" error={errors.customPrompt} hint="Optional. The AI reads it before the character.">
         {({ inputId, describedBy }) => (

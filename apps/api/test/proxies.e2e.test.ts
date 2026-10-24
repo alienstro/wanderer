@@ -2,10 +2,16 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AI_CLIENT_FACTORY } from "../src/ai/ai-client.js";
+import { MODEL_LIST_CLIENT } from "../src/ai/model-list.js";
 import { PrismaService } from "../src/prisma/prisma.service.js";
 import { createTestApp } from "./support/app.js";
 import { WEB_ORIGIN } from "./support/env.js";
-import { type FakeAiServer, startFakeAiServer, UnguardedAiClientFactory } from "./support/fake-ai-server.js";
+import {
+  type FakeAiServer,
+  startFakeAiServer,
+  UnguardedAiClientFactory,
+  UnguardedModelListClient,
+} from "./support/fake-ai-server.js";
 import { type TestUser, userWithSession } from "./support/users.js";
 
 const KEY = "sk-live-secret-3f9a";
@@ -21,6 +27,7 @@ describe("proxies", () => {
   let prisma: PrismaService;
   let fake: FakeAiServer;
   let factory: UnguardedAiClientFactory;
+  let modelLists: UnguardedModelListClient;
   let one: TestUser;
   let two: TestUser;
   /** The saved key of user one, and a proxy body that uses it. */
@@ -38,7 +45,13 @@ describe("proxies", () => {
   beforeAll(async () => {
     fake = await startFakeAiServer();
     factory = new UnguardedAiClientFactory(fake.url);
-    app = await createTestApp({ overrides: [{ token: AI_CLIENT_FACTORY, useValue: factory }] });
+    modelLists = new UnguardedModelListClient(fake.url);
+    app = await createTestApp({
+      overrides: [
+        { token: AI_CLIENT_FACTORY, useValue: factory },
+        { token: MODEL_LIST_CLIENT, useValue: modelLists },
+      ],
+    });
     prisma = app.get(PrismaService);
   });
 
@@ -213,5 +226,78 @@ describe("proxies", () => {
   it("POST /proxies with no apiKeyId gives 400 invalid_proxy", async () => {
     const res = await post(one, "/proxies", proxyFields).expect(400);
     expect(res.body).toEqual({ error: "invalid_proxy", fields: ["apiKeyId"] });
+  });
+
+  describe("POST /proxies/models", () => {
+    const listBody = { baseUrl: "https://openrouter.ai/api/v1", apiKey: KEY };
+    const list = { status: 200, body: { data: [{ id: "z/last" }, { id: "a/first" }] } };
+
+    it("with a URL and a key, gives the sorted ids and sends the key only in the Authorization header", async () => {
+      fake.next(list);
+      const res = await post(one, "/proxies/models", listBody).expect(200);
+      expect(res.body).toEqual({ ok: true, models: ["a/first", "z/last"] });
+      expect(res.text).not.toContain(KEY);
+      expect(modelLists.calls.at(-1)?.url).toBe("https://openrouter.ai/api/v1/models");
+      expect(fake.requests.at(-1)?.path).toBe("/v1/models");
+      expect(fake.requests.at(-1)?.authorization).toBe(`Bearer ${KEY}`);
+    });
+
+    it("with apiKeyId and an empty key, uses the saved key, and another user gets 404", async () => {
+      const body = { baseUrl: proxyBody.baseUrl, apiKey: "", apiKeyId: keyId };
+      fake.next(list);
+      const res = await post(one, "/proxies/models", body).expect(200);
+      expect(res.body.ok).toBe(true);
+      expect(modelLists.calls.at(-1)?.apiKey).toBe(KEY);
+      const calls = modelLists.calls.length;
+      await post(two, "/proxies/models", body).expect(404);
+      await post(two, "/proxies/models", { ...body, apiKeyId: "not-a-uuid" }).expect(404);
+      expect(modelLists.calls).toHaveLength(calls);
+    });
+
+    it("with apiKeyId, a saved key lists the models of a URL that no model uses yet", async () => {
+      // A saved key is not bound to one URL, because many models on different URLs can use it.
+      fake.next(list);
+      const body = { baseUrl: "https://api.example.com/v1", apiKeyId: keyId };
+      const res = await post(one, "/proxies/models", body).expect(200);
+      expect(res.body.ok).toBe(true);
+      expect(modelLists.calls.at(-1)).toMatchObject({ url: "https://api.example.com/v1/models", apiKey: KEY });
+    });
+
+    it("a 401 from the proxy gives invalid_key, and a 404 gives no_model_list", async () => {
+      fake.next({ status: 401 }, { status: 404 });
+      const refused = await post(one, "/proxies/models", listBody).expect(200);
+      expect(refused.body).toEqual({ ok: false, error: "invalid_key", message: "The proxy refused the API key." });
+      const missing = await post(one, "/proxies/models", listBody).expect(200);
+      expect(missing.body).toEqual({
+        ok: false,
+        error: "no_model_list",
+        message: "This proxy URL has no model list. Type the model id.",
+      });
+    });
+
+    it("with Add /chat/completions off, gives no_model_list and sends no request", async () => {
+      const calls = modelLists.calls.length;
+      const res = await post(one, "/proxies/models", { ...listBody, appendPath: false }).expect(200);
+      expect(res.body.error).toBe("no_model_list");
+      expect(modelLists.calls).toHaveLength(calls);
+    });
+
+    it("a private address gives 400 blocked_url, and no key and no apiKeyId gives 400 invalid_proxy", async () => {
+      const calls = modelLists.calls.length;
+      const blocked = await post(one, "/proxies/models", { ...listBody, baseUrl: "https://10.0.0.5/v1" }).expect(400);
+      expect(blocked.body.error).toBe("blocked_url");
+      const empty = await post(one, "/proxies/models", { ...listBody, apiKey: "" }).expect(400);
+      expect(empty.body).toEqual({ error: "invalid_proxy", fields: ["apiKey"] });
+      expect(modelLists.calls).toHaveLength(calls);
+    });
+
+    it("the 11th request in one minute from one user gets 429", async () => {
+      const codes: number[] = [];
+      for (let n = 0; n < 11; n++) {
+        codes.push((await post(one, "/proxies/models", { ...listBody, appendPath: false })).status);
+      }
+      expect(codes.slice(0, 10).every((code) => code === 200)).toBe(true);
+      expect(codes[10]).toBe(429);
+    });
   });
 });

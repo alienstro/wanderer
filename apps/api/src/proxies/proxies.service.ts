@@ -3,7 +3,11 @@ import {
   AI_ERROR_TEXT,
   type MeResponse,
   PROXY_LIMIT,
+  PROXY_MODELS_ERROR_TEXT,
   proxyCreateSchema,
+  type ProxyModelsError,
+  type ProxyModelsResult,
+  proxyModelsSchema,
   type ProxyTestResult,
   proxyUpdateSchema,
   type ProxyView,
@@ -11,6 +15,7 @@ import {
 import type { z } from "zod";
 import { AI_CLIENT_FACTORY, type AiClientFactory, type AiTarget, proxyEndpoint } from "../ai/ai-client.js";
 import { aiErrorLogFields, toAiError } from "../ai/ai-errors.js";
+import { MODEL_LIST_CLIENT, type ModelListClient, ModelListError, modelsUrl } from "../ai/model-list.js";
 import { assertProxyUrl, BlockedUrlError } from "../ai/url-guard.js";
 import { ApiKeysService } from "../api-keys/api-keys.service.js";
 import { KeyDecryptError } from "../api-keys/key-cipher.js";
@@ -52,6 +57,10 @@ function parse<T extends z.ZodType>(schema: T, body: unknown): z.infer<T> {
   return parsed.data;
 }
 
+function modelsFailure(error: ProxyModelsError): ProxyModelsResult {
+  return { ok: false, error, message: PROXY_MODELS_ERROR_TEXT[error] };
+}
+
 /** The static SSRF check at save time. The AI client checks the DNS answer again at each call. */
 function assertSafeUrl(baseUrl: string, appendPath: boolean): void {
   try {
@@ -73,6 +82,7 @@ export class ProxiesService {
     private readonly me: MeService,
     private readonly apiKeys: ApiKeysService,
     @Inject(AI_CLIENT_FACTORY) private readonly clients: AiClientFactory,
+    @Inject(MODEL_LIST_CLIENT) private readonly modelLists: ModelListClient,
   ) {}
 
   async list(user: User): Promise<ProxyView[]> {
@@ -150,6 +160,43 @@ export class ProxiesService {
       this.logger.warn({ msg: "Proxy test failed", ...aiErrorLogFields(error) });
       const code = toAiError(error);
       return { ok: false, error: code, message: AI_ERROR_TEXT[code] };
+    }
+  }
+
+  /**
+   * Gets the model ids of a proxy. The key comes from the body, or else from a saved key of the user. A failed list is a
+   * result, not an error. When "Add /chat/completions" is off, the URL is a full endpoint, so the API does not guess.
+   */
+  async models(user: User, body: unknown): Promise<ProxyModelsResult> {
+    const input = parse(proxyModelsSchema, body);
+    assertSafeUrl(input.baseUrl, input.appendPath);
+    // A saved key is not bound to one URL: many models on different URLs can use it.
+    const saved = input.apiKey ? null : await this.apiKeys.findOwn(user, input.apiKeyId ?? "");
+    if (!input.appendPath) {
+      return modelsFailure("no_model_list");
+    }
+    let apiKey = input.apiKey;
+    if (saved) {
+      try {
+        apiKey = this.apiKeys.decrypt(saved);
+      } catch (error) {
+        if (error instanceof KeyDecryptError) {
+          return modelsFailure("invalid_key");
+        }
+        throw error;
+      }
+    }
+    try {
+      return { ok: true, models: await this.modelLists.list(modelsUrl(input.baseUrl), apiKey) };
+    } catch (error) {
+      if (error instanceof BlockedUrlError) {
+        return modelsFailure("blocked_url");
+      }
+      if (error instanceof ModelListError) {
+        this.logger.warn({ msg: "Proxy model list failed", code: error.code });
+        return modelsFailure(error.code);
+      }
+      throw error;
     }
   }
 
