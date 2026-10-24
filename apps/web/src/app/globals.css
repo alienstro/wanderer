@@ -138,6 +138,30 @@
     font-size: 13px;
   }
 
+  /* A pill of normal size on a computer and of small size on a phone. Use tap-target with it. */
+  @media (max-width: 760px) {
+    .pill-sm-phone {
+      min-height: 34px;
+      padding: 0 14px;
+      font-size: 13px;
+    }
+  }
+
+  /* An area that the user cannot see makes the tap area of a small control at least 44 × 44 px. */
+  .tap-target {
+    position: relative;
+  }
+
+  .tap-target::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    translate: -50% -50%;
+  }
+
   .side-nav {
     display: flex;
     flex-direction: column;
@@ -428,10 +452,20 @@
     white-space: pre-wrap;
   }
 
+  /* On a phone a smaller font puts more characters on one line, so fewer lines of a status block wrap. */
+  @media (max-width: 760px) {
+    .markdown pre {
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+  }
+
   .markdown pre code {
     padding: 0;
     border-radius: 0;
     background: none;
+    font-size: inherit;
   }
 
   .field {
