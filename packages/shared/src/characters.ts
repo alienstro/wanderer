@@ -60,7 +60,9 @@ export const characterInputSchema = z.object({
 
 export type CharacterInput = z.infer<typeof characterInputSchema>;
 
-export const characterSortSchema = z.enum(["most_chats", "newest"]);
+export const characterSortSchema = z.enum(["most_chats", "most_liked", "newest"]);
+
+export type CharacterSort = z.infer<typeof characterSortSchema>;
 
 export const characterListQuerySchema = z.object({
   q: z.string().trim().max(SEARCH_MAX).optional(),
@@ -82,6 +84,7 @@ export type CharacterCard = {
   isAdult: boolean;
   tags: Tag[];
   chatCount: number;
+  likeCount: number;
   creatorHandle: string;
 };
 
@@ -94,9 +97,14 @@ export type CharacterDetail = CharacterCard & {
   /** Null when the creator hides the definition and the viewer is not the creator. */
   definition: { personality: string; scenario: string; exampleDialogs: string } | null;
   isOwner: boolean;
+  /** True when the viewer likes the character. False for a visitor. */
+  likedByMe: boolean;
   createdAt: string;
 };
 
 export type MyCharacterCard = CharacterCard & { status: CharacterStatus; isPublic: boolean };
 
 export type CharacterListResponse = { items: CharacterCard[]; nextCursor: string | null };
+
+/** The answer of `PUT` and `DELETE /characters/:id/like`. */
+export type CharacterLikeState = { likeCount: number; likedByMe: boolean };

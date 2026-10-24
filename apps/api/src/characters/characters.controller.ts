@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UploadedFile,
   UseGuards,
@@ -17,6 +18,7 @@ import {
   type CharacterCard,
   type CharacterDetail,
   type CharacterInput,
+  type CharacterLikeState,
   type CharacterListResponse,
   type MyCharacterCard,
   characterListQuerySchema,
@@ -28,6 +30,7 @@ import { FilesService } from "../files/files.service.js";
 import type { User } from "../generated/prisma/client.js";
 import { AllowMultipart } from "../security/origin.guard.js";
 import { parseCharacterInput } from "./character-input.js";
+import { CharacterLikesService } from "./character-likes.service.js";
 import { CharacterListService } from "./character-list.service.js";
 import { CharactersService } from "./characters.service.js";
 import { mapTavernCard, readTavernCard } from "./tavern-card.js";
@@ -37,6 +40,7 @@ export class CharactersController {
   constructor(
     private readonly characters: CharactersService,
     private readonly lists: CharacterListService,
+    private readonly likes: CharacterLikesService,
     private readonly files: FilesService,
   ) {}
 
@@ -112,6 +116,19 @@ export class CharactersController {
   @UseGuards(SessionGuard)
   remove(@CurrentUser() user: User, @Param("id") id: string): Promise<void> {
     return this.characters.remove(id, user);
+  }
+
+  /** PUT and DELETE are idempotent, so a retry cannot reverse the action, as a toggle would. */
+  @Put(":id/like")
+  @UseGuards(SessionGuard)
+  like(@CurrentUser() user: User, @Param("id") id: string): Promise<CharacterLikeState> {
+    return this.likes.like(id, user);
+  }
+
+  @Delete(":id/like")
+  @UseGuards(SessionGuard)
+  unlike(@CurrentUser() user: User, @Param("id") id: string): Promise<CharacterLikeState> {
+    return this.likes.unlike(id, user);
   }
 }
 

@@ -2,12 +2,13 @@ import type { CharacterCard as Card } from "@wanderer/shared";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { fileSrc } from "@/lib/api";
-import { chatsLabel } from "@/lib/format";
+import { chatsLabel, likesLabel } from "@/lib/format";
+import { HeartIcon } from "./heart-icon";
 
 const BADGE = "inline-flex items-center gap-[5px] rounded-full bg-[rgba(10,10,12,0.72)] px-[9px] py-1 text-xs font-semibold text-text";
 
 /**
- * A Discover card in the StoryEngine style: a tall 3:4 image, the chat count, the title, the tags, and the creator.
+ * A Discover card in the StoryEngine style: a tall 3:4 image, the chat and like counts, the title, the tags, and the creator.
  * The whole card links to the character page. `extraBadge` puts one more badge at the top right, such as "Draft".
  * `linked={false}` shows the card with no link, for the form preview.
  */
@@ -22,11 +23,17 @@ export function CharacterCard({ card, extraBadge, linked = true }: { card: Card;
             {card.title.charAt(0).toUpperCase()}
           </span>
         )}
-        <span className={`absolute top-2.5 left-2.5 ${BADGE}`}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />
-          </svg>
-          {chatsLabel(card.chatCount)}
+        <span className="absolute top-2.5 left-2.5 flex gap-1.5">
+          <span className={BADGE}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />
+            </svg>
+            {chatsLabel(card.chatCount)}
+          </span>
+          <span className={BADGE}>
+            <HeartIcon size={12} />
+            {likesLabel(card.likeCount)}
+          </span>
         </span>
         <span className="absolute top-2.5 right-2.5 flex gap-1.5">
           {card.isAdult && <span className={`${BADGE} bg-[rgba(194,65,75,0.9)]`}>18+</span>}

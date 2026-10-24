@@ -35,11 +35,12 @@ model User {
   termsAcceptances TermsAcceptance[]
   characters       Character[]
   files            File[]
-  proxies          Proxy[]   @relation("ProxyOwner")
-  activeProxy      Proxy?    @relation("ActiveProxy", fields: [activeProxyId], references: [id], onDelete: SetNull)
+  proxies          Proxy[]           @relation("ProxyOwner")
+  activeProxy      Proxy?            @relation("ActiveProxy", fields: [activeProxyId], references: [id], onDelete: SetNull)
   chats            Chat[]
-  reports          Report[]  @relation("Reporter")
-  resolvedReports  Report[]  @relation("ResolvedBy")
+  reports          Report[]          @relation("Reporter")
+  resolvedReports  Report[]          @relation("ResolvedBy")
+  characterLikes   CharacterLike[]
 
   @@map("users")
 }
@@ -93,6 +94,8 @@ model Character {
   /// One avatar file belongs to one character, so a delete of the file cannot clear another avatar.
   avatarFileId      String?         @unique @map("avatar_file_id") @db.Uuid
   chatCount         Int             @default(0) @map("chat_count")
+  /// A trigger on character_likes keeps this count. The app never writes it.
+  likeCount         Int             @default(0) @map("like_count")
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
 
@@ -102,10 +105,26 @@ model Character {
   tags     CharacterTag[]
   chats    Chat[]
   reports  Report[]
+  likes    CharacterLike[]
 
   @@unique([creatorId, title])
   @@index([status, isPublic, isAdult, chatCount, createdAt])
+  @@index([status, isPublic, isAdult, likeCount, createdAt])
   @@map("characters")
+}
+
+/// One like of one user for one character. The key blocks a second like.
+model CharacterLike {
+  userId      String   @map("user_id") @db.Uuid
+  characterId String   @map("character_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@id([userId, characterId])
+  @@index([characterId])
+  @@map("character_likes")
 }
 
 model CharacterOpening {
