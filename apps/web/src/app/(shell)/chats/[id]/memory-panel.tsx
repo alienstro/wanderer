@@ -23,7 +23,7 @@ export function MemoryButton(props: MemoryProps) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className="pill pill-soft ml-auto" onClick={() => setOpen(true)}>
+      <button type="button" className="pill pill-soft pill-sm-phone tap-target ml-auto" onClick={() => setOpen(true)}>
         Memory
       </button>
       {open && <MemoryPanel {...props} onClose={() => setOpen(false)} />}

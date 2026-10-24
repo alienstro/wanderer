@@ -55,9 +55,9 @@ export function MessageItem({ message, speaker, editable, canRegenerate, onSave,
   }
 
   return (
-    <article className={`flex gap-3 ${mine ? "flex-row-reverse" : ""}`}>
+    <article className={`flex gap-3 max-[760px]:gap-2 ${mine ? "flex-row-reverse" : ""}`}>
       <Avatar name={speaker.name} src={speaker.src} size={36} />
-      <div className={`flex min-w-0 max-w-[min(62ch,85%)] flex-col gap-1.5 ${mine ? "items-end" : ""}`}>
+      <div className={`flex min-w-0 max-w-[min(62ch,85%)] flex-col max-[760px]:max-w-full gap-1.5 ${mine ? "items-end" : ""}`}>
         <span className="text-[13px] font-semibold text-muted">{speaker.name}</span>
         {editing ? (
           <div className="flex w-full flex-col gap-2">
@@ -86,7 +86,7 @@ export function MessageItem({ message, speaker, editable, canRegenerate, onSave,
           </div>
         ) : (
           <div
-            className={`px-4 text-[15px] leading-[1.65] [overflow-wrap:anywhere] [&_em]:text-muted [&_p+p]:mt-3 ${
+            className={`px-4 text-[15px] leading-[1.65] max-[760px]:px-3 max-[760px]:text-[14px] max-[760px]:leading-[1.55] [overflow-wrap:anywhere] [&_em]:text-muted [&_p+p]:mt-3 ${
               mine ? "rounded-[20px_6px_20px_20px] bg-[#26262b] py-2.5" : "rounded-[6px_20px_20px_20px] border border-line bg-surface py-3 text-[#ececee]"
             }`}
           >
