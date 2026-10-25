@@ -5,5 +5,6 @@ export * from "./characters/index.js";
 export * from "./chats/index.js";
 export * from "./comments/index.js";
 export * from "./energy/index.js";
+export * from "./personas/index.js";
 export * from "./proxies/index.js";
 export * from "./reports/index.js";
