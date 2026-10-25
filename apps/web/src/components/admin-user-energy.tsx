@@ -13,7 +13,7 @@ import { adminErrorText, optionalNumber } from "@/lib/admin-energy";
 import { ApiError, apiFetch } from "@/lib/api";
 import { AdminSection } from "./admin-section";
 import { Field } from "./form-field";
-import { Pager, usePager } from "./pager";
+import { NumberedPager } from "./pager";
 
 const QUERY_KEY = "admin-user-energy";
 const dateFormat = new Intl.DateTimeFormat("en", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -212,13 +212,13 @@ function UserRow({ user, open, onToggle }: { user: AdminUserEnergy; open: boolea
 /** The admin tab "User energy": search the users, and change the balance or the own daily amount of one user. */
 export function AdminUserEnergyList() {
   const queryClient = useQueryClient();
-  const pager = usePager();
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<string | null>(null);
-  const params = new URLSearchParams({ ...(query ? { q: query } : {}), ...(pager.cursor ? { cursor: pager.cursor } : {}) });
+  const params = new URLSearchParams({ ...(query ? { q: query } : {}), page: String(page) });
   const users = useQuery({
-    queryKey: [QUERY_KEY, "list", query, pager.cursor],
+    queryKey: [QUERY_KEY, "list", query, page],
     queryFn: () => apiFetch<AdminUserEnergyPage>(`/admin/energy/users?${params.toString()}`),
     placeholderData: keepPreviousData,
   });
@@ -239,7 +239,7 @@ export function AdminUserEnergyList() {
         className="flex max-w-[520px] gap-2"
         onSubmit={(event) => {
           event.preventDefault();
-          pager.reset();
+          setPage(1);
           setOpen(null);
           setQuery(search.trim());
         }}
@@ -301,7 +301,22 @@ export function AdminUserEnergyList() {
           </table>
         </div>
       )}
-      <Pager label="User pages" pager={pager} nextCursor={users.data?.nextCursor} />
+      {users.data && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-[13px] text-muted tabular-nums">
+            {users.data.total} {users.data.total === 1 ? "user" : "users"}
+          </span>
+          <NumberedPager
+            label="User pages"
+            page={users.data.page}
+            pageCount={users.data.pageCount}
+            onPage={(next) => {
+              setOpen(null);
+              setPage(next);
+            }}
+          />
+        </div>
+      )}
     </AdminSection>
   );
 }

@@ -63,15 +63,18 @@ describe("admin energy of users", () => {
     expect(found.body.users.map((user: { id: string }) => user.id)).toEqual([member.user.id]);
   });
 
-  it("pages the list, 20 users on each page", async () => {
-    for (let n = 3; n <= 23; n++) {
+  it("pages the list with 10 users on each page, and gives the page count and the total", async () => {
+    for (let n = 3; n <= 25; n++) {
       await userWithSession(app, n);
     }
     const first = await send("get", "").expect(200);
-    expect(first.body.users).toHaveLength(20);
-    const second = await send("get", `?cursor=${encodeURIComponent(first.body.nextCursor as string)}`).expect(200);
-    expect(second.body.users).toHaveLength(3);
-    expect(second.body.nextCursor).toBeNull();
+    expect(first.body).toMatchObject({ page: 1, pageCount: 3, total: 25 });
+    expect(first.body.users).toHaveLength(10);
+    const last = await send("get", "?page=3").expect(200);
+    expect(last.body.users).toHaveLength(5);
+    expect(new Set([...first.body.users, ...last.body.users].map((user: { id: string }) => user.id)).size).toBe(15);
+    expect((await send("get", "?page=4").expect(200)).body).toMatchObject({ users: [], page: 4, pageCount: 3 });
+    await send("get", "?page=0").expect(400);
   });
 
   it("an add of 10 puts energy on top of today's balance, saves a ledger row and an audit event", async () => {

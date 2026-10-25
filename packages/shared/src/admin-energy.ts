@@ -145,10 +145,13 @@ export type UserEnergyAdjustInput = z.input<typeof userEnergyAdjustSchema>;
 /** PUT /admin/energy/users/:id/daily. Null means the daily energy of the settings. */
 export const userDailyEnergySchema = z.object({ dailyEnergy: energySchema.nullable() });
 
-/** The query of GET /admin/energy/users: a search on the name, the handle or the email, and the page cursor. */
+/** The number of users on one page of the "User energy" tab. */
+export const USER_ENERGY_PAGE_SIZE = 10;
+
+/** The query of GET /admin/energy/users: a search on the name, the handle or the email, and the page number. */
 export const userEnergyQuerySchema = z.object({
   q: z.string().trim().max(100).default(""),
-  cursor: z.string().max(200).optional(),
+  page: z.coerce.number().int().min(1).max(100_000).default(1),
 });
 
 /** One user on the "User energy" page. The energy values are in energy. */
@@ -166,11 +169,15 @@ export interface AdminUserEnergy {
   ownDailyEnergy: number | null;
 }
 
-/** GET /admin/energy/users: one page of users, the newest first. */
+/** GET /admin/energy/users: one page of users, the newest first. A page after the last one has no users. */
 export interface AdminUserEnergyPage {
   users: AdminUserEnergy[];
-  /** Null when no more users exist. */
-  nextCursor: string | null;
+  /** The page number, from 1. */
+  page: number;
+  /** The number of pages. 1 when no user matches. */
+  pageCount: number;
+  /** The number of users that match the search. */
+  total: number;
 }
 
 export const ENERGY_REASON_LABELS = {

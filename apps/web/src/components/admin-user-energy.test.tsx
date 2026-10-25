@@ -35,7 +35,9 @@ function stubApi(answers: Record<string, Answer> = {}, listStatus = 200) {
         return Response.json({ error: "forbidden" }, { status: listStatus });
       }
       const q = searchParams.get("q") ?? "";
-      return Response.json({ users: [mira, oren].filter((user) => user.handle?.includes(q)), nextCursor: null });
+      const page = Number(searchParams.get("page") ?? "1");
+      const users = [mira, oren].filter((user) => user.handle?.includes(q));
+      return Response.json({ users: page === 1 ? users : [], page, pageCount: 3, total: 25 });
     }
     if (method === "GET" && pathname.endsWith("/history")) {
       return Response.json(history);
@@ -99,6 +101,16 @@ describe("AdminUserEnergyList", () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("q=oren"))).toBe(true);
     expect(await row("Oren")).toBeTruthy();
     expect(screen.queryByRole("row", { name: /Mira/ })).toBeNull();
+  });
+
+  it("the page numbers open another page of users", async () => {
+    const fetchMock = stubApi();
+    renderView();
+    await row("Mira");
+    await userEvent.click(screen.getByRole("button", { name: "Page 2" }));
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("page=2"))).toBe(true);
+    expect((await screen.findByRole("button", { name: "Page 2" })).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByText("25 users")).toBeTruthy();
   });
 
   it("Add, Take away and Set balance send the amount, and a take-away below 0 explains the problem", async () => {

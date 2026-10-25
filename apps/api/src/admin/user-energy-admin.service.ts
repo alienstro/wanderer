@@ -1,17 +1,16 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import {
-  ADMIN_PAGE_SIZE,
   type AdminEnergyEntry,
   type AdminUserEnergy,
   type AdminUserEnergyPage,
   type EnergyReasonName,
   toEnergy,
+  USER_ENERGY_PAGE_SIZE,
   userDailyEnergySchema,
   userEnergyAdjustSchema,
   userEnergyQuerySchema,
 } from "@wanderer/shared";
 import type { z } from "zod";
-import { decodeTimeCursor, encodeTimeCursor } from "../characters/cursor.js";
 import { isUuid } from "../common/uuid.js";
 import { dayStart, EnergyService } from "../energy/energy.service.js";
 import { EventsService } from "../events/events.service.js";
@@ -76,34 +75,31 @@ export class UserEnergyAdminService {
     private readonly events: EventsService,
   ) {}
 
-  /** One page of users, the newest first. The search looks in the name, the handle and the email. */
+  /**
+   * One page of users, the newest first, with the page count for the page numbers. The search looks in the name,
+   * the handle and the email. The admin list is short, so the page number skips rows (an offset).
+   */
   async list(query: unknown): Promise<AdminUserEnergyPage> {
-    const { q, cursor } = parse(userEnergyQuerySchema, query);
-    const after = cursor === undefined ? null : decodeTimeCursor(cursor);
-    if (cursor !== undefined && after === null) {
-      throw new BadRequestException({ error: "invalid_cursor" });
-    }
-    const afterTime = after ? new Date(after.createdAt) : null;
-    const search = q
-      ? {
-          OR: (["name", "handle", "email"] as const).map((field) => ({ [field]: { contains: q, mode: "insensitive" as const } })),
-        }
+    const { q, page } = parse(userEnergyQuerySchema, query);
+    const where = q
+      ? { OR: (["name", "handle", "email"] as const).map((field) => ({ [field]: { contains: q, mode: "insensitive" as const } })) }
       : {};
-    const page = after && afterTime ? { OR: [{ createdAt: { lt: afterTime } }, { createdAt: afterTime, id: { lt: after.id } }] } : {};
-    const [rows, settings] = await Promise.all([
+    const [rows, total, settings] = await Promise.all([
       this.prisma.user.findMany({
-        where: { AND: [search, page] },
+        where,
         select: USER_FIELDS,
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        take: ADMIN_PAGE_SIZE + 1,
+        skip: (page - 1) * USER_ENERGY_PAGE_SIZE,
+        take: USER_ENERGY_PAGE_SIZE,
       }),
+      this.prisma.user.count({ where }),
       this.energy.settings(),
     ]);
-    const shown = rows.slice(0, ADMIN_PAGE_SIZE);
-    const last = shown.at(-1);
     return {
-      users: shown.map((row) => toView(row, settings)),
-      nextCursor: rows.length > ADMIN_PAGE_SIZE && last ? encodeTimeCursor({ createdAt: last.createdAt.toISOString(), id: last.id }) : null,
+      users: rows.map((row) => toView(row, settings)),
+      page,
+      pageCount: Math.max(1, Math.ceil(total / USER_ENERGY_PAGE_SIZE)),
+      total,
     };
   }
 
