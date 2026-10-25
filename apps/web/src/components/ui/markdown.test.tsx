@@ -92,6 +92,43 @@ describe("Markdown", () => {
     expect(container.querySelector("pre code")?.textContent).toBe("d20\n");
   });
 
+  it("bold, italic, bold italic, strikethrough, and underline inside a ``` block with no language render with no marks", () => {
+    const text = "```\nBold: **Void Weaver**\nItalic: *a faint golden hue* _and_\nBold italic: ***Blink***\nStrikethrough: ~~Wallet~~\nUnderline: <u>Asteria</u>\n```";
+    const { container } = render(<Markdown text={text} />);
+    const code = container.querySelector("pre code");
+    expect(code?.querySelector("strong")).toHaveTextContent("Void Weaver");
+    expect([...(code?.querySelectorAll("em") ?? [])].map((em) => em.textContent)).toEqual(["a faint golden hue", "and", "Blink"]);
+    expect(code?.querySelector("em strong, strong em")).toHaveTextContent("Blink");
+    expect(code?.querySelector("del")).toHaveTextContent("Wallet");
+    expect(code?.querySelector("u")).toHaveTextContent("Asteria");
+    expect(code?.textContent).toBe(
+      "Bold: Void Weaver\nItalic: a faint golden hue and\nBold italic: Blink\nStrikethrough: Wallet\nUnderline: Asteria\n",
+    );
+  });
+
+  it("a ``` block inside a custom tag such as <stats> renders the bold names with no marks", () => {
+    const text = '<stats>\n```\nClass: **Void Weaver**\nSpells: ["**Void Touch** — Erase", "**Blink** — Move"]\n```\n</stats>';
+    const { container } = render(<Markdown text={text} />);
+    const bold = [...container.querySelectorAll("pre code strong")].map((strong) => strong.textContent);
+    expect(bold).toEqual(["Void Weaver", "Void Touch", "Blink"]);
+    expect(container.querySelector("pre code")?.textContent).toBe('Class: Void Weaver\nSpells: ["Void Touch — Erase", "Blink — Move"]\n');
+  });
+
+  it("a * with no closing pair and other Markdown inside a ``` block stay as the same text", () => {
+    const text = "```\nHP: 5 * 2\n- Sword\n[map](https://a.b) `d20` \\*x\\* &amp; <b>b</b>\nClass: **Mage**\n```";
+    const { container } = render(<Markdown text={text} />);
+    expect(container.querySelector("pre code")?.textContent).toBe(
+      "HP: 5 * 2\n- Sword\n[map](https://a.b) `d20` \\*x\\* &amp; <b>b</b>\nClass: Mage\n",
+    );
+    expect(container.querySelector("pre code a, pre code b, pre code code, li")).toBeNull();
+  });
+
+  it("a ``` block with a language, such as python, keeps the ** marks", () => {
+    const { container } = render(<Markdown text={"```python\nx = 2**3\ny = **kwargs**\n```"} />);
+    expect(container.querySelector("pre code")?.textContent).toBe("x = 2**3\ny = **kwargs**\n");
+    expect(container.querySelector("pre code strong")).toBeNull();
+  });
+
   it("a pipe table renders as a table, with one row for each line", () => {
     const text = "| Item | Cost |\n|------|------|\n| **Starter Pack** | FREE |\n| Map | 50G |";
     const { container } = render(<Markdown text={text} />);

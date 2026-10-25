@@ -111,6 +111,59 @@ function remarkMarkdownInTags(this: { parse(text: string): Node }) {
   return (tree: Root) => split(tree);
 }
 
+/** An open or close `<u>` tag, the only raw HTML that a code block shows as a format. */
+const UNDERLINE_TAG = /^<\/?u>$/i;
+
+/** Keeps bold, italic, strikethrough and underline. Each other part of the line gets its source text back. */
+function keepFormats(node: PhrasingContent, line: string): PhrasingContent {
+  if (node.type === "strong" || node.type === "emphasis" || node.type === "delete") {
+    return { ...node, children: node.children.map((child) => keepFormats(child, line)) };
+  }
+  if (node.type === "html" && UNDERLINE_TAG.test(node.value)) return node;
+  return { type: "text", value: line.slice(node.position?.start.offset, node.position?.end.offset) };
+}
+
+/**
+ * Shows the text formats inside a ``` block with no language, such as the status block of an RPG
+ * character. CommonMark shows a code block as it is, so `**Void Weaver**` shows its marks. The
+ * plugin parses each line alone and keeps only the formats, so a list mark, a link or `5 * 2` stays
+ * as the same text. A block with a language, such as ```python, stays as it is.
+ */
+function remarkFormatsInCode(this: { parse(text: string): Node }) {
+  const formatLine = (line: string): PhrasingContent[] => {
+    const indent = /^\s*/.exec(line)?.[0] ?? "";
+    const rest = line.slice(indent.length);
+    // remark-parse makes the tree, so the result is an mdast root.
+    const { children } = this.parse(rest) as Root;
+    const [block] = children;
+    // A line that is not one paragraph, such as "- Sword" or "---", stays as text.
+    if (children.length !== 1 || block?.type !== "paragraph") return [{ type: "text", value: line }];
+    return [
+      { type: "text", value: indent + rest.slice(0, block.position?.start.offset) },
+      ...block.children.map((child) => keepFormats(child, rest)),
+      { type: "text", value: rest.slice(block.position?.end.offset) },
+    ];
+  };
+  const walk = (parent: Parent) => {
+    parent.children = parent.children.map((node): RootContent => {
+      if ("children" in node) walk(node);
+      if (node.type !== "code" || node.lang) return node;
+      const lines = node.value.split("\n").map(formatLine);
+      if (lines.every((parts) => parts.every((part) => part.type === "text"))) return node;
+      const text = lines.flatMap((parts, index): PhrasingContent[] => (index ? [{ type: "text", value: "\n" }, ...parts] : parts));
+      // An mdast code node holds only text, so `hName` makes the same `pre > code` from nodes that
+      // can hold formats. The last "\n" matches the text of a standard code block.
+      return {
+        type: "paragraph",
+        data: { hName: "pre" },
+        position: node.position,
+        children: [{ type: "emphasis", data: { hName: "code" }, children: [...text, { type: "text", value: "\n" }] }],
+      };
+    });
+  };
+  return (tree: Root) => walk(tree);
+}
+
 /** GFM without the single `~` strikethrough, because roleplay text often has "Hello~" or "~sigh~". */
 const gfm: GfmOptions = { singleTilde: false };
 
@@ -124,7 +177,7 @@ export function Markdown({ text }: { text: string }) {
   return (
     <div className="markdown">
       <ReactMarkdown
-        remarkPlugins={[[remarkGfm, gfm], remarkMarkdownInTags]}
+        remarkPlugins={[[remarkGfm, gfm], remarkMarkdownInTags, remarkFormatsInCode]}
         remarkRehypeOptions={{ clobberPrefix: footnotePrefix }}
         rehypePlugins={[rehypeRaw, [rehypeSanitize, schema]]}
         components={{
