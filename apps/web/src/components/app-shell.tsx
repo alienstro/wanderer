@@ -11,10 +11,10 @@ import { UserRow } from "./user-row";
  * The sidebar floats with round corners, as the header bar of the landing page.
  * On a phone a thin top bar opens the sidebar as a drawer, so each page starts with its own content.
  */
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, defaultRail }: { children: ReactNode; defaultRail: boolean }) {
   return (
     <div className="flex min-h-dvh max-[760px]:flex-col">
-      <SidebarDrawer>
+      <SidebarDrawer defaultRail={defaultRail}>
         <Logo />
         <SidebarNav />
         <RecentChats />
