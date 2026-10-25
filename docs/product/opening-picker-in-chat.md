@@ -1,5 +1,7 @@
 # The opening picker moves into the chat (issue #29)
 
+> **Status (2026-10-25):** The team wrote this spec before the build. The feature is in the app now. Later issues changed some parts. When this file and the code do not agree, the code is correct.
+
 ## Intent
 
 The character page shows each opening in full as a radio card. A character can have

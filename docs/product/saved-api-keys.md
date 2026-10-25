@@ -1,5 +1,7 @@
 # Design: saved API keys (issue #34)
 
+> **Status (2026-10-25):** The team wrote this spec before the build. The feature is in the app now. Later issues changed some parts. When this file and the code do not agree, the code is correct.
+
 ## Intent
 
 Today each model (a `proxies` row) holds its own API key. A user with 5 models on one proxy pastes the

@@ -1,5 +1,7 @@
 # Chat memory and a cache-stable history window (issue #18)
 
+> **Status (2026-10-25):** The team wrote this spec before the build. The feature is in the app now. Later issues changed some parts. When this file and the code do not agree, the code is correct.
+
 ## Intent
 
 Each reply sends the system part and the newest messages to the proxy of the user.

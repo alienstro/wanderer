@@ -1,5 +1,7 @@
 # Wanderer: design for version 1
 
+> **Status (2026-10-25):** The team wrote this spec before the build. The feature is in the app now. Later issues changed some parts. When this file and the code do not agree, the code is correct.
+
 Date: 2026-10-21
 Status: draft for review
 Prototype: https://claude.ai/artifact/GSHNLLcJi5LXA6KiiPVZMS (the approved screens and look)
