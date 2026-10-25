@@ -31,8 +31,13 @@ function stubFetch(status = 200, body: unknown = me) {
   return fetchMock;
 }
 
+/** The calls of the profile forms. The Personas section loads its own list, so its call is left out. */
+function meCalls(fetchMock: ReturnType<typeof stubFetch>) {
+  return fetchMock.mock.calls.filter(([url]) => url !== "/personas");
+}
+
 function lastCall(fetchMock: ReturnType<typeof stubFetch>) {
-  const [url, init] = fetchMock.mock.calls.at(-1) ?? [];
+  const [url, init] = meCalls(fetchMock).at(-1) ?? [];
   return { url, method: init?.method, body: init?.body ? (JSON.parse(String(init.body)) as unknown) : undefined };
 }
 
@@ -66,7 +71,7 @@ describe("SettingsView", () => {
     const fetchMock = stubFetch(200, { ...me, showAdult: true });
     renderView();
     await userEvent.click(screen.getByRole("switch", { name: "Show 18+" }));
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(meCalls(fetchMock)).toEqual([]);
     await userEvent.click(screen.getByRole("button", { name: "I am 18 or older. Show 18+ content." }));
     expect(lastCall(fetchMock)).toMatchObject({ url: "/me/adult-confirm", method: "POST" });
   });

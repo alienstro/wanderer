@@ -8,7 +8,7 @@ import { sendAppEvent } from "../events/app-events.js";
 import type { User } from "../generated/prisma/client.js";
 import { type LoadedTarget, ProxiesService } from "../proxies/proxies.service.js";
 import { ChatsService, type ReplyContext } from "./chats.service.js";
-import { buildChoicesPrompt, parseChoices } from "./prompt.js";
+import { buildChoicesPrompt, parseChoices, promptUser } from "./prompt.js";
 
 const ATTEMPTS = 2;
 const CHOICES_MAX_TOKENS = 400;
@@ -55,7 +55,7 @@ export class ChoicesService {
         customPrompt,
         contextTokens,
         memory: chat.memory,
-        userName: user.name,
+        ...promptUser(chat, user),
         history,
       },
       user.replyChoicesPrompt,

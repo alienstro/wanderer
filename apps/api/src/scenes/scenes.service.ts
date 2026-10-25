@@ -3,7 +3,7 @@ import type { SceneModelKey, SceneView } from "@wanderer/shared";
 import { AI_CLIENT_FACTORY, type AiClientFactory } from "../ai/ai-client.js";
 import { aiErrorLogFields, toAiError } from "../ai/ai-errors.js";
 import { ChatsService, type ReplyContext, toSceneView } from "../chats/chats.service.js";
-import { buildScenePrompt, cleanScenePrompt } from "../chats/prompt.js";
+import { buildScenePrompt, cleanScenePrompt, promptUser } from "../chats/prompt.js";
 import { AiChargeService } from "../energy/ai-charge.service.js";
 import { EnergyService } from "../energy/energy.service.js";
 import { FilesService } from "../files/files.service.js";
@@ -108,7 +108,7 @@ export class ScenesService {
     const { target, customPrompt, contextTokens, free } = loaded;
     const { character, history } = chat;
     const messages = buildScenePrompt(
-      { character, customPrompt, contextTokens, memory: chat.chat.memory, userName: user.name, history },
+      { character, customPrompt, contextTokens, memory: chat.chat.memory, ...promptUser(chat.chat, user), history },
       { adult: character.isAdult },
     );
     let text: string;

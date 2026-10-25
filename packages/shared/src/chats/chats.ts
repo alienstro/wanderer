@@ -91,6 +91,8 @@ export interface ChatDetail {
   opening: { index: number; count: number };
   /** The scene images of the chat, oldest first. */
   scenes: SceneView[];
+  /** The persona name that the chat copied when it started. Null when the user had no persona. */
+  personaName: string | null;
 }
 
 /** One scene image. The chat shows it after the message at `afterPosition`. */

@@ -11,7 +11,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { ProxiesService } from "../proxies/proxies.service.js";
 import { ChatLocks } from "./chat-locks.js";
 import { ChatsService, toMessageView } from "./chats.service.js";
-import { buildReplyPrompt } from "./prompt.js";
+import { buildReplyPrompt, promptUser } from "./prompt.js";
 import { openSse, type SseWriter } from "./sse.js";
 
 export interface ReplyTiming {
@@ -96,7 +96,7 @@ export class ReplyService {
         customPrompt,
         contextTokens,
         memory: chat.memory,
-        userName: user.name,
+        ...promptUser(chat, user),
         history: promptHistory,
       });
       const result = await this.generate(target, prompt, res, sse);
