@@ -1,7 +1,7 @@
 import { type CharacterCard as Card, OPENINGS_MAX } from "@wanderer/shared";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import { CharacterCard } from "@/components/character-card";
+import { CharacterCard } from "@/features/characters";
 import { Logo } from "@/components/ui/logo";
 import { CONTACT_EMAIL, OPERATOR_NAME } from "@/lib/legal";
 import { CharacterPreview, ModelPreview, ReplyChoicesPreview } from "./feature-previews";

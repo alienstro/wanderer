@@ -1,7 +1,7 @@
 import type { CharacterDetail } from "@wanderer/shared";
 import { ApiError } from "@/lib/api";
 import { serverApiFetch } from "@/lib/server-api";
-import { type CharacterError, CharacterPage } from "./character-page";
+import { type CharacterError, CharacterPage } from "@/features/characters";
 
 /** The character page. The server renders a public character for a visitor. The browser loads it again for a user. */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {

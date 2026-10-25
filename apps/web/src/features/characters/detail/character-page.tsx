@@ -3,7 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CharacterDetail } from "@wanderer/shared";
 import type { ReactNode } from "react";
-import { ReportButton } from "@/components/report-dialog";
+import { ReportButton } from "@/features/reports";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/query-provider";
 import { AdultWarning } from "./adult-warning";

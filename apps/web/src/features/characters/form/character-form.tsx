@@ -15,7 +15,7 @@ import {
 } from "@wanderer/shared";
 import { useRef, useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
-import { CharacterCard } from "../character-card";
+import { CharacterCard } from "@/features/characters/card/character-card";
 import { Field, Switch } from "@/components/ui/form-field";
 import { AvatarField } from "./avatar-field";
 import { BioToolbar } from "./bio-toolbar";

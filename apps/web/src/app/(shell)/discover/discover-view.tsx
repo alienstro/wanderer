@@ -11,7 +11,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CharacterCard } from "@/components/character-card";
+import { CharacterCard } from "@/features/characters";
 import { ContinueBanner } from "@/components/continue-banner";
 import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/query-provider";

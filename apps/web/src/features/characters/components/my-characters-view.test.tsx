@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import type { MyCharacterCard } from "@wanderer/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import MyCharactersPage from "./page";
+import { MyCharactersView } from "./my-characters-view";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn() }), usePathname: () => "/my-characters" }));
 
@@ -20,7 +20,7 @@ function renderWith(list: MyCharacterCard[]) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <MyCharactersPage />
+      <MyCharactersView />
     </QueryClientProvider>,
   );
 }

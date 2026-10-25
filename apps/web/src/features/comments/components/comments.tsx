@@ -4,7 +4,7 @@ import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { COMMENT_MAX, type CharacterComment, type CommentListResponse } from "@wanderer/shared";
 import Link from "next/link";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
-import { ReportButton } from "@/components/report-dialog";
+import { ReportButton } from "@/features/reports";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/query-provider";
 
