@@ -104,6 +104,30 @@ describe("chats", () => {
     expect((await get(other, "/chats").expect(200)).body.items).toEqual([]);
   });
 
+  it("GET /chats?latestPerCharacter=true gives only the newest chat of each character, newest first", async () => {
+    const second = await createCharacter(app, creator.cookie, { title: "Second" });
+    await startChat(reader).expect(201);
+    const secondChat = await startChat(reader, 0, second).expect(201);
+    const latest = await startChat(reader).expect(201);
+    const res = await get(reader, "/chats?latestPerCharacter=true").expect(200);
+    expect(res.body.items.map((chat: { id: string }) => chat.id)).toEqual([latest.body.chat.id, secondChat.body.chat.id]);
+  });
+
+  it("GET /chats?latestPerCharacter=true keeps an older character after 20 newer chats with one character", async () => {
+    const second = await createCharacter(app, creator.cookie, { title: "Second" });
+    const older = await startChat(reader, 0, second).expect(201);
+    for (let i = 0; i < 20; i++) {
+      await startChat(reader).expect(201);
+    }
+    const res = await get(reader, "/chats?latestPerCharacter=true").expect(200);
+    expect(res.body.items.map((chat: { id: string }) => chat.id)).toEqual([expect.any(String), older.body.chat.id]);
+  });
+
+  it("GET /chats with latestPerCharacter other than true gives 400 invalid_query", async () => {
+    const res = await get(reader, "/chats?latestPerCharacter=yes").expect(400);
+    expect(res.body.error).toBe("invalid_query");
+  });
+
   it("GET /chats and GET /chats/:id give the number of messages in each chat", async () => {
     const chat = await startChat(reader).expect(201);
     await addUserMessage(chat.body.chat.id);

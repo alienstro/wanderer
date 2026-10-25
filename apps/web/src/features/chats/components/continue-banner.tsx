@@ -1,21 +1,16 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import type { ChatListResponse } from "@wanderer/shared";
 import Link from "next/link";
-import { apiFetch, fileSrc } from "@/lib/api";
+import { fileSrc } from "@/lib/api";
 import { useMe } from "@/lib/query-provider";
 import { Avatar } from "@/components/ui/avatar";
+import { useRecentChats } from "../recent-chats-query";
 
 /** "Continue your chat": the latest chat of the user, with its last line. Nothing shows with no chats. */
 export function ContinueBanner() {
   const { data: me } = useMe();
-  const chats = useQuery({
-    // The same query as the Recent list in the sidebar.
-    queryKey: ["chats"],
-    queryFn: () => apiFetch<ChatListResponse>("/chats"),
-    enabled: Boolean(me),
-  });
+  // The same query as the Recent list in the sidebar. Its first chat is the latest chat of the user.
+  const chats = useRecentChats();
   const latest = chats.data?.items[0];
   if (!me || !latest) {
     return null;

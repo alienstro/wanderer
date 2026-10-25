@@ -137,6 +137,36 @@ describe("sidebar", () => {
     expect(screen.getByRole("heading", { name: "Recent" })).toBeInTheDocument();
   });
 
+  it("Recent shows one row for each character, which opens the newest chat with that character", async () => {
+    const chat = (id: string, characterId: string, title: string) => ({
+      id,
+      title,
+      character: { id: characterId, title, chatName: "", avatarUrl: null },
+      lastMessage: "Hi",
+      lastMessageAt: "2026-10-25T10:00:00.000Z",
+      messageCount: 2,
+    });
+    const newest = chat("chat3", "c2", "Isekai RPG");
+    const onnit = chat("chat1", "c1", "Onnit");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.endsWith("/me")) {
+          return Response.json(me);
+        }
+        const items = url.includes("latestPerCharacter=true")
+          ? [newest, onnit]
+          : [newest, chat("chat2", "c2", "Isekai RPG"), onnit];
+        return Response.json({ items });
+      }),
+    );
+    renderWithClient(<RecentChats />);
+    expect(await screen.findByRole("link", { name: /Onnit/ })).toBeInTheDocument();
+    const rows = screen.getAllByRole("link", { name: /Isekai RPG/ });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveAttribute("href", "/chats/chat3");
+  });
+
   it("the model card shows the active proxy name and model, and For you shows for a user", async () => {
     stubApi();
     renderWithClient(

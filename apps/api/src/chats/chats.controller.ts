@@ -32,8 +32,12 @@ export class ChatsController {
   ) {}
 
   @Get()
-  list(@CurrentUser() user: User, @Query("characterId") characterId?: string): Promise<ChatListResponse> {
-    return this.chats.list(user, characterId);
+  list(
+    @CurrentUser() user: User,
+    @Query("characterId") characterId?: string,
+    @Query("latestPerCharacter") latestPerCharacter?: string,
+  ): Promise<ChatListResponse> {
+    return this.chats.list(user, characterId, latestPerCharacter);
   }
 
   @Post()
