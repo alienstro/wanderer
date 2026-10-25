@@ -5,7 +5,7 @@ import { AI_CLIENT_FACTORY } from "../src/ai/ai-client.js";
 import { PrismaService } from "../src/prisma/prisma.service.js";
 import { createTestApp } from "./support/app.js";
 import { createCharacter } from "./support/characters.js";
-import { addProxy, parseEvents, postStream, startChat } from "./support/chat-stream.js";
+import { addProxy, listen, parseEvents, postStream, startChat } from "./support/chat-stream.js";
 import { testEnv, WEB_ORIGIN } from "./support/env.js";
 import { type FakeAiServer, startFakeAiServer, UnguardedAiClientFactory } from "./support/fake-ai-server.js";
 import { addFreeModel, resetEnergySettings, SERVER_KEY } from "./support/free-models.js";
@@ -21,6 +21,7 @@ describe("energy spend on text actions", () => {
   let fake: FakeAiServer;
   let user: TestUser;
   let chatId: string;
+  let baseUrl: string;
 
   const send = () => postStream(app, user, `/chats/${chatId}/messages`, { content: "Hi" });
   const post = (path: string) =>
@@ -36,6 +37,7 @@ describe("energy spend on text actions", () => {
       overrides: [{ token: AI_CLIENT_FACTORY, useValue: new UnguardedAiClientFactory(fake.url) }],
     });
     prisma = app.get(PrismaService);
+    baseUrl = await listen(app);
   });
 
   beforeEach(async () => {
@@ -81,6 +83,24 @@ describe("energy spend on text actions", () => {
     expect(parseEvents(res.body as string).at(-1)).toMatchObject({ type: "error", error: "provider_error" });
     expect(await balance()).toBe(2000);
     expect((await entries()).map((entry) => entry.reason)).toEqual(["refill", "reply", "refund"]);
+  });
+
+  it("a Stop of the user before the first piece gives no refund, so a Stop loop cannot use the shared cap for free", async () => {
+    fake.next({ pieces: ["Late"], firstDelayMs: 300 });
+    const controller = new AbortController();
+    const res = await fetch(`${baseUrl}/chats/${chatId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: WEB_ORIGIN, Cookie: user.cookie },
+      body: JSON.stringify({ content: "Hi" }),
+      signal: controller.signal,
+    });
+    // The first bytes are the start event. The Stop comes before any piece of the reply.
+    await res.body!.getReader().read();
+    controller.abort();
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    expect(await balance()).toBe(2000 - REPLY_PRICE);
+    expect((await entries()).map((entry) => entry.reason)).toEqual(["refill", "reply"]);
   });
 
   it("an OpenRouter 429 gives free_model_busy, a refund and an event", async () => {

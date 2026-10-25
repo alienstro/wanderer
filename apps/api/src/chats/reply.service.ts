@@ -106,8 +106,9 @@ export class ReplyService {
           : await this.saveMessage(chat.id, "assistant", result.text, nextPosition(history))
         : null;
       replied = reply !== null;
-      // The user got no text, so the energy goes back.
-      if (!replied) {
+      // A call with no text gives the energy back. A Stop of the user is not a failure: the call ran, and a
+      // refund would let a Stop loop use up the shared daily cap for free.
+      if (!replied && !result.clientGone) {
         await this.charge.refund(spend);
       }
       const error = result.error && (await this.charge.callError(result.error, user, free));
