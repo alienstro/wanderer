@@ -14,6 +14,12 @@ export interface TimeCursorKey {
   id: string;
 }
 
+/** The sort key of the last row of a ranked list, such as the top characters. Rows sort by count, then by ID. */
+export interface CountCursorKey {
+  count: number;
+  id: string;
+}
+
 const cursorKeySchema = z.object({
   chatCount: z.number().int().nonnegative(),
   likeCount: z.number().int().nonnegative(),
@@ -23,6 +29,11 @@ const cursorKeySchema = z.object({
 
 const timeCursorKeySchema = z.object({
   createdAt: z.iso.datetime(),
+  id: z.uuid(),
+});
+
+const countCursorKeySchema = z.object({
+  count: z.number().int().nonnegative(),
   id: z.uuid(),
 });
 
@@ -55,4 +66,12 @@ export function encodeTimeCursor(key: TimeCursorKey): string {
 
 export function decodeTimeCursor(cursor: string): TimeCursorKey | null {
   return decode(cursor, timeCursorKeySchema);
+}
+
+export function encodeCountCursor(key: CountCursorKey): string {
+  return encode(key);
+}
+
+export function decodeCountCursor(cursor: string): CountCursorKey | null {
+  return decode(cursor, countCursorKeySchema);
 }

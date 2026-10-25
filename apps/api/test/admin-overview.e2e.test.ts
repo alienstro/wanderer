@@ -1,5 +1,5 @@
 import type { NestExpressApplication } from "@nestjs/platform-express";
-import type { OverviewHealth, OverviewProblemList, OverviewStats, TopCharacterList } from "@wanderer/shared";
+import type { OverviewHealth, OverviewProblemList, OverviewStats, TopCharacterPage } from "@wanderer/shared";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaService } from "../src/prisma/prisma.service.js";
@@ -183,13 +183,46 @@ describe("admin overview", () => {
     await chat(mira, new Date(Date.now() - 10 * DAY_MS));
     await prisma.characterLike.create({ data: { userId: admin.user.id, characterId: mira } });
 
-    const body = (await get("/admin/overview/top-characters?period=7d").expect(200)).body as TopCharacterList;
+    const top = async (by: string) => (await get(`/admin/overview/top-characters?period=7d&by=${by}`).expect(200)).body as TopCharacterPage;
 
-    expect(body.byChats).toEqual([
-      { id: onnit, title: "Onnit", count: 2 },
-      { id: mira, title: "Mira", count: 1 },
-    ]);
-    expect(body.byLikes).toEqual([{ id: mira, title: "Mira", count: 1 }]);
+    expect(await top("chats")).toEqual({
+      characters: [
+        { id: onnit, title: "Onnit", count: 2 },
+        { id: mira, title: "Mira", count: 1 },
+      ],
+      nextCursor: null,
+      maxCount: 2,
+    });
+    expect(await top("likes")).toEqual({ characters: [{ id: mira, title: "Mira", count: 1 }], nextCursor: null, maxCount: 1 });
+  });
+
+  it("pages the top characters 10 at a time, with the count of the first one", async () => {
+    const ids: string[] = [];
+    for (let index = 0; index < 13; index += 1) {
+      ids.push(await createCharacter(app, member.cookie, { title: `C${index}` }));
+    }
+    // The first character has 3 chats, each other character has 1.
+    await prisma.chat.createMany({
+      data: [ids[0], ids[0], ...ids].map((characterId) => ({ userId: member.user.id, characterId: characterId ?? "", title: "Chat" })),
+    });
+
+    const first = (await get("/admin/overview/top-characters?by=chats").expect(200)).body as TopCharacterPage;
+    expect(first.characters).toHaveLength(10);
+    expect(first.characters[0]).toMatchObject({ id: ids[0], count: 3 });
+    expect(first.maxCount).toBe(3);
+    expect(first.nextCursor).toEqual(expect.any(String));
+    const second = (
+      await get(`/admin/overview/top-characters?by=chats&cursor=${encodeURIComponent(first.nextCursor ?? "")}`).expect(200)
+    ).body as TopCharacterPage;
+    expect(second.characters).toHaveLength(3);
+    expect(second.maxCount).toBe(3);
+    expect(second.nextCursor).toBeNull();
+    expect(new Set([...first.characters, ...second.characters].map((character) => character.id)).size).toBe(13);
+  });
+
+  it("gives 400 for top characters with no list name or a bad cursor", async () => {
+    expect((await get("/admin/overview/top-characters").expect(400)).body).toEqual({ error: "invalid_period" });
+    expect((await get("/admin/overview/top-characters?by=chats&cursor=abc").expect(400)).body).toEqual({ error: "invalid_cursor" });
   });
 
   describe("health", () => {

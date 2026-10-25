@@ -37,6 +37,19 @@ export const overviewPageQuerySchema = overviewQuerySchema.extend({
 
 export type OverviewPageQuery = z.infer<typeof overviewPageQuerySchema>;
 
+/** The number of characters on one page of a top-characters list. */
+export const TOP_PAGE_SIZE = 10;
+
+/** The two top-characters lists: by new chats and by new likes. */
+export const TOP_CHARACTER_LISTS = ["chats", "likes"] as const;
+export type TopCharacterListName = (typeof TOP_CHARACTER_LISTS)[number];
+
+export const topCharactersQuerySchema = overviewPageQuerySchema.extend({
+  by: z.enum(TOP_CHARACTER_LISTS),
+});
+
+export type TopCharactersQuery = z.infer<typeof topCharactersQuerySchema>;
+
 /** The numbers of the overview. A "use" number shows how people use the app. A "failure" number shows what fails. */
 export const OVERVIEW_METRICS = [
   { key: "newUsers", kind: "use", label: "New users", help: "People who made an account." },
@@ -133,10 +146,13 @@ export interface TopCharacter {
   count: number;
 }
 
-/** GET /admin/overview/top-characters */
-export interface TopCharacterList {
-  byChats: TopCharacter[];
-  byLikes: TopCharacter[];
+/** GET /admin/overview/top-characters: one page of one list, the highest count first. */
+export interface TopCharacterPage {
+  characters: TopCharacter[];
+  /** Null when no more characters exist. */
+  nextCursor: string | null;
+  /** The count of the first character of the period, so each page can draw its bars against it. 0 for an empty list. */
+  maxCount: number;
 }
 
 export const OVERVIEW_HEALTH_LABELS = { ok: "OK", some_problems: "Some problems", down: "Down" } as const;

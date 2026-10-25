@@ -1,8 +1,8 @@
 import { Controller, Get, Query, UseGuards } from "@nestjs/common";
-import type { OverviewHealth, OverviewProblemList, OverviewStats, TopCharacterList } from "@wanderer/shared";
+import type { OverviewHealth, OverviewProblemList, OverviewStats, TopCharacterPage } from "@wanderer/shared";
 import { AdminGuard } from "../auth/admin.guard.js";
 import { SessionGuard } from "../auth/session.guard.js";
-import { OverviewService, parseOverviewPageQuery, parseOverviewQuery } from "./overview.service.js";
+import { OverviewService, parseOverviewPageQuery, parseOverviewQuery, parseTopCharactersQuery } from "./overview.service.js";
 
 /** The numbers of the admin overview page. Each panel has its own endpoint. */
 @Controller("admin/overview")
@@ -21,8 +21,8 @@ export class OverviewController {
   }
 
   @Get("top-characters")
-  topCharacters(@Query() query: unknown): Promise<TopCharacterList> {
-    return this.overview.topCharacters(parseOverviewQuery(query));
+  topCharacters(@Query() query: unknown): Promise<TopCharacterPage> {
+    return this.overview.topCharacters(parseTopCharactersQuery(query));
   }
 
   @Get("health")

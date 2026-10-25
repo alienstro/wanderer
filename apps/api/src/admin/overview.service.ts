@@ -15,15 +15,21 @@ import {
   overviewQuerySchema,
   type OverviewSeries,
   type OverviewStats,
-  type TopCharacter,
-  type TopCharacterList,
+  TOP_PAGE_SIZE,
+  type TopCharacterListName,
+  type TopCharacterPage,
+  type TopCharactersQuery,
+  topCharactersQuerySchema,
 } from "@wanderer/shared";
-import { decodeTimeCursor, encodeTimeCursor } from "../characters/cursor.js";
+import { decodeCountCursor, decodeTimeCursor, encodeCountCursor, encodeTimeCursor } from "../characters/cursor.js";
 import { type AppEventType, Prisma } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
-/** Each top-character list shows this number of characters or less. */
-const TOP_MAX = 5;
+/** The table of each top-characters list. */
+const TOP_SOURCES: Record<TopCharacterListName, Prisma.Sql> = {
+  chats: Prisma.sql`chats`,
+  likes: Prisma.sql`character_likes`,
+};
 /** The health status looks at the AI replies of this time. */
 const HEALTH_WINDOW_MS = 60 * 60 * 1000;
 /** With fewer tries, a few failures of one user do not make the status "down". */
@@ -125,6 +131,15 @@ export function parseOverviewPageQuery(query: unknown): OverviewPageQuery {
   return parsed.data;
 }
 
+/** Gives the parsed query of a top-characters list, or 400 invalid_period. */
+export function parseTopCharactersQuery(query: unknown): TopCharactersQuery {
+  const parsed = topCharactersQuerySchema.safeParse(query ?? {});
+  if (!parsed.success) {
+    throw new BadRequestException({ error: "invalid_period" });
+  }
+  return parsed.data;
+}
+
 /** Counts the use and the failures of the app for the admin overview. It reads no chat text. */
 @Injectable()
 export class OverviewService {
@@ -181,21 +196,34 @@ export class OverviewService {
     };
   }
 
-  /** The characters with the most new chats, and with the most new likes, in the period. */
-  async topCharacters(query: OverviewQuery): Promise<TopCharacterList> {
-    const since = await this.start(query);
-    const where = { createdAt: { gte: since } };
-    const orderBy = [{ _count: { characterId: "desc" } }, { characterId: "asc" }] as const;
-    const [chats, likes] = await Promise.all([
-      this.prisma.chat.groupBy({ by: ["characterId"], where, _count: { characterId: true }, orderBy: [...orderBy], take: TOP_MAX }),
-      this.prisma.characterLike.groupBy({ by: ["characterId"], where, _count: { characterId: true }, orderBy: [...orderBy], take: TOP_MAX }),
-    ]);
-    const ids = [...new Set([...chats, ...likes].map((row) => row.characterId))];
-    const characters = await this.prisma.character.findMany({ where: { id: { in: ids } }, select: { id: true, title: true } });
-    const titles = new Map(characters.map((character) => [character.id, character.title]));
-    const toTop = (rows: Array<{ characterId: string; _count: { characterId: number } }>): TopCharacter[] =>
-      rows.map((row) => ({ id: row.characterId, title: titles.get(row.characterId) ?? "", count: row._count.characterId }));
-    return { byChats: toTop(chats), byLikes: toTop(likes) };
+  /** One page of the characters with the most new chats, or the most new likes, in the period. Ties sort by ID. */
+  async topCharacters(query: TopCharactersQuery): Promise<TopCharacterPage> {
+    const after = query.cursor === undefined ? null : decodeCountCursor(query.cursor);
+    if (query.cursor !== undefined && after === null) {
+      throw new BadRequestException({ error: "invalid_cursor" });
+    }
+    const afterRow = after
+      ? Prisma.sql`c.count < ${after.count} OR (c.count = ${after.count} AND c.id > ${after.id}::uuid)`
+      : Prisma.sql`TRUE`;
+    const rows = await this.prisma.$queryRaw<Array<{ id: string; title: string; count: number; maxCount: number }>>`
+      WITH counts AS (
+        SELECT character_id AS id, count(*)::int AS count
+        FROM ${TOP_SOURCES[query.by]}
+        WHERE created_at >= ${periodStart(query)}
+        GROUP BY character_id
+      )
+      SELECT c.id, ch.title, c.count, (SELECT max(count) FROM counts)::int AS "maxCount"
+      FROM counts c JOIN characters ch ON ch.id = c.id
+      WHERE ${afterRow}
+      ORDER BY c.count DESC, c.id ASC
+      LIMIT ${TOP_PAGE_SIZE + 1}`;
+    const page = rows.slice(0, TOP_PAGE_SIZE);
+    const last = page.at(-1);
+    return {
+      characters: page.map(({ id, title, count }) => ({ id, title, count })),
+      nextCursor: rows.length > TOP_PAGE_SIZE && last ? encodeCountCursor({ count: last.count, id: last.id }) : null,
+      maxCount: rows[0]?.maxCount ?? 0,
+    };
   }
 
   /**
