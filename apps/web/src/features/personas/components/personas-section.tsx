@@ -5,6 +5,7 @@ import { PERSONA_LIMIT, type Persona } from "@wanderer/shared";
 import { useState } from "react";
 import { deletePersona, fetchPersonas, makeDefaultPersona, personasKey } from "../api";
 import { Modal } from "./modal";
+import { PersonaDialog } from "./persona-dialog";
 
 const LIMIT_TEXT = `You can save up to ${PERSONA_LIMIT} personas.`;
 
@@ -47,10 +48,12 @@ function DeleteModal({ persona, onDone, onClose }: { persona: Persona; onDone: (
 function PersonaRow({
   persona,
   onMakeDefault,
+  onEdit,
   onDelete,
 }: {
   persona: Persona;
   onMakeDefault: () => void;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
   return (
@@ -65,6 +68,9 @@ function PersonaRow({
             Make default
           </button>
         )}
+        <button type="button" className="pill pill-soft pill-sm" onClick={onEdit}>
+          Edit
+        </button>
         <button type="button" className="pill pill-ghost pill-sm" onClick={onDelete}>
           Delete
         </button>
@@ -78,6 +84,8 @@ export function PersonasSection() {
   const queryClient = useQueryClient();
   const personas = useQuery({ queryKey: personasKey, queryFn: fetchPersonas });
   const [deleting, setDeleting] = useState<Persona | null>(null);
+  // "new" opens the dialog for a new persona. A persona opens it for an edit.
+  const [editing, setEditing] = useState<Persona | "new" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const list = personas.data?.personas ?? [];
   const full = list.length >= PERSONA_LIMIT;
@@ -110,6 +118,7 @@ export function PersonasSection() {
               key={persona.id}
               persona={persona}
               onMakeDefault={() => void makeDefault(persona)}
+              onEdit={() => setEditing(persona)}
               onDelete={() => setDeleting(persona)}
             />
           ))}
@@ -121,11 +130,26 @@ export function PersonasSection() {
         </p>
       )}
       <div className="flex flex-wrap items-center gap-3">
-        <button type="button" className="pill pill-accent pill-sm" disabled={full || personas.isPending}>
+        <button
+          type="button"
+          className="pill pill-accent pill-sm"
+          disabled={full || personas.isPending}
+          onClick={() => setEditing("new")}
+        >
           Add persona
         </button>
         {full && <span className="text-sm text-muted">{LIMIT_TEXT}</span>}
       </div>
+      {editing && (
+        <PersonaDialog
+          persona={editing === "new" ? undefined : editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            void reload();
+          }}
+        />
+      )}
       {deleting && (
         <DeleteModal
           persona={deleting}

@@ -36,7 +36,11 @@ function stubFetch(personas: Persona[], ...replies: Reply[]) {
 function writes(fetchMock: ReturnType<typeof stubFetch>) {
   return fetchMock.mock.calls
     .filter(([, init]) => init?.method && init.method !== "GET")
-    .map(([url, init]) => ({ url: String(url), method: init?.method }));
+    .map(([url, init]) => ({
+      url: String(url),
+      method: init?.method,
+      body: init?.body ? (JSON.parse(String(init.body)) as unknown) : undefined,
+    }));
 }
 
 function renderSection() {
@@ -85,7 +89,7 @@ describe("PersonasSection", () => {
     renderSection();
     const sam = await screen.findByRole("listitem", { name: "Sam" });
     await userEvent.click(within(sam).getByRole("button", { name: "Make default" }));
-    expect(writes(fetchMock)).toEqual([{ url: "/personas/p2/default", method: "POST" }]);
+    expect(writes(fetchMock)).toEqual([{ url: "/personas/p2/default", method: "POST", body: undefined }]);
     expect(await within(screen.getByRole("listitem", { name: "Sam" })).findByText("Default")).toBeInTheDocument();
   });
 
@@ -98,7 +102,7 @@ describe("PersonasSection", () => {
     expect(within(dialog).getByText("Old chats keep this persona.")).toBeInTheDocument();
     expect(writes(fetchMock)).toEqual([]);
     await userEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
-    expect(writes(fetchMock)).toEqual([{ url: "/personas/p2", method: "DELETE" }]);
+    expect(writes(fetchMock)).toEqual([{ url: "/personas/p2", method: "DELETE", body: undefined }]);
   });
 
   it("disables Add persona at 3 personas with the limit text", async () => {
@@ -106,5 +110,73 @@ describe("PersonasSection", () => {
     renderSection();
     expect(await screen.findByText("You can save up to 3 personas.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add persona" })).toBeDisabled();
+  });
+
+  it("adds a persona from the dialog", async () => {
+    const fetchMock = stubFetch([ARIA], { status: 201, body: SAM });
+    renderSection();
+    await userEvent.click(await screen.findByRole("button", { name: "Add persona" }));
+    const dialog = screen.getByRole("dialog", { name: "Add persona" });
+    await userEvent.type(within(dialog).getByLabelText(/Name/), "Sam");
+    await userEvent.type(within(dialog).getByLabelText(/Description/), "A student.");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(writes(fetchMock)).toEqual([
+      { url: "/personas", method: "POST", body: { name: "Sam", description: "A student." } },
+    ]);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("edits a persona from the dialog", async () => {
+    const fetchMock = stubFetch([{ ...ARIA, description: "A knight." }], { body: ARIA });
+    renderSection();
+    const aria = await screen.findByRole("listitem", { name: "Aria" });
+    await userEvent.click(within(aria).getByRole("button", { name: "Edit" }));
+    const dialog = screen.getByRole("dialog", { name: "Edit persona" });
+    expect(within(dialog).getByLabelText(/Description/)).toHaveValue("A knight.");
+    const name = within(dialog).getByLabelText(/Name/);
+    await userEvent.clear(name);
+    await userEvent.type(name, "Ari");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(writes(fetchMock)).toEqual([
+      { url: "/personas/p1", method: "PATCH", body: { name: "Ari", description: "A knight." } },
+    ]);
+  });
+
+  it("shows the counter 0 / 1,000", async () => {
+    stubFetch([]);
+    renderSection();
+    await userEvent.click(await screen.findByRole("button", { name: "Add persona" }));
+    const dialog = screen.getByRole("dialog", { name: "Add persona" });
+    expect(within(dialog).getByText("0 / 1,000")).toBeInTheDocument();
+    await userEvent.type(within(dialog).getByLabelText(/Description/), "Shy");
+    expect(within(dialog).getByText("3 / 1,000")).toBeInTheDocument();
+  });
+
+  it("asks for a name before it sends", async () => {
+    const fetchMock = stubFetch([]);
+    renderSection();
+    await userEvent.click(await screen.findByRole("button", { name: "Add persona" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Save" }));
+    expect(screen.getByText("Enter a name of 50 characters or less.")).toBeInTheDocument();
+    expect(writes(fetchMock)).toEqual([]);
+  });
+
+  it("shows the limit text on a 409 persona_limit", async () => {
+    stubFetch([ARIA, SAM], { status: 409, body: { error: "persona_limit" } });
+    renderSection();
+    await userEvent.click(await screen.findByRole("button", { name: "Add persona" }));
+    const dialog = screen.getByRole("dialog", { name: "Add persona" });
+    await userEvent.type(within(dialog).getByLabelText(/Name/), "Kai");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("You can save up to 3 personas.");
+  });
+
+  it("closes on Cancel", async () => {
+    const fetchMock = stubFetch([]);
+    renderSection();
+    await userEvent.click(await screen.findByRole("button", { name: "Add persona" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(writes(fetchMock)).toEqual([]);
   });
 });
