@@ -596,6 +596,24 @@ describe("chat page", () => {
       expect(screen.getByText("A scene image costs 5 energy. You have 3. Your energy refills at 8:00 AM.")).toBeInTheDocument();
     });
 
+    it("a fast error answer after a click keeps its toast on the screen", async () => {
+      // Sonner applies a dismiss two frames late. The test runs the frames by hand, so the answer comes between them.
+      const frames: FrameRequestCallback[] = [];
+      vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => frames.push(callback));
+      vi.stubGlobal("cancelAnimationFrame", vi.fn());
+      const runFrame = () => frames.splice(0).forEach((callback) => callback(0));
+      let answer!: (res: Response) => void;
+      stubEnergy(() => new Promise<Response>((resolve) => (answer = resolve)) as unknown as Response);
+      withClient(<ChatView chatId="chat1" />);
+      await userEvent.click(await screen.findByRole("button", { name: "Generate scene, 5 energy" }));
+      runFrame();
+      answer(Response.json(lowBody(3, 5), { status: 429 }));
+      expect(await screen.findByText("Not enough energy")).toBeInTheDocument();
+      runFrame();
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      expect(screen.getByText("Not enough energy")).toBeInTheDocument();
+    });
+
     it("after a send ends, the page loads the energy again", async () => {
       const fetchMock = stubEnergy();
       streamMock.mockImplementation(async (_path, _body, { onEvent }) => {
