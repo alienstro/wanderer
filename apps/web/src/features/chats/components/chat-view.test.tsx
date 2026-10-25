@@ -106,6 +106,20 @@ describe("chat page", () => {
     expect(screen.getByRole("heading", { name: "Onnit" })).toBeInTheDocument();
   });
 
+  it("shows You play as <name> when the chat has a persona", async () => {
+    stubApi({ ...detail, personaName: "Aria" });
+    withClient(<ChatView chatId="chat1" />);
+    const header = (await screen.findByRole("heading", { name: "Onnit" })).closest("header")!;
+    expect(within(header).getByText(/You play as/)).toHaveTextContent("· You play as Aria");
+  });
+
+  it("shows no persona text when personaName is null", async () => {
+    stubApi();
+    withClient(<ChatView chatId="chat1" />);
+    await screen.findByRole("heading", { name: "Onnit" });
+    expect(screen.queryByText(/You play as/)).not.toBeInTheDocument();
+  });
+
   it("a send shows the user message, then the reply grows with each delta", async () => {
     stubApi();
     let release = () => {};

@@ -265,9 +265,17 @@ export function ChatView({ chatId }: { chatId: string }) {
         <Avatar name={character.name} src={character.src} size={44} />
         <div className="flex min-w-0 flex-col">
           <h1 className="m-0 truncate text-lg font-bold max-[760px]:text-base">{summary.title}</h1>
-          <Link href={`/characters/${summary.character.id}`} className="text-sm text-link">
-            Character page
-          </Link>
+          <div className="truncate text-sm">
+            <Link href={`/characters/${summary.character.id}`} className="text-link">
+              Character page
+            </Link>
+            {chat.data.personaName && (
+              <span className="text-muted">
+                {" · You play as "}
+                <strong>{chat.data.personaName}</strong>
+              </span>
+            )}
+          </div>
         </div>
         <MemoryButton
           chatId={chatId}
