@@ -52,6 +52,7 @@ A feature has the **same folder name in each place**. For example, energy is in
 | `landing` | — | — | `features/landing/` | The landing page |
 | `legal` | — | — | `features/legal/` | Terms and Privacy |
 | `me` | in `auth/` | `me/` | in `features/settings/` | The profile and preferences of the user |
+| `personas` | `personas/` | `personas/` | `features/personas/` | The personas that the user plays as |
 | `proxies` | `proxies/` | `proxies/`, `ai/` | `features/settings/` | The own AI models of a user |
 | `reports` | `reports/` | `reports/` | `features/reports/` | Reports of a character or a comment |
 | `scenes` | in `chats/` | `scenes/` | in `features/chats/` | Scene pictures |
@@ -132,10 +133,11 @@ The check does not see raw SQL (`$executeRaw`).
 | `characters.chat_count` | `chats` | A count of the chats. It changes in the transaction that saves a chat. |
 | `characters.comment_count` | `comments` | A count of the comments. One SQL statement changes the comments and the count, so a race cannot make the count wrong. |
 | `character_comments` | `comments` | |
-| `chats`, `messages` | `chats` | |
+| `chats`, `messages` | `chats` | `persona_name` and `persona_description` are a copy of the default persona when the chat starts. |
 | `files` | `files` | |
 | `proxies` | `proxies` | |
 | `api_keys` | `api-keys` | |
+| `personas` | `personas` | The limit of 3 and the one default are checked in a transaction with a lock on the user row. |
 | `reports` | `reports` | |
 | `scene_images` | `scenes` | |
 | `energy_entries` | `energy` | |

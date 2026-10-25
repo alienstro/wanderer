@@ -17,6 +17,7 @@ export const TABLE_OWNERS = {
   file: ["files"],
   proxy: ["proxies"],
   apiKey: ["api-keys"],
+  persona: ["personas"],
   report: ["reports"],
   sceneImage: ["scenes"],
   energyEntry: ["energy"],

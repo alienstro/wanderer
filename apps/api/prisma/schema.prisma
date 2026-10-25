@@ -60,6 +60,7 @@ model User {
   freeModel        FreeModel?         @relation(fields: [freeModelId], references: [id], onDelete: SetNull)
   energyEntries    EnergyEntry[]
   energySettings   EnergySettings[]
+  personas         Persona[]
 
   @@map("users")
 }
@@ -258,6 +259,10 @@ model Chat {
   memoryThroughPosition Int?     @map("memory_through_position")
   /// The position of the character opening that message 0 holds. The user changes it until the first user message.
   openingIndex          Int      @default(0) @map("opening_index")
+  /// A copy of the default persona when the chat starts. Null when the user had no persona. It does not change later.
+  personaName           String?  @map("persona_name")
+  /// A copy of the persona description. Null when personaName is null.
+  personaDescription    String?  @map("persona_description")
   lastMessageAt         DateTime @default(now()) @map("last_message_at")
   createdAt             DateTime @default(now()) @map("created_at")
 
@@ -270,6 +275,23 @@ model Chat {
   @@index([userId, lastMessageAt])
   @@index([userId, characterId])
   @@map("chats")
+}
+
+/// A name and facts that the user plays as. A user keeps up to 3 (PERSONA_LIMIT). A new chat copies the default.
+model Persona {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  name        String
+  description String   @default("")
+  isDefault   Boolean  @default(false) @map("is_default")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@unique([userId], map: "personas_one_default_key", where: raw("is_default"))
+  @@map("personas")
 }
 
 enum MessageRole {
