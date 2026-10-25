@@ -32,6 +32,7 @@ describe("EnergyService", () => {
   beforeEach(async () => {
     await prisma.user.deleteMany();
     await prisma.appEvent.deleteMany();
+    await prisma.freeModel.deleteMany();
     await prisma.energySettings.update({ where: { id: 1 }, data: { dailyEnergy: 2000 } });
     userId = (await prisma.user.create({ data: { email: "user@example.com", googleSub: "google-sub-1", name: "User" } })).id;
   });
@@ -121,6 +122,5 @@ describe("EnergyService", () => {
     await energy.spend(userId, 30, "scene");
 
     expect(await energy.freeRequestsToday()).toBe(2);
-    await prisma.freeModel.delete({ where: { id: model.id } });
   });
 });

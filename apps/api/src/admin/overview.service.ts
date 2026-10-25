@@ -20,8 +20,10 @@ import {
   type TopCharacterPage,
   type TopCharactersQuery,
   topCharactersQuerySchema,
+  toEnergy,
 } from "@wanderer/shared";
 import { decodeCountCursor, decodeTimeCursor, encodeCountCursor, encodeTimeCursor } from "../characters/cursor.js";
+import type { SpendReason } from "../energy/energy.service.js";
 import { type AppEventType, Prisma } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
@@ -43,6 +45,16 @@ const EVENT_METRIC: Partial<Record<AppEventType, OverviewMetric>> = {
   summary_failed: "failedSummaries",
   proxy_test_failed: "failedProxyTests",
   model_list_failed: "failedModelLists",
+  energy_too_low: "energyTooLow",
+  free_model_busy: "freeModelBusy",
+};
+
+/** The energy metric of each spend reason. Only a free model call or a scene spends energy. */
+const ENERGY_METRIC: Record<SpendReason, OverviewMetric> = {
+  reply: "energyReply",
+  choices: "energyChoices",
+  memory: "energyMemory",
+  scene: "energyScene",
 };
 
 /**
@@ -67,8 +79,13 @@ interface CountRow {
 const COUNT_ALL = Prisma.sql`count(*)`;
 const NO_KEY = Prisma.sql`''`;
 
-/** The metrics that count the rows of a table. The app events give the other metrics. */
-const TABLE_METRICS = ["newUsers", "activeUsers", "newChats", "newMessages", "newCharacters"] as const;
+/** The metrics that count the rows of a table. The app events and the energy spends give the other metrics. */
+const TABLE_METRICS = ["newUsers", "activeUsers", "newChats", "newMessages", "newCharacters", "freeReplies", "freeUsers"] as const;
+
+/** The spends with their refund. Only a free model reply spends on a reply, so a reply spend is a free reply. */
+const SPENDS = Prisma.sql`energy_entries t LEFT JOIN energy_entries r ON r.refund_of_id = t.id`;
+/** A reply spend that kept its energy: the user got the reply. */
+const KEPT_REPLY = Prisma.sql`AND t.reason = 'reply' AND r.id IS NULL`;
 
 const TABLE_SOURCES: Record<(typeof TABLE_METRICS)[number], CountSource> = {
   newUsers: { key: NO_KEY, value: COUNT_ALL, from: Prisma.sql`users t`, at: Prisma.sql`t.created_at`, where: Prisma.empty },
@@ -88,6 +105,17 @@ const TABLE_SOURCES: Record<(typeof TABLE_METRICS)[number], CountSource> = {
     where: Prisma.sql`AND t.role = 'user'`,
   },
   newCharacters: { key: NO_KEY, value: COUNT_ALL, from: Prisma.sql`characters t`, at: Prisma.sql`t.created_at`, where: Prisma.empty },
+  freeReplies: { key: NO_KEY, value: COUNT_ALL, from: SPENDS, at: Prisma.sql`t.created_at`, where: KEPT_REPLY },
+  freeUsers: { key: NO_KEY, value: Prisma.sql`count(DISTINCT t.user_id)`, from: SPENDS, at: Prisma.sql`t.created_at`, where: KEPT_REPLY },
+};
+
+/** The energy of the spends in hundredths, after refunds, for each spend reason. */
+const ENERGY_SOURCE: CountSource = {
+  key: Prisma.sql`t.reason::text`,
+  value: Prisma.sql`coalesce(sum(-t.amount - coalesce(r.amount, 0)), 0)`,
+  from: SPENDS,
+  at: Prisma.sql`t.created_at`,
+  where: Prisma.sql`AND t.reason IN ('reply', 'choices', 'memory', 'scene')`,
 };
 
 const EVENTS_SOURCE: CountSource = {
@@ -147,14 +175,19 @@ export class OverviewService {
 
   async stats(query: OverviewQuery): Promise<OverviewStats> {
     const days = await this.days(query);
-    const [events, ...tables] = await Promise.all([
+    const [events, energy, ...tables] = await Promise.all([
       this.count(query, EVENTS_SOURCE),
+      this.count(query, ENERGY_SOURCE),
       ...TABLE_METRICS.map((metric) => this.count(query, TABLE_SOURCES[metric])),
     ]);
     const metrics = new Map<OverviewMetric, OverviewSeries>();
     TABLE_METRICS.forEach((metric, index) => metrics.set(metric, toSeries(tables[index] ?? [], "", days)));
     for (const [type, metric] of Object.entries(EVENT_METRIC) as Array<[AppEventType, OverviewMetric]>) {
       metrics.set(metric, toSeries(events, type, days));
+    }
+    for (const [reason, metric] of Object.entries(ENERGY_METRIC)) {
+      const hundredths = toSeries(energy, reason, days);
+      metrics.set(metric, { total: toEnergy(hundredths.total), series: hundredths.series.map(toEnergy) });
     }
     // The order of OVERVIEW_METRICS is the order of the page.
     const ordered = Object.fromEntries(OVERVIEW_METRICS.map(({ key }) => [key, metrics.get(key)]));
@@ -232,11 +265,13 @@ export class OverviewService {
    */
   async health(): Promise<OverviewHealth> {
     const createdAt = { gte: new Date(Date.now() - HEALTH_WINDOW_MS) };
-    const [replies, failedReplies] = await Promise.all([
+    const [replies, failedReplies, freeReplies, freeModelBusy] = await Promise.all([
       this.prisma.message.count({ where: { role: "assistant", position: { gt: 0 }, createdAt } }),
       this.prisma.appEvent.count({ where: { type: "ai_reply_failed", createdAt } }),
+      this.prisma.energyEntry.count({ where: { reason: "reply", createdAt, refund: { is: null } } }),
+      this.prisma.appEvent.count({ where: { type: "free_model_busy", createdAt } }),
     ]);
-    return { status: healthStatus(replies, failedReplies), replies, failedReplies };
+    return { status: healthStatus(replies, failedReplies), replies, failedReplies, freeReplies, freeModelBusy };
   }
 
   private async start(query: OverviewQuery): Promise<Date> {
