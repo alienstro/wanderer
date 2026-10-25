@@ -2,9 +2,14 @@
 
 import { AI_ERROR_TEXT, type ChatMemory, isAiErrorCode, MEMORY_MAX, type MemoryDraftResponse } from "@wanderer/shared";
 import { useId, useState } from "react";
+import { energyLowText, useRefreshEnergy } from "@/features/energy";
 import { ApiError, apiFetch } from "@/lib/api";
 
 function errorText(error: unknown, fallback: string): string {
+  const energyLow = energyLowText(error, "memory");
+  if (energyLow) {
+    return energyLow;
+  }
   if (error instanceof ApiError && isAiErrorCode(error.code)) {
     return AI_ERROR_TEXT[error.code];
   }
@@ -40,6 +45,7 @@ function MemoryPanel({ chatId, memory, onSaved, onClose }: MemoryProps & { onClo
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const refreshEnergy = useRefreshEnergy();
   const over = text.length > MEMORY_MAX;
   const path = `/chats/${encodeURIComponent(chatId)}/memory`;
 
@@ -70,6 +76,8 @@ function MemoryPanel({ chatId, memory, onSaved, onClose }: MemoryProps & { onClo
       setError(errorText(caught, "The summary did not work. Try again."));
     } finally {
       setBusy(false);
+      // A draft that calls the model costs energy, and a failure gives it back.
+      refreshEnergy();
     }
   }
 

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Avatar } from "@/components/ui/avatar";
 import { ApiError, apiFetch, fileSrc } from "@/lib/api";
 import { streamChat } from "@/features/chats/chat-stream";
+import { ENERGY_LOW_TITLE, energyLowText, useEnergy, useRefreshEnergy } from "@/features/energy";
 import { useRequireLogin } from "@/lib/use-require-login";
 import { Composer } from "./composer";
 import { MemoryButton } from "@/features/chats/memory/memory-panel";
@@ -37,10 +38,10 @@ interface Sending {
 const STOP_SETTLE_MS = 500;
 
 /**
- * One toast id for the chat errors, so a new error replaces the old one and a new send removes it.
+ * The start of the toast id of the chat errors. A new error replaces the old one, and a new send removes it.
  * The toast stays until the user closes it, because it tells the user what to do next.
  */
-const ERROR_TOAST_ID = "chat-error";
+const ERROR_TOAST_PREFIX = "chat-error";
 
 /** The centred column of the messages and the text box, so the text box lines up with the messages. */
 const CHAT_COLUMN = "mx-auto w-full max-w-[832px]";
@@ -78,6 +79,8 @@ export function ChatView({ chatId }: { chatId: string }) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const queryKey = ["chat", chatId];
+  const energy = useEnergy();
+  const refreshEnergy = useRefreshEnergy();
   const chat = useQuery({
     queryKey,
     queryFn: () => apiFetch<ChatDetail>(`/chats/${chatId}`),
@@ -88,6 +91,10 @@ export function ChatView({ chatId }: { chatId: string }) {
   // Goes up after each full reply, so the reply choices ask for a new set.
   const [replyRound, setReplyRound] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
+  // Goes up at each send and each scene. Sonner removes a dismissed id two frames late, so a fast error of the new
+  // action must use a new id. With the old id, the late dismiss removes the new toast.
+  const toastRoundRef = useRef(0);
+  const errorToastId = () => `${ERROR_TOAST_PREFIX}-${toastRoundRef.current}`;
   // The stream continues after the user leaves the chat, so the reply saves. Its error must not show on the next page.
   const mountedRef = useRef(false);
   useEffect(() => {
@@ -116,10 +123,13 @@ export function ChatView({ chatId }: { chatId: string }) {
     (scene) => patchChat((detail) => ({ ...detail, scenes: [...detail.scenes, scene] })),
     (error) => {
       const code = error instanceof ApiError ? error.code : null;
-      if (isAiErrorCode(code)) {
+      const energyLow = energyLowText(error, "scene");
+      if (energyLow) {
+        showEnergyLow(energyLow);
+      } else if (isAiErrorCode(code)) {
         showAiError(code);
       } else if (mountedRef.current) {
-        toast.error(sceneErrorText(error), { id: ERROR_TOAST_ID, duration: Number.POSITIVE_INFINITY });
+        toast.error(sceneErrorText(error), { id: errorToastId(), duration: Number.POSITIVE_INFINITY });
       }
     },
   );
@@ -139,11 +149,24 @@ export function ChatView({ chatId }: { chatId: string }) {
     }
     const step = AI_ERROR_STEP[code];
     toast.error(AI_ERROR_TEXT[code], {
-      id: ERROR_TOAST_ID,
+      id: errorToastId(),
       description: step.text,
       duration: Number.POSITIVE_INFINITY,
       action: step.settings ? { label: "Open Settings", onClick: () => router.push("/settings/models") } : undefined,
     });
+  }
+
+  /** Removes the error toast of the last action. The errors of the next action use a new toast id. */
+  function clearErrorToast() {
+    toast.dismiss(errorToastId());
+    toastRoundRef.current += 1;
+  }
+
+  /** The action costs more than the balance. The text has the price, the balance and the refill time. */
+  function showEnergyLow(text: string) {
+    if (mountedRef.current) {
+      toast.error(ENERGY_LOW_TITLE, { id: errorToastId(), description: text, duration: Number.POSITIVE_INFINITY });
+    }
   }
 
   /**
@@ -163,7 +186,7 @@ export function ChatView({ chatId }: { chatId: string }) {
   async function run(path: string, body: unknown, replaceId: string | null, sending: Sending | null = null) {
     const controller = new AbortController();
     abortRef.current = controller;
-    toast.dismiss(ERROR_TOAST_ID);
+    clearErrorToast();
     setLive({ replaceId, text: "", sending: sending?.text ?? null });
     if (sending?.fromBox) {
       setText("");
@@ -197,10 +220,13 @@ export function ChatView({ chatId }: { chatId: string }) {
       });
     } catch (caught) {
       const code = caught instanceof ApiError ? caught.code : null;
-      if (isAiErrorCode(code)) {
+      const energyLow = energyLowText(caught, "reply");
+      if (energyLow) {
+        showEnergyLow(energyLow);
+      } else if (isAiErrorCode(code)) {
         showAiError(code);
       } else if (mountedRef.current) {
-        toast.error(sendErrorText(caught), { id: ERROR_TOAST_ID, duration: Number.POSITIVE_INFINITY });
+        toast.error(sendErrorText(caught), { id: errorToastId(), duration: Number.POSITIVE_INFINITY });
       }
     } finally {
       abortRef.current = null;
@@ -216,6 +242,8 @@ export function ChatView({ chatId }: { chatId: string }) {
       }
       setLive(null);
       void queryClient.invalidateQueries({ queryKey: ["chats"] });
+      // The API takes the price before the reply and gives it back on a failure, so each end can change the balance.
+      refreshEnergy();
     }
   }
 
@@ -343,8 +371,9 @@ export function ChatView({ chatId }: { chatId: string }) {
                     <GenerateSceneButton
                       busy={sceneJob.isPending}
                       disabled={!me.activeProxy}
+                      price={energy.data?.prices.scene}
                       onClick={() => {
-                        toast.dismiss(ERROR_TOAST_ID);
+                        clearErrorToast();
                         sceneJob.mutate();
                       }}
                     />

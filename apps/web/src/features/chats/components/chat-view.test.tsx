@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ChatDetail, ChatStreamEvent, MessageView, SceneView } from "@wanderer/shared";
+import type { ChatDetail, ChatStreamEvent, EnergyView, MessageView, SceneView } from "@wanderer/shared";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -327,6 +327,9 @@ describe("chat page", () => {
       if (url.endsWith("/me")) {
         return Response.json(me);
       }
+      if (url.endsWith("/energy")) {
+        return Response.json({ error: "not_found" }, { status: 404 });
+      }
       const messages = saved ? [...detail.messages, message("m3", "assistant", "Half a reply", 3)] : detail.messages;
       return Response.json({ ...detail, messages });
     });
@@ -515,6 +518,122 @@ describe("chat page", () => {
       withClient(<ChatView chatId="chat1" />);
       await userEvent.click(await screen.findByRole("button", { name: "Generate scene" }));
       expect(await screen.findByText("You made the most scene images for today. Try again tomorrow.")).toBeInTheDocument();
+    });
+  });
+
+  describe("energy", () => {
+    /** 00:00 UTC is 8:00 AM in Manila. */
+    const REFILL = "2026-10-26T00:00:00.000Z";
+    const energy: EnergyView = {
+      balance: 12,
+      dailyEnergy: 50,
+      nextRefillAt: REFILL,
+      model: "free",
+      freeModelName: "Gemma",
+      prices: { reply: 2, choices: 0.5, memory: 1, scene: 5 },
+    };
+    const lowBody = (balance: number, price: number) => ({ error: "energy_low", balance, price, nextRefillAt: REFILL });
+
+    beforeEach(() => {
+      vi.stubEnv("TZ", "Asia/Manila");
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    /** The chat API, plus GET /energy, plus POST /chats/chat1/scenes with the given answer. */
+    function stubEnergy(sceneAnswer: () => Response = () => Response.json({ error: "not_found" }, { status: 404 })) {
+      const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.endsWith("/me")) {
+          return Response.json(me);
+        }
+        if (url.endsWith("/energy")) {
+          return Response.json(energy);
+        }
+        if (url.endsWith("/chats/chat1/scenes") && init?.method === "POST") {
+          return sceneAnswer();
+        }
+        return url.endsWith("/chats/chat1") ? Response.json(detail) : Response.json({ error: "not_found" }, { status: 404 });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      return fetchMock;
+    }
+
+    const energyCalls = (fetchMock: ReturnType<typeof stubEnergy>) =>
+      fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/energy")).length;
+
+    it("a send with too little energy shows Not enough energy with the price, the balance and the refill time", async () => {
+      stubEnergy();
+      streamMock.mockRejectedValue(new ApiError(429, "energy_low", lowBody(1.5, 2)));
+      withClient(<ChatView chatId="chat1" />);
+      await typeAndSend("How are you?");
+      expect(await screen.findByText("Not enough energy")).toBeInTheDocument();
+      expect(screen.getByText("A reply costs 2 energy. You have 1.5. Your energy refills at 8:00 AM.")).toBeInTheDocument();
+      expect(screen.queryByText(/You sent many messages/)).not.toBeInTheDocument();
+    });
+
+    it("a 429 with no energy_low still shows the rate-limit message", async () => {
+      stubEnergy();
+      streamMock.mockRejectedValue(new ApiError(429, null));
+      withClient(<ChatView chatId="chat1" />);
+      await typeAndSend("How are you?");
+      expect(await screen.findByText("You sent many messages in a short time. Wait a minute, then try again.")).toBeInTheDocument();
+      expect(screen.queryByText("Not enough energy")).not.toBeInTheDocument();
+    });
+
+    it("the scene button shows the price of one scene image", async () => {
+      stubEnergy();
+      withClient(<ChatView chatId="chat1" />);
+      expect(await screen.findByRole("button", { name: "Generate scene, 5 energy" })).toBeEnabled();
+    });
+
+    it("a scene with too little energy shows Not enough energy with the scene price", async () => {
+      stubEnergy(() => Response.json(lowBody(3, 5), { status: 429 }));
+      withClient(<ChatView chatId="chat1" />);
+      await userEvent.click(await screen.findByRole("button", { name: "Generate scene, 5 energy" }));
+      expect(await screen.findByText("Not enough energy")).toBeInTheDocument();
+      expect(screen.getByText("A scene image costs 5 energy. You have 3. Your energy refills at 8:00 AM.")).toBeInTheDocument();
+    });
+
+    it("a fast error answer after a click keeps its toast on the screen", async () => {
+      // Sonner applies a dismiss two frames late. The test runs the frames by hand, so the answer comes between them.
+      const frames: FrameRequestCallback[] = [];
+      vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => frames.push(callback));
+      vi.stubGlobal("cancelAnimationFrame", vi.fn());
+      const runFrame = () => frames.splice(0).forEach((callback) => callback(0));
+      let answer!: (res: Response) => void;
+      stubEnergy(() => new Promise<Response>((resolve) => (answer = resolve)) as unknown as Response);
+      withClient(<ChatView chatId="chat1" />);
+      await userEvent.click(await screen.findByRole("button", { name: "Generate scene, 5 energy" }));
+      runFrame();
+      answer(Response.json(lowBody(3, 5), { status: 429 }));
+      expect(await screen.findByText("Not enough energy")).toBeInTheDocument();
+      runFrame();
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      expect(screen.getByText("Not enough energy")).toBeInTheDocument();
+    });
+
+    it("after a send ends, the page loads the energy again", async () => {
+      const fetchMock = stubEnergy();
+      streamMock.mockImplementation(async (_path, _body, { onEvent }) => {
+        onEvent({ type: "start", userMessage: message("m2", "user", "How are you?", 2) });
+        onEvent({ type: "done", message: message("m3", "assistant", "Fine.", 3) });
+      });
+      withClient(<ChatView chatId="chat1" />);
+      await screen.findByRole("button", { name: "Generate scene, 5 energy" });
+      expect(energyCalls(fetchMock)).toBe(1);
+      await typeAndSend("How are you?");
+      await waitFor(() => expect(energyCalls(fetchMock)).toBe(2));
+    });
+
+    it("after a scene ends, the page loads the energy again", async () => {
+      const scene: SceneView = { id: "s1", url: "/files/f1", afterPosition: 1, createdAt: "2026-10-21T00:00:00.000Z" };
+      const fetchMock = stubEnergy(() => Response.json(scene, { status: 201 }));
+      withClient(<ChatView chatId="chat1" />);
+      await userEvent.click(await screen.findByRole("button", { name: "Generate scene, 5 energy" }));
+      await screen.findByRole("img", { name: "Scene image" });
+      await waitFor(() => expect(energyCalls(fetchMock)).toBe(2));
     });
   });
 });

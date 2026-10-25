@@ -54,6 +54,7 @@ describe("energy and free models for users", () => {
       dailyEnergy: 20,
       nextRefillAt: tomorrow.toISOString(),
       model: "free",
+      freeModelName: "Gemma",
       prices: { reply: 0.34, choices: 0, memory: 1, scene: 0.3 },
     });
   });
@@ -64,6 +65,7 @@ describe("energy and free models for users", () => {
 
     expect((await get("/energy").expect(200)).body).toMatchObject({
       model: "own",
+      freeModelName: null,
       prices: { reply: 0, choices: 0, memory: 0, scene: 0.3 },
     });
   });
