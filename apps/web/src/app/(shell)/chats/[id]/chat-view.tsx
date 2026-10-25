@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AI_ERROR_TEXT, type AiErrorCode, type ChatDetail, isAiErrorCode, type MessageView } from "@wanderer/shared";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/avatar";
 import { ApiError, apiFetch, fileSrc } from "@/lib/api";
@@ -14,6 +14,7 @@ import { Composer } from "./composer";
 import { MemoryButton } from "./memory-panel";
 import { MessageItem } from "./message-item";
 import { OpeningSwitcher } from "./opening-switcher";
+import { GenerateSceneButton, SceneImage, sceneErrorText, scenesAfter, useSceneJob } from "./scene-image";
 import { NewChoicesButton, ReplyChoices, ReplyChoicesSwitch, useReplyChoices } from "./reply-choices";
 
 /** The reply that streams now. replaceId is the reply that a Regenerate replaces. */
@@ -108,6 +109,19 @@ export function ChatView({ chatId }: { chatId: string }) {
   function patchChat(change: (detail: ChatDetail) => ChatDetail) {
     queryClient.setQueryData<ChatDetail>(queryKey, (detail) => detail && change(detail));
   }
+
+  const sceneJob = useSceneJob(
+    chatId,
+    (scene) => patchChat((detail) => ({ ...detail, scenes: [...detail.scenes, scene] })),
+    (error) => {
+      const code = error instanceof ApiError ? error.code : null;
+      if (isAiErrorCode(code)) {
+        showAiError(code);
+      } else if (mountedRef.current) {
+        toast.error(sceneErrorText(error), { id: ERROR_TOAST_ID, duration: Number.POSITIVE_INFINITY });
+      }
+    },
+  );
 
   function upsert(message: MessageView) {
     patchChat((detail) => ({
@@ -230,7 +244,7 @@ export function ChatView({ chatId }: { chatId: string }) {
     return <p className="m-0 px-7 pt-7 text-muted">Loading the chat…</p>;
   }
 
-  const { chat: summary, messages, canSend, opening } = chat.data;
+  const { chat: summary, messages, canSend, opening, scenes } = chat.data;
   const character = {
     name: summary.character.chatName || summary.character.title,
     src: summary.character.avatarUrl ? fileSrc(summary.character.avatarUrl) : null,
@@ -264,17 +278,21 @@ export function ChatView({ chatId }: { chatId: string }) {
       {/* column-reverse keeps the newest message in view without a scroll script. */}
       <div className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto px-7 py-5 max-[760px]:px-3 max-[760px]:py-3">
         <div role="log" aria-label="Messages" aria-live="polite" className={`${CHAT_COLUMN} flex flex-col gap-5 max-[760px]:gap-4`}>
-          {shown.map((message) => (
-            <MessageItem
-              key={message.id}
-              message={message}
-              speaker={message.role === "user" ? user : character}
-              editable={message.role === "user" && idle}
-              canRegenerate={canSend && idle && message.id === last?.id && message.role === "assistant" && message.position > 0}
-              onSave={(content) => saveEdit(message.id, content)}
-              onDelete={() => remove(message.id)}
-              onRegenerate={regenerate}
-            />
+          {shown.map((message, index) => (
+            <Fragment key={message.id}>
+              <MessageItem
+                message={message}
+                speaker={message.role === "user" ? user : character}
+                editable={message.role === "user" && idle}
+                canRegenerate={canSend && idle && message.id === last?.id && message.role === "assistant" && message.position > 0}
+                onSave={(content) => saveEdit(message.id, content)}
+                onDelete={() => remove(message.id)}
+                onRegenerate={regenerate}
+              />
+              {scenesAfter(scenes, message.position, shown[index + 1]?.position).map((scene) => (
+                <SceneImage key={scene.id} scene={scene} />
+              ))}
+            </Fragment>
           ))}
           {/* The user picks the opening until the first message. The server refuses a change after it. */}
           {canSend && idle && messages.length === 1 && opening.count > 1 && (
@@ -321,6 +339,14 @@ export function ChatView({ chatId }: { chatId: string }) {
                   <>
                     <ReplyChoicesSwitch me={me} />
                     <NewChoicesButton state={choices} />
+                    <GenerateSceneButton
+                      busy={sceneJob.isPending}
+                      disabled={!me.activeProxy}
+                      onClick={() => {
+                        toast.dismiss(ERROR_TOAST_ID);
+                        sceneJob.mutate();
+                      }}
+                    />
                   </>
                 }
               />

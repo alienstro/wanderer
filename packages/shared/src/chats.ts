@@ -7,6 +7,8 @@ export const MESSAGE_MAX = 8000;
 export const LAST_MESSAGE_MAX = 140;
 /** The memory of a chat keeps facts after their messages leave the history window. */
 export const MEMORY_MAX = 2000;
+/** Each scene image costs money on the RunPod account, so a user makes this number of images in 24 hours, or less. */
+export const SCENE_DAILY_LIMIT = 20;
 
 const openingIndexSchema = z
   .number()
@@ -82,6 +84,16 @@ export interface ChatDetail {
   canSend: boolean;
   /** The opening that message 0 holds, and the number of openings that the character has now. */
   opening: { index: number; count: number };
+  /** The scene images of the chat, oldest first. */
+  scenes: SceneView[];
+}
+
+/** One scene image. The chat shows it after the message at `afterPosition`. */
+export interface SceneView {
+  id: string;
+  url: string;
+  afterPosition: number;
+  createdAt: string;
 }
 
 export interface ChatListResponse {

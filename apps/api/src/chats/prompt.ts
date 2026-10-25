@@ -14,6 +14,11 @@ const SUMMARY_TEXT =
   "Update the memory of a roleplay between {{char}} and {{user}}. Keep the old facts that are still true. Add the important new facts from the messages: names, promises, debts, places, relations and open goals. Remove the facts that changed. Write short lines. Use no more than 2,000 characters. Answer only with the memory text.";
 const CHOICES_TEXT =
   "Write four short replies that {{user}} could say next, in the voice of {{user}}. Each reply has 25 words or less.";
+const SCENE_TEXT =
+  "Describe the current scene of the roleplay for an image model. Name the place, the time of day, the light, and the people with their looks, clothes and actions. Write one paragraph in English with 80 words or less. Use no names. Answer only with the description.";
+const SCENE_SAFE_TEXT = "The image is safe for work: no nudity, no sexual content and no gore.";
+/** The image model reads a short prompt best. */
+export const SCENE_PROMPT_MAX = 1000;
 /** The format rule stays the last sentence, so that the user instructions cannot change what parseChoices reads. */
 const CHOICES_FORMAT_TEXT = "Answer only with a JSON array of four strings.";
 
@@ -138,6 +143,32 @@ export function buildChoicesPrompt(input: PromptInput, userInstructions = ""): P
     ...fitHistory(input, estimateTokens(system) + estimateTokens(instruction)),
     { role: "user", content: instruction },
   ];
+}
+
+/**
+ * The messages for a scene image prompt: the reply prompt, then the scene instruction as a user message.
+ * A chat that is not 18+ also asks for a safe image.
+ */
+export function buildScenePrompt(input: PromptInput, options: { adult: boolean }): PromptMessage[] {
+  const system = systemText(input);
+  const instruction = options.adult ? SCENE_TEXT : `${SCENE_TEXT} ${SCENE_SAFE_TEXT}`;
+  return [
+    { role: "system", content: system },
+    ...fitHistory(input, estimateTokens(system) + estimateTokens(instruction)),
+    { role: "user", content: instruction },
+  ];
+}
+
+/** Makes the answer of the model into one line for the image model. It gives null for an empty answer. */
+export function cleanScenePrompt(text: string): string | null {
+  const clean = text
+    .replace(/```[a-z]*/gi, " ")
+    .replace(/^\s*(?:image\s+)?prompt\s*:/i, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^["']+|["']+$/g, "")
+    .trim();
+  return clean.length > 0 ? clean.slice(0, SCENE_PROMPT_MAX) : null;
 }
 
 /** One summary reads half of the context budget of old messages or less, so one click costs less than one reply. */

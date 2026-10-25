@@ -3,6 +3,7 @@ import sharp from "sharp";
 
 export const AVATAR_WIDTH = 600;
 export const AVATAR_HEIGHT = 800;
+export const SCENE_SIZE = 1024;
 export const MAX_UPLOAD_BYTES = IMAGE_UPLOAD_MAX_BYTES;
 
 /** A larger image could use all the memory of the server. */
@@ -46,5 +47,18 @@ export async function toAvatarWebp(input: Buffer): Promise<{ data: Buffer; width
     return { data, width: AVATAR_WIDTH, height: AVATAR_HEIGHT };
   } catch {
     throw new InvalidImageError("The image data is broken");
+  }
+}
+
+/** Makes the stored scene image: a 1024×1024 WebP with no metadata. The input comes from RunPod, not from a user. */
+export async function toSceneWebp(input: Buffer): Promise<{ data: Buffer; width: number; height: number }> {
+  try {
+    const data = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
+      .resize(SCENE_SIZE, SCENE_SIZE, { fit: "cover" })
+      .webp({ quality: 85 })
+      .toBuffer();
+    return { data, width: SCENE_SIZE, height: SCENE_SIZE };
+  } catch {
+    throw new InvalidImageError("The scene image data is broken");
   }
 }

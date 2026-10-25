@@ -3,7 +3,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { isUuid } from "../common/uuid.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { FILE_STORAGE, type FileStorage } from "./file-storage.js";
-import { toAvatarWebp } from "./image.js";
+import { toAvatarWebp, toSceneWebp } from "./image.js";
 
 export function fileUrl(id: string): string {
   return `/files/${id}`;
@@ -20,13 +20,24 @@ export class FilesService {
 
   /** Stores a clean WebP copy of the image. It throws InvalidImageError and stores nothing for a bad image. */
   async saveAvatar(ownerId: string, input: Buffer): Promise<{ id: string; url: string }> {
-    const avatar = await toAvatarWebp(input);
+    return this.saveWebp(ownerId, await toAvatarWebp(input));
+  }
+
+  /** Stores a 1024×1024 WebP copy of a scene image. It throws InvalidImageError for broken bytes. */
+  async saveScene(ownerId: string, input: Buffer): Promise<{ id: string; url: string }> {
+    return this.saveWebp(ownerId, await toSceneWebp(input));
+  }
+
+  private async saveWebp(
+    ownerId: string,
+    image: { data: Buffer; width: number; height: number },
+  ): Promise<{ id: string; url: string }> {
     const id = randomUUID();
     const path = `${id}.webp`;
-    await this.storage.save(path, avatar.data);
+    await this.storage.save(path, image.data);
     try {
       await this.prisma.file.create({
-        data: { id, ownerId, path, mime: "image/webp", size: avatar.data.length, width: avatar.width, height: avatar.height },
+        data: { id, ownerId, path, mime: "image/webp", size: image.data.length, width: image.width, height: image.height },
       });
     } catch (error) {
       await this.storage.remove(path);

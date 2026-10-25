@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { buildChoicesPrompt, buildReplyPrompt, parseChoices, type PromptInput, windowStart } from "./prompt.js";
+import {
+  buildChoicesPrompt,
+  buildReplyPrompt,
+  buildScenePrompt,
+  cleanScenePrompt,
+  parseChoices,
+  type PromptInput,
+  SCENE_PROMPT_MAX,
+  windowStart,
+} from "./prompt.js";
 
 function input(overrides: Partial<PromptInput> = {}): PromptInput {
   return {
@@ -169,5 +178,37 @@ describe("parseChoices", () => {
     for (const answer of bad) {
       expect(parseChoices(answer), answer).toBeNull();
     }
+  });
+});
+
+describe("buildScenePrompt", () => {
+  it("is the reply prompt, then the scene instruction as the last user message", () => {
+    const messages = buildScenePrompt(input(), { adult: false });
+    expect(messages[0]?.role).toBe("system");
+    expect(text(messages[2]?.content)).toBe("Hello Onnit.");
+    const last = messages.at(-1)!;
+    expect(last.role).toBe("user");
+    expect(text(last.content)).toContain("Describe the current scene of the roleplay for an image model.");
+  });
+
+  it("asks for a safe image when the chat is not 18+, and does not ask in an 18+ chat", () => {
+    const safe = text(buildScenePrompt(input(), { adult: false }).at(-1)?.content);
+    const adult = text(buildScenePrompt(input(), { adult: true }).at(-1)?.content);
+    expect(safe).toContain("no nudity");
+    expect(adult).not.toContain("no nudity");
+  });
+});
+
+describe("cleanScenePrompt", () => {
+  it("removes a fence, a label, quotes, and extra white space", () => {
+    expect(cleanScenePrompt('```\nPrompt: "A misty  forest\nat dawn."\n```')).toBe("A misty forest at dawn.");
+  });
+
+  it("cuts a long answer to the maximum length", () => {
+    expect(cleanScenePrompt("x".repeat(SCENE_PROMPT_MAX + 50))).toHaveLength(SCENE_PROMPT_MAX);
+  });
+
+  it("gives null for an empty answer", () => {
+    expect(cleanScenePrompt(" ``` ``` ")).toBeNull();
   });
 });
