@@ -3,12 +3,13 @@ import { AI_CLIENT_FACTORY, GuardedAiClientFactory } from "../ai/ai-client.js";
 import { GuardedModelListClient, MODEL_LIST_CLIENT } from "../ai/model-list.js";
 import { ApiKeysModule } from "../api-keys/api-keys.module.js";
 import { AuthModule } from "../auth/auth.module.js";
+import { FreeModelsModule } from "../free-models/free-models.module.js";
 import { MeModule } from "../me/me.module.js";
 import { ProxiesController } from "./proxies.controller.js";
 import { ProxiesService } from "./proxies.service.js";
 
 @Module({
-  imports: [AuthModule, MeModule, ApiKeysModule],
+  imports: [AuthModule, MeModule, ApiKeysModule, FreeModelsModule],
   controllers: [ProxiesController],
   providers: [
     ProxiesService,

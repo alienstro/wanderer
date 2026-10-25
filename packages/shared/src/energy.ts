@@ -51,3 +51,26 @@ export function energyPrice(costUsd: number, markupPercent: number): number {
   const hundredths = (costUsd * (100 + markupPercent)) / 100 / HUNDREDTH_USD;
   return Math.ceil(Number(hundredths.toFixed(FLOAT_PLACES)));
 }
+
+/** GET /energy: the balance of the user and the price of each action, in energy. */
+export interface EnergyView {
+  balance: number;
+  dailyEnergy: number;
+  /** The next refill time, 00:00 UTC. */
+  nextRefillAt: string;
+  /** The text model of the user: an own model, a free model, or none. */
+  model: "own" | "free" | null;
+  /** The text prices are 0 on an own model. The scene price is the same for each user. */
+  prices: { reply: number; choices: number; memory: number; scene: number };
+}
+
+/** GET /free-models: one free model that a user can pick. */
+export interface FreeModelView {
+  id: string;
+  displayName: string;
+  /** The energy price of one reply. */
+  energyPrice: number;
+  isDefault: boolean;
+  /** True for the model that the next reply of the user uses. */
+  isActive: boolean;
+}

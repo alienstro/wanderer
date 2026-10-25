@@ -23,8 +23,8 @@ import { EventsService } from "../events/events.service.js";
 import { KeyDecryptError } from "../api-keys/key-cipher.js";
 import { isUuid } from "../common/uuid.js";
 import { ENV, type Env } from "../config/env.js";
-import { EnergyService } from "../energy/energy.service.js";
-import { chooseFreeModel, OPENROUTER_CHAT_URL } from "../free-models/free-models.js";
+import { OPENROUTER_CHAT_URL } from "../free-models/free-models.js";
+import { FreeModelsService } from "../free-models/free-models.service.js";
 import type { ApiKey, FreeModel, Proxy, User } from "../generated/prisma/client.js";
 import { MeService } from "../me/me.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -95,7 +95,7 @@ export class ProxiesService {
     private readonly me: MeService,
     private readonly apiKeys: ApiKeysService,
     private readonly events: EventsService,
-    private readonly energy: EnergyService,
+    private readonly freeModels: FreeModelsService,
     @Inject(AI_CLIENT_FACTORY) private readonly clients: AiClientFactory,
     @Inject(MODEL_LIST_CLIENT) private readonly modelLists: ModelListClient,
     @Inject(ENV) private readonly env: Env,
@@ -248,17 +248,8 @@ export class ProxiesService {
   /** The free model of the user with the server key, or null when the free models are off or none is usable. */
   private async freeTarget(user: User): Promise<LoadedTarget | null> {
     const apiKey = this.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-      return null;
-    }
-    const [models, settings] = await Promise.all([
-      this.prisma.freeModel.findMany({
-        where: { enabled: true, OR: [{ isDefault: true }, ...(user.freeModelId ? [{ id: user.freeModelId }] : [])] },
-      }),
-      this.energy.settings(),
-    ]);
-    const free = chooseFreeModel(models, user.freeModelId, settings);
-    if (!free) {
+    const free = apiKey ? await this.freeModels.forUser(user) : null;
+    if (!apiKey || !free) {
       return null;
     }
     return {
