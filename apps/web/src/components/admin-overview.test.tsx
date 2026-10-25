@@ -246,4 +246,18 @@ describe("AdminOverview", () => {
     expect(problemUrls.at(-1)).toContain("period=30d");
     expect(problemUrls.at(-1)).not.toContain("cursor=");
   });
+
+  it("a new period does not show the numbers of the old period while it loads", async () => {
+    const fetchMock = stubApi();
+    const answer = fetchMock.getMockImplementation();
+    renderView();
+    await screen.findByRole("group", { name: "New users" });
+    // The 30-day numbers do not come back, so the page stays in the loading state.
+    fetchMock.mockImplementation(async (url: string) =>
+      url.includes("period=30d") ? new Promise<Response>(() => {}) : (answer?.(url) ?? Response.json({})),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "30 days" }));
+    expect(await screen.findByText("Loading the numbers…")).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "New users" })).toBeNull();
+  });
 });

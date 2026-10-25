@@ -69,11 +69,13 @@ export function AdminOverview() {
   const chatsPager = usePager();
   const likesPager = usePager();
   const tz = timeZone();
-  // A list with pages keeps the old page on the screen while the next one loads, so the list does not jump.
+  // A list keeps the old page on the screen while the next page loads, so the list does not jump. A new period
+  // shows no old data, because the numbers of the old period would show under the new period.
   const load = <T,>(panel: string, params: Record<string, string> = {}) => ({
     queryKey: [QUERY_KEY, panel, period, params],
     queryFn: () => apiFetch<T>(`/admin/overview/${panel}?${new URLSearchParams({ period, tz, ...params })}`),
-    placeholderData: keepPreviousData,
+    placeholderData: (previous: T | undefined, previousQuery?: { queryKey: readonly unknown[] }) =>
+      previousQuery?.queryKey[2] === period ? keepPreviousData(previous) : undefined,
   });
   const page = (cursor: string | undefined): Record<string, string> => (cursor === undefined ? {} : { cursor });
   const stats = useQuery(load<OverviewStats>("stats"));
