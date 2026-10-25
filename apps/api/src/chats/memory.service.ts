@@ -8,7 +8,7 @@ import { sendAppEvent } from "../events/app-events.js";
 import type { Message, User } from "../generated/prisma/client.js";
 import { ProxiesService } from "../proxies/proxies.service.js";
 import { ChatsService } from "./chats.service.js";
-import { buildSummaryPrompt, summaryInputTokens, windowStart } from "./prompt.js";
+import { buildSummaryPrompt, promptUser, summaryInputTokens, windowStart } from "./prompt.js";
 
 const SUMMARY_MAX_TOKENS = 800;
 const SUMMARY_TIMEOUT_MS = 60_000;
@@ -54,7 +54,7 @@ export class MemoryService {
     const { target, customPrompt, contextTokens, free } = await this.proxies.loadTarget(user);
     const memory = parsed.data.memory ?? chat.memory;
     const through = parsed.data.throughPosition === undefined ? chat.memoryThroughPosition : parsed.data.throughPosition;
-    const input = { character, customPrompt, contextTokens, memory, userName: user.name, history };
+    const input = { character, customPrompt, contextTokens, memory, ...promptUser(chat, user), history };
     const uncovered = history
       .slice(0, windowStart(input, 0))
       .filter((message) => through === null || message.position > through);

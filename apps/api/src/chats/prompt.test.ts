@@ -6,6 +6,7 @@ import {
   cleanScenePrompt,
   parseChoices,
   type PromptInput,
+  promptUser,
   SCENE_PROMPT_MAX,
   windowStart,
 } from "./prompt.js";
@@ -23,6 +24,7 @@ function input(overrides: Partial<PromptInput> = {}): PromptInput {
     contextTokens: 16_000,
     memory: "",
     userName: "Robin",
+    userDescription: "",
     history: [
       { role: "assistant", content: "*waves* Hi, {{user}}!" },
       { role: "user", content: "Hello {{char}}." },
@@ -210,5 +212,46 @@ describe("cleanScenePrompt", () => {
 
   it("gives null for an empty answer", () => {
     expect(cleanScenePrompt(" ``` ``` ")).toBeNull();
+  });
+});
+
+describe("the persona of the user", () => {
+  const system = (overrides: Partial<PromptInput>) => text(buildReplyPrompt(input(overrides))[0]?.content);
+
+  it("fills {{user}} with the persona name", () => {
+    const prompt = system({ userName: "Aria" });
+    expect(prompt).toContain("Onnit is cheerful and loves Aria.");
+    expect(prompt).not.toContain("Robin");
+  });
+
+  it("adds a User section after Scenario", () => {
+    const prompt = system({
+      character: { ...input().character, scenario: "A cargo ship." },
+      userName: "Aria",
+      userDescription: "  A knight with a scar.  ",
+    });
+    expect(prompt).toContain("## User\nAria: A knight with a scar.");
+    expect(prompt.indexOf("## Scenario")).toBeLessThan(prompt.indexOf("## User"));
+    expect(prompt.indexOf("## User")).toBeLessThan(prompt.indexOf("## Example dialogs"));
+  });
+
+  it("adds no User section for an empty description", () => {
+    expect(system({ userName: "Aria", userDescription: "   " })).not.toContain("## User");
+  });
+
+  it("fills {{user}}, {{char}} and keeps $& in the description", () => {
+    const prompt = system({ userName: "Aria", userDescription: "{{user}} owes {{char}} $& 5 coins." });
+    expect(prompt).toContain("Aria: Aria owes Onnit $& 5 coins.");
+  });
+
+  it("promptUser falls back to the account name", () => {
+    expect(promptUser({ personaName: null, personaDescription: null }, { name: "Robin" })).toEqual({
+      userName: "Robin",
+      userDescription: "",
+    });
+    expect(promptUser({ personaName: "Aria", personaDescription: "A knight." }, { name: "Robin" })).toEqual({
+      userName: "Aria",
+      userDescription: "A knight.",
+    });
   });
 });
