@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace: vi.fn() }
 
 type StreamOptions = { signal: AbortSignal; onEvent: (event: ChatStreamEvent) => void };
 const streamMock = vi.fn<(path: string, body: unknown, options: StreamOptions) => Promise<void>>();
-vi.mock("@/lib/chat-stream", () => ({
+vi.mock("@/features/chats/chat-stream", () => ({
   streamChat: (path: string, body: unknown, options: StreamOptions) => streamMock(path, body, options),
 }));
 

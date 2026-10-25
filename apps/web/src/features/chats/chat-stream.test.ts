@@ -1,6 +1,6 @@
 import type { ChatStreamEvent } from "@wanderer/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError } from "./api";
+import { ApiError } from "@/lib/api";
 import { streamChat } from "./chat-stream";
 
 const encoder = new TextEncoder();

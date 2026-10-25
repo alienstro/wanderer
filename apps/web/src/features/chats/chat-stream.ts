@@ -1,5 +1,5 @@
 import type { ChatStreamEvent } from "@wanderer/shared";
-import { apiResponse } from "./api";
+import { apiResponse } from "@/lib/api";
 
 function isAbort(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";

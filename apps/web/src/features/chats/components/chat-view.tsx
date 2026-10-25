@@ -8,14 +8,14 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/ui/avatar";
 import { ApiError, apiFetch, fileSrc } from "@/lib/api";
-import { streamChat } from "@/lib/chat-stream";
+import { streamChat } from "@/features/chats/chat-stream";
 import { useRequireLogin } from "@/lib/use-require-login";
 import { Composer } from "./composer";
-import { MemoryButton } from "./memory-panel";
+import { MemoryButton } from "@/features/chats/memory/memory-panel";
 import { MessageItem } from "./message-item";
 import { OpeningSwitcher } from "./opening-switcher";
-import { GenerateSceneButton, SceneImage, sceneErrorText, scenesAfter, useSceneJob } from "./scene-image";
-import { NewChoicesButton, ReplyChoices, ReplyChoicesSwitch, useReplyChoices } from "./reply-choices";
+import { GenerateSceneButton, SceneImage, sceneErrorText, scenesAfter, useSceneJob } from "@/features/chats/scenes/scene-image";
+import { NewChoicesButton, ReplyChoices, ReplyChoicesSwitch, useReplyChoices } from "@/features/chats/choices/reply-choices";
 
 /** The reply that streams now. replaceId is the reply that a Regenerate replaces. */
 interface LiveReply {

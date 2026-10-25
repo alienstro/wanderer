@@ -7,13 +7,13 @@ import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Toaster } from "@/components/ui/toaster";
 import { ApiError } from "@/lib/api";
-import { ChatView } from "./chat-view";
+import { ChatView } from "@/features/chats/components/chat-view";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/chats/chat1" }));
 
 type StreamOptions = { signal: AbortSignal; onEvent: (event: ChatStreamEvent) => void };
 const streamMock = vi.fn<(path: string, body: unknown, options: StreamOptions) => Promise<void>>();
-vi.mock("@/lib/chat-stream", () => ({
+vi.mock("@/features/chats/chat-stream", () => ({
   streamChat: (path: string, body: unknown, options: StreamOptions) => streamMock(path, body, options),
 }));
 
