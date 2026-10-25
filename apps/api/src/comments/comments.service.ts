@@ -6,7 +6,7 @@ import {
   commentListQuerySchema,
   createCommentRequestSchema,
 } from "@wanderer/shared";
-import { decodeCommentCursor, encodeCommentCursor } from "../characters/cursor.js";
+import { decodeTimeCursor, encodeTimeCursor } from "../characters/cursor.js";
 import { assertCharacterAccess, characterAccess } from "../characters/visibility.js";
 import { isUuid } from "../common/uuid.js";
 import type { Prisma, User } from "../generated/prisma/client.js";
@@ -65,7 +65,7 @@ export class CommentsService {
       throw new BadRequestException({ error: "invalid_query" });
     }
     const { cursor } = parsed.data;
-    const after = cursor === undefined ? null : decodeCommentCursor(cursor);
+    const after = cursor === undefined ? null : decodeTimeCursor(cursor);
     if (cursor !== undefined && after === null) {
       throw new BadRequestException({ error: "invalid_cursor" });
     }
@@ -91,7 +91,7 @@ export class CommentsService {
       items: page.map((row) => toComment(row, viewer)),
       nextCursor:
         rows.length > COMMENTS_PAGE_SIZE && last
-          ? encodeCommentCursor({ createdAt: last.createdAt.toISOString(), id: last.id })
+          ? encodeTimeCursor({ createdAt: last.createdAt.toISOString(), id: last.id })
           : null,
       count: character.commentCount,
     };

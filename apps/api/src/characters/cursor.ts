@@ -8,8 +8,8 @@ export interface CursorKey {
   id: string;
 }
 
-/** The sort key of the last comment of a page. Comments sort by time, then by ID. */
-export interface CommentCursorKey {
+/** The sort key of the last row of a page that sorts by time, then by ID, such as a comment or an app event. */
+export interface TimeCursorKey {
   createdAt: string;
   id: string;
 }
@@ -21,7 +21,7 @@ const cursorKeySchema = z.object({
   id: z.uuid(),
 });
 
-const commentCursorKeySchema = z.object({
+const timeCursorKeySchema = z.object({
   createdAt: z.iso.datetime(),
   id: z.uuid(),
 });
@@ -49,10 +49,10 @@ export function decodeCursor(cursor: string): CursorKey | null {
   return decode(cursor, cursorKeySchema);
 }
 
-export function encodeCommentCursor(key: CommentCursorKey): string {
+export function encodeTimeCursor(key: TimeCursorKey): string {
   return encode(key);
 }
 
-export function decodeCommentCursor(cursor: string): CommentCursorKey | null {
-  return decode(cursor, commentCursorKeySchema);
+export function decodeTimeCursor(cursor: string): TimeCursorKey | null {
+  return decode(cursor, timeCursorKeySchema);
 }

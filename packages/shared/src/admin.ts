@@ -27,6 +27,16 @@ export const overviewQuerySchema = z.object({
 
 export type OverviewQuery = z.infer<typeof overviewQuerySchema>;
 
+/** The number of rows on one page of the problems and the reports. */
+export const ADMIN_PAGE_SIZE = 20;
+
+/** The query of a list with pages. The cursor comes from the `nextCursor` of the page before. */
+export const overviewPageQuerySchema = overviewQuerySchema.extend({
+  cursor: z.string().max(200).optional(),
+});
+
+export type OverviewPageQuery = z.infer<typeof overviewPageQuerySchema>;
+
 /** The numbers of the overview. A "use" number shows how people use the app. A "failure" number shows what fails. */
 export const OVERVIEW_METRICS = [
   { key: "newUsers", kind: "use", label: "New users", help: "People who made an account." },
@@ -109,9 +119,11 @@ export interface OverviewProblem {
   character: { id: string; title: string } | null;
 }
 
-/** GET /admin/overview/problems: the newest problems of the period. */
+/** GET /admin/overview/problems: one page of the problems of the period, the newest first. */
 export interface OverviewProblemList {
   problems: OverviewProblem[];
+  /** Null when no more problems exist. */
+  nextCursor: string | null;
 }
 
 export interface TopCharacter {

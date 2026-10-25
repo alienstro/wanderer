@@ -1,25 +1,27 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import {
+  ADMIN_PAGE_SIZE,
   OVERVIEW_METRICS,
   OVERVIEW_PERIOD_DAYS,
   OVERVIEW_PROBLEM_TYPES,
   type OverviewHealth,
   type OverviewHealthStatus,
   type OverviewMetric,
+  type OverviewPageQuery,
   type OverviewProblemList,
   type OverviewProblemType,
   type OverviewQuery,
+  overviewPageQuerySchema,
   overviewQuerySchema,
   type OverviewSeries,
   type OverviewStats,
   type TopCharacter,
   type TopCharacterList,
 } from "@wanderer/shared";
+import { decodeTimeCursor, encodeTimeCursor } from "../characters/cursor.js";
 import { type AppEventType, Prisma } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
-/** The problem list shows this number of problems or less. */
-const PROBLEMS_MAX = 50;
 /** Each top-character list shows this number of characters or less. */
 const TOP_MAX = 5;
 /** The health status looks at the AI replies of this time. */
@@ -114,6 +116,15 @@ export function parseOverviewQuery(query: unknown): OverviewQuery {
   return parsed.data;
 }
 
+/** Gives the parsed query of a list with pages, or 400 invalid_period. The cursor is checked by the list. */
+export function parseOverviewPageQuery(query: unknown): OverviewPageQuery {
+  const parsed = overviewPageQuerySchema.safeParse(query ?? {});
+  if (!parsed.success) {
+    throw new BadRequestException({ error: "invalid_period" });
+  }
+  return parsed.data;
+}
+
 /** Counts the use and the failures of the app for the admin overview. It reads no chat text. */
 @Injectable()
 export class OverviewService {
@@ -135,10 +146,21 @@ export class OverviewService {
     return { period: query.period, days, metrics: ordered as Record<OverviewMetric, OverviewSeries> };
   }
 
-  /** The newest failures of the period. Logins are not problems. */
-  async problems(query: OverviewQuery): Promise<OverviewProblemList> {
+  /** One page of the failures of the period, the newest first. Logins are not problems. */
+  async problems(query: OverviewPageQuery): Promise<OverviewProblemList> {
+    const after = query.cursor === undefined ? null : decodeTimeCursor(query.cursor);
+    if (query.cursor !== undefined && after === null) {
+      throw new BadRequestException({ error: "invalid_cursor" });
+    }
+    const afterTime = after ? new Date(after.createdAt) : null;
     const rows = await this.prisma.appEvent.findMany({
-      where: { type: { in: [...OVERVIEW_PROBLEM_TYPES] }, createdAt: { gte: await this.start(query) } },
+      where: {
+        type: { in: [...OVERVIEW_PROBLEM_TYPES] },
+        createdAt: { gte: await this.start(query) },
+        ...(after && afterTime
+          ? { OR: [{ createdAt: { lt: afterTime } }, { createdAt: afterTime, id: { lt: after.id } }] }
+          : {}),
+      },
       select: {
         id: true,
         type: true,
@@ -148,10 +170,14 @@ export class OverviewService {
         character: { select: { id: true, title: true } },
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: PROBLEMS_MAX,
+      take: ADMIN_PAGE_SIZE + 1,
     });
+    const page = rows.slice(0, ADMIN_PAGE_SIZE);
+    const last = page.at(-1);
     return {
-      problems: rows.map((row) => ({ ...row, type: row.type as OverviewProblemType, createdAt: row.createdAt.toISOString() })),
+      problems: page.map((row) => ({ ...row, type: row.type as OverviewProblemType, createdAt: row.createdAt.toISOString() })),
+      nextCursor:
+        rows.length > ADMIN_PAGE_SIZE && last ? encodeTimeCursor({ createdAt: last.createdAt.toISOString(), id: last.id }) : null,
     };
   }
 

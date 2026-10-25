@@ -136,6 +136,33 @@ describe("admin overview", () => {
       expect(body.problems[1]?.character).toBeNull();
     });
 
+    it("pages the problems 20 at a time, newest first, with no row two times", async () => {
+      const tie = minutesAgo(30);
+      // Rows 19 to 21 of the list have the same time, so the ID must break the tie at the page edge.
+      const createdAt = (index: number) => (index >= 18 && index <= 20 ? tie : minutesAgo(index < 18 ? index + 1 : index + 20));
+      await prisma.appEvent.createMany({
+        data: Array.from({ length: 25 }, (_, index) => ({ type: "ai_reply_failed" as const, reason: "timeout", createdAt: createdAt(index) })),
+      });
+
+      const first = (await get("/admin/overview/problems?period=7d").expect(200)).body as OverviewProblemList;
+      expect(first.problems).toHaveLength(20);
+      expect(first.nextCursor).toEqual(expect.any(String));
+      const second = (
+        await get(`/admin/overview/problems?period=7d&cursor=${encodeURIComponent(first.nextCursor ?? "")}`).expect(200)
+      ).body as OverviewProblemList;
+      expect(second.problems).toHaveLength(5);
+      expect(second.nextCursor).toBeNull();
+
+      const all = [...first.problems, ...second.problems];
+      expect(new Set(all.map((problem) => problem.id)).size).toBe(25);
+      const times = all.map((problem) => Date.parse(problem.createdAt));
+      expect(times).toEqual([...times].sort((a, b) => b - a));
+    });
+
+    it("gives 400 invalid_cursor for a bad cursor", async () => {
+      expect((await get("/admin/overview/problems?cursor=abc").expect(400)).body).toEqual({ error: "invalid_cursor" });
+    });
+
     it("a problem of a deleted user has user null", async () => {
       await prisma.appEvent.create({ data: { type: "summary_failed", userId: member.user.id, reason: "timeout" } });
       await prisma.user.delete({ where: { id: member.user.id } });
