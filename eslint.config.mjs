@@ -12,8 +12,6 @@ const webBoundaries = {
       { type: "app", pattern: "src/app" },
       { type: "feature", pattern: "src/features/*", capture: ["featureName"] },
       { type: "ui", pattern: "src/components/ui" },
-      // The flat components folder before the moves of issue #60. Remove it when it is empty.
-      { type: "legacy", pattern: "src/components" },
       { type: "lib", pattern: "src/lib" },
     ],
     // ESLint runs in each package folder, so the path to the tsconfig is absolute.
@@ -21,22 +19,22 @@ const webBoundaries = {
   },
   rules: {
     "boundaries/dependencies": [
-      "warn",
+      "error",
       {
         default: "disallow",
-        message: "{{from.element.types.[0]}} must not import {{to.element.types.[0]}} (docs/architecture.md, import rules)",
+        message:
+          "A {{from.element.types.[0]}} file must not import this {{to.element.types.[0]}} file. Import another feature only through its index.ts. See docs/architecture.md, import rules.",
         policies: [
-          { from: { element: { type: "app" } }, allow: { to: { element: { types: { anyOf: ["app", "ui", "lib", "legacy"] } } } } },
+          { from: { element: { type: "app" } }, allow: { to: { element: { types: { anyOf: ["app", "ui", "lib"] } } } } },
           // A route imports a feature only through its index.ts.
           { from: { element: { type: "app" } }, allow: { to: { element: { type: "feature", fileInternalPath: "index.ts" } } } },
-          { from: { element: { type: "feature" } }, allow: { to: { element: { types: { anyOf: ["ui", "lib", "legacy"] } } } } },
+          { from: { element: { type: "feature" } }, allow: { to: { element: { types: { anyOf: ["ui", "lib"] } } } } },
           // A feature imports its own files, and only the index.ts of another feature.
           {
             from: { element: { type: "feature" } },
             allow: { to: { element: { type: "feature", captured: { featureName: "{{from.element.captured.featureName}}" } } } },
           },
           { from: { element: { type: "feature" } }, allow: { to: { element: { type: "feature", fileInternalPath: "index.ts" } } } },
-          { from: { element: { type: "legacy" } }, allow: { to: { element: { types: { anyOf: ["legacy", "ui", "lib", "feature"] } } } } },
           { from: { element: { type: "ui" } }, allow: { to: { element: { types: { anyOf: ["ui", "lib"] } } } } },
           { from: { element: { type: "lib" } }, allow: { to: { element: { type: "lib" } } } },
         ],
@@ -62,7 +60,7 @@ export default tseslint.config(
   {
     files: ["**/src/**/*.{ts,tsx}"],
     ignores: ["**/*.test.{ts,tsx}"],
-    rules: { "max-lines": ["warn", { max: 400, skipBlankLines: true, skipComments: true }] },
+    rules: { "max-lines": ["error", { max: 400, skipBlankLines: true, skipComments: true }] },
   },
   webBoundaries,
   // Plain .mjs scripts run in Node.

@@ -5,7 +5,7 @@ module.exports = {
     {
       name: "web-feature-public-only",
       comment: "A web feature imports another web feature only through its index.ts.",
-      severity: "warn",
+      severity: "error",
       from: { path: "^src/features/([^/]+)/" },
       to: {
         path: "^src/features/[^/]+/",
