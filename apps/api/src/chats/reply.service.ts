@@ -3,6 +3,7 @@ import { type AiErrorCode, messageInputSchema } from "@wanderer/shared";
 import type { Response } from "express";
 import { AI_CLIENT_FACTORY, type AiClientFactory, type AiTarget } from "../ai/ai-client.js";
 import { aiErrorLogFields, toAiError } from "../ai/ai-errors.js";
+import { AiChargeService } from "../energy/ai-charge.service.js";
 import { EventsService } from "../events/events.service.js";
 import type { Message, User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -55,6 +56,7 @@ export class ReplyService {
     private readonly chats: ChatsService,
     private readonly proxies: ProxiesService,
     private readonly events: EventsService,
+    private readonly charge: AiChargeService,
     @Inject(AI_CLIENT_FACTORY) private readonly clients: AiClientFactory,
     @Inject(REPLY_TIMING) private readonly timing: ReplyTiming,
   ) {}
@@ -74,8 +76,11 @@ export class ReplyService {
     const { user, res, mode } = input;
     const { chat, character, history } = await this.chats.loadForReply(input.chatId, user);
     const replaced = mode.kind === "regenerate" ? regenerateTarget(history) : null;
-    const { target, customPrompt, contextTokens } = await this.proxies.loadTarget(user);
+    const { target, customPrompt, contextTokens, free } = await this.proxies.loadTarget(user);
+    // The spend comes before the SSE headers, so a low balance or a full cap gives a JSON error.
+    const spend = await this.charge.chargeText(user, free, "reply", chat.id);
     let sse: SseWriter | null = null;
+    let replied = false;
     try {
       const userMessage = content === null ? null : await this.saveMessage(chat.id, "user", content, nextPosition(history));
       if (userMessage) {
@@ -100,20 +105,30 @@ export class ReplyService {
           ? await this.replaceMessage(chat.id, replaced.id, result.text)
           : await this.saveMessage(chat.id, "assistant", result.text, nextPosition(history))
         : null;
+      replied = reply !== null;
+      // A call with no text gives the energy back. A Stop of the user is not a failure: the call ran, and a
+      // refund would let a Stop loop use up the shared daily cap for free.
+      if (!replied && !result.clientGone) {
+        await this.charge.refund(spend);
+      }
+      const error = result.error && (await this.charge.callError(result.error, user, free));
       // A Stop of the user is not a failure, so it gives no error and no event.
-      if (result.error) {
-        await this.events.record("ai_reply_failed", { userId: user.id, characterId: chat.characterId, reason: result.error });
+      if (error) {
+        await this.events.record("ai_reply_failed", { userId: user.id, characterId: chat.characterId, reason: error });
       }
       if (result.clientGone) {
         return;
       }
-      if (reply && !result.error) {
+      if (reply && !error) {
         sse.send({ type: "done", message: toMessageView(reply) });
       } else {
-        sse.send({ type: "error", error: result.error ?? "provider_error", message: reply && toMessageView(reply) });
+        sse.send({ type: "error", error: error ?? "provider_error", message: reply && toMessageView(reply) });
       }
     } catch (error) {
       this.logger.error({ msg: "Reply stream failed", name: error instanceof Error ? error.name : "unknown" });
+      if (!replied) {
+        await this.charge.refund(spend);
+      }
       await this.events.record("ai_reply_failed", { userId: user.id, characterId: chat.characterId, reason: "internal_error" });
       if (!sse) {
         throw error;

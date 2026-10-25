@@ -73,6 +73,24 @@ export const OVERVIEW_METRICS = [
   { key: "failedSummaries", kind: "failure", label: "Failed memory summaries", help: "Times the memory summary did not load." },
   { key: "failedProxyTests", kind: "failure", label: "Failed proxy tests", help: "Times the Test button of a proxy got an error." },
   { key: "failedModelLists", kind: "failure", label: "Failed model lists", help: "Times the model list of a proxy did not load." },
+  {
+    key: "freeModelBusy",
+    kind: "failure",
+    label: "Free model busy",
+    help: "Times OpenRouter answered 429 to a free model call, or the daily cap of free model calls was full.",
+  },
+  {
+    key: "freeReplies",
+    kind: "energy",
+    label: "Free model replies",
+    help: "AI replies on a free model. A failed reply that gave its energy back is not in this number.",
+  },
+  { key: "freeUsers", kind: "energy", label: "Free model users", help: "People who got a reply on a free model. Each person counts one time." },
+  { key: "energyReply", kind: "energy", label: "Energy on replies", help: "The energy that people spent on free model replies, after refunds." },
+  { key: "energyChoices", kind: "energy", label: "Energy on reply choices", help: "The energy that people spent on reply choices, after refunds." },
+  { key: "energyMemory", kind: "energy", label: "Energy on memory drafts", help: "The energy that people spent on memory drafts, after refunds." },
+  { key: "energyScene", kind: "energy", label: "Energy on scene images", help: "The energy that people spent on scene images, after refunds." },
+  { key: "energyTooLow", kind: "energy", label: "Too little energy", help: "Times a person had too little energy for an action." },
 ] as const;
 
 export type OverviewMetric = (typeof OVERVIEW_METRICS)[number]["key"];
@@ -163,4 +181,8 @@ export interface OverviewHealth {
   status: OverviewHealthStatus;
   replies: number;
   failedReplies: number;
+  /** The replies on a free model that kept their energy. */
+  freeReplies: number;
+  /** The free model calls that OpenRouter answered with 429, or that the daily cap stopped. */
+  freeModelBusy: number;
 }

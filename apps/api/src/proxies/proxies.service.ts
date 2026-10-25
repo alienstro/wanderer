@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Inject, Injectable, Logger, Not
 import {
   AI_ERROR_TEXT,
   type MeResponse,
+  PROXY_CONTEXT_DEFAULT,
   PROXY_LIMIT,
   PROXY_MODELS_ERROR_TEXT,
   proxyCreateSchema,
@@ -21,13 +22,24 @@ import { ApiKeysService } from "../api-keys/api-keys.service.js";
 import { EventsService } from "../events/events.service.js";
 import { KeyDecryptError } from "../api-keys/key-cipher.js";
 import { isUuid } from "../common/uuid.js";
-import type { ApiKey, Proxy, User } from "../generated/prisma/client.js";
+import { ENV, type Env } from "../config/env.js";
+import { OPENROUTER_CHAT_URL } from "../free-models/free-models.js";
+import { FreeModelsService } from "../free-models/free-models.service.js";
+import type { ApiKey, FreeModel, Proxy, User } from "../generated/prisma/client.js";
 import { MeService } from "../me/me.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 const NOT_FOUND = { error: "not_found" };
 const TEST_MESSAGE = "Reply with the word OK.";
 const TEST_TIMEOUT_MS = 30_000;
+
+/** The data for one AI call. `free` is the free model of the call, or null for an own model. */
+export interface LoadedTarget {
+  target: AiTarget;
+  customPrompt: string;
+  contextTokens: number;
+  free: FreeModel | null;
+}
 
 /** A proxy with its saved key. Each read of a proxy includes the key row. */
 type ProxyWithKey = Proxy & { apiKey: ApiKey };
@@ -83,8 +95,10 @@ export class ProxiesService {
     private readonly me: MeService,
     private readonly apiKeys: ApiKeysService,
     private readonly events: EventsService,
+    private readonly freeModels: FreeModelsService,
     @Inject(AI_CLIENT_FACTORY) private readonly clients: AiClientFactory,
     @Inject(MODEL_LIST_CLIENT) private readonly modelLists: ModelListClient,
+    @Inject(ENV) private readonly env: Env,
   ) {}
 
   async list(user: User): Promise<ProxyView[]> {
@@ -205,16 +219,23 @@ export class ProxiesService {
     }
   }
 
-  /** The decrypted target of the active proxy, for one call. */
-  async loadTarget(user: User): Promise<{ target: AiTarget; customPrompt: string; contextTokens: number }> {
+  /**
+   * The target for one call: the decrypted active proxy of the user, or else a free model with the server key. With
+   * neither, it throws 409 no_active_proxy.
+   */
+  async loadTarget(user: User): Promise<LoadedTarget> {
     const row = user.activeProxyId
       ? await this.prisma.proxy.findFirst({ where: { id: user.activeProxyId, userId: user.id }, include: WITH_KEY })
       : null;
     if (!row) {
-      throw new ConflictException({ error: "no_active_proxy" });
+      const free = await this.freeTarget(user);
+      if (!free) {
+        throw new ConflictException({ error: "no_active_proxy" });
+      }
+      return free;
     }
     try {
-      return { target: this.target(row), customPrompt: row.customPrompt, contextTokens: row.contextTokens };
+      return { target: this.target(row), customPrompt: row.customPrompt, contextTokens: row.contextTokens, free: null };
     } catch (error) {
       if (error instanceof KeyDecryptError) {
         // The master key changed. The user must enter the API key again.
@@ -222,6 +243,21 @@ export class ProxiesService {
       }
       throw error;
     }
+  }
+
+  /** The free model of the user with the server key, or null when the free models are off or none is usable. */
+  private async freeTarget(user: User): Promise<LoadedTarget | null> {
+    const apiKey = this.env.OPENROUTER_API_KEY;
+    const free = apiKey ? await this.freeModels.forUser(user) : null;
+    if (!apiKey || !free) {
+      return null;
+    }
+    return {
+      target: { endpoint: OPENROUTER_CHAT_URL, apiKey, model: free.openrouterId },
+      customPrompt: "",
+      contextTokens: PROXY_CONTEXT_DEFAULT,
+      free,
+    };
   }
 
   /** The decrypted target for one call. It throws KeyDecryptError when the saved key does not decrypt. */

@@ -41,7 +41,7 @@ describe("RunPodClient", () => {
       { json: { id: "job-1", status: "COMPLETED", output: { image_url: IMAGE_URL, cost: 0.002 } } },
       { bytes: PNG },
     ]);
-    const image = await client(fetchFn).generate({ prompt: "a misty forest", negativePrompt: "nudity" });
+    const image = await client(fetchFn).generate({ model: "flux-schnell", prompt: "a misty forest", negativePrompt: "nudity", adult: false });
     expect(image.equals(PNG)).toBe(true);
     expect(calls.map((call) => `${call.method} ${call.url}`)).toEqual([
       "POST https://api.runpod.ai/v2/black-forest-labs-flux-1-schnell/run",
@@ -66,27 +66,48 @@ describe("RunPodClient", () => {
     expect(calls[3]!.headers.Authorization).toBeUndefined();
   });
 
+  it("sends a Z-Image Turbo job to its own endpoint with a size, and the safety checker on for a chat that is not 18+", async () => {
+    const { calls, fetchFn } = fakeFetch([
+      { json: { id: "job-2", status: "COMPLETED", output: { image_url: IMAGE_URL } } },
+      { bytes: PNG },
+    ]);
+    await client(fetchFn).generate({ model: "z-image-turbo", prompt: "a misty forest", negativePrompt: "nudity", adult: false });
+    expect(calls[0]!.url).toBe("https://api.runpod.ai/v2/z-image-turbo/run");
+    expect(calls[0]!.body).toEqual({
+      input: { prompt: "a misty forest", size: "1024*1024", seed: -1, enable_safety_checker: true },
+    });
+  });
+
+  it("turns the Z-Image Turbo safety checker off for an 18+ chat", async () => {
+    const { calls, fetchFn } = fakeFetch([
+      { json: { id: "job-3", status: "COMPLETED", output: { image_url: IMAGE_URL } } },
+      { bytes: PNG },
+    ]);
+    await client(fetchFn).generate({ model: "z-image-turbo", prompt: "x", negativePrompt: "", adult: true });
+    expect((calls[0]!.body as { input: { enable_safety_checker: boolean } }).input.enable_safety_checker).toBe(false);
+  });
+
   it("reads the image URL from output.result, the shape that the live endpoint gives", async () => {
     const { calls, fetchFn } = fakeFetch([
       { json: { id: "job-1", status: "IN_QUEUE" } },
       { json: { id: "job-1", status: "COMPLETED", output: { cost: 0.003, result: IMAGE_URL } } },
       { bytes: PNG },
     ]);
-    const image = await client(fetchFn).generate({ prompt: "x", negativePrompt: "" });
+    const image = await client(fetchFn).generate({ model: "flux-schnell", prompt: "x", negativePrompt: "", adult: false });
     expect(image.equals(PNG)).toBe(true);
     expect(calls.at(-1)!.url).toBe(IMAGE_URL);
   });
 
   it("a FAILED job gives scene_failed", async () => {
     const { fetchFn } = fakeFetch([{ json: { id: "job-1" } }, { json: { id: "job-1", status: "FAILED", error: "oom" } }]);
-    await expect(client(fetchFn).generate({ prompt: "x", negativePrompt: "" })).rejects.toMatchObject({
+    await expect(client(fetchFn).generate({ model: "flux-schnell", prompt: "x", negativePrompt: "", adult: false })).rejects.toMatchObject({
       code: "scene_failed",
     });
   });
 
   it("a job that passes the time limit gives scene_timeout and is cancelled", async () => {
     const { calls, fetchFn } = fakeFetch([{ json: { id: "job-1" } }]);
-    await expect(client(fetchFn, 20).generate({ prompt: "x", negativePrompt: "" })).rejects.toMatchObject({
+    await expect(client(fetchFn, 20).generate({ model: "flux-schnell", prompt: "x", negativePrompt: "", adult: false })).rejects.toMatchObject({
       code: "scene_timeout",
     });
     expect(calls.at(-1)).toMatchObject({
@@ -100,14 +121,14 @@ describe("RunPodClient", () => {
       { json: { id: "job-1" } },
       { json: { id: "job-1", status: "COMPLETED", output: { image_url: "http://169.254.169.254/latest" } } },
     ]);
-    await expect(client(fetchFn).generate({ prompt: "x", negativePrompt: "" })).rejects.toBeInstanceOf(SceneImageError);
+    await expect(client(fetchFn).generate({ model: "flux-schnell", prompt: "x", negativePrompt: "", adult: false })).rejects.toBeInstanceOf(SceneImageError);
     expect(calls).toHaveLength(2);
   });
 
   it("an HTTP error from RunPod gives scene_failed, and the message does not hold the key", async () => {
     const { fetchFn } = fakeFetch([{ status: 401, json: { error: `bad key ${KEY}` } }]);
     const error = await client(fetchFn)
-      .generate({ prompt: "x", negativePrompt: "" })
+      .generate({ model: "flux-schnell", prompt: "x", negativePrompt: "", adult: false })
       .catch((caught: unknown) => caught);
     expect(error).toBeInstanceOf(SceneImageError);
     expect((error as SceneImageError).code).toBe("scene_failed");

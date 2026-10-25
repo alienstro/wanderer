@@ -48,4 +48,14 @@ describe("EventsService", () => {
     expect(await events.prune(now)).toBe(1);
     expect(await prisma.appEvent.count()).toBe(2);
   });
+
+  it("prune keeps the admin changes, because they are the audit record", async () => {
+    const now = new Date("2026-10-25T12:00:00Z");
+    await prisma.appEvent.create({
+      data: { type: "admin_change", reason: "settings", createdAt: new Date(now.getTime() - (EVENT_KEEP_DAYS + 1) * DAY_MS) },
+    });
+
+    expect(await events.prune(now)).toBe(0);
+    expect(await prisma.appEvent.count()).toBe(1);
+  });
 });

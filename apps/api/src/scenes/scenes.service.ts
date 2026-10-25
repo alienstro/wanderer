@@ -1,17 +1,18 @@
 import { ConflictException, HttpException, Inject, Injectable, Logger } from "@nestjs/common";
-import { SCENE_DAILY_LIMIT, type SceneView } from "@wanderer/shared";
+import type { SceneModelKey, SceneView } from "@wanderer/shared";
 import { AI_CLIENT_FACTORY, type AiClientFactory } from "../ai/ai-client.js";
 import { aiErrorLogFields, toAiError } from "../ai/ai-errors.js";
 import { ChatsService, type ReplyContext, toSceneView } from "../chats/chats.service.js";
 import { buildScenePrompt, cleanScenePrompt } from "../chats/prompt.js";
+import { AiChargeService } from "../energy/ai-charge.service.js";
+import { EnergyService } from "../energy/energy.service.js";
 import { FilesService } from "../files/files.service.js";
 import { InvalidImageError } from "../files/image.js";
 import type { User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-import { ProxiesService } from "../proxies/proxies.service.js";
+import { type LoadedTarget, ProxiesService } from "../proxies/proxies.service.js";
 import { SCENE_IMAGE_CLIENT, type SceneImageClient, SceneImageError, type SceneImageRequest } from "./runpod-client.js";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
+import { sceneEnergyPrice } from "./scene-models.js";
 const PROMPT_MAX_TOKENS = 300;
 const PROMPT_TIMEOUT_MS = 30_000;
 const BASE_NEGATIVE = "text, watermark, blurry";
@@ -19,23 +20,21 @@ const SAFE_SUFFIX = "Safe for work, everyone fully clothed.";
 const SAFE_NEGATIVE = "nudity, nsfw, sexual content, gore";
 
 /** The request for the image model. A chat that is not 18+ also asks for a safe image. */
-export function sceneImageRequest(prompt: string, adult: boolean): SceneImageRequest {
+export function sceneImageRequest(model: SceneModelKey, prompt: string, adult: boolean): SceneImageRequest {
   return adult
-    ? { prompt, negativePrompt: BASE_NEGATIVE }
-    : { prompt: `${prompt} ${SAFE_SUFFIX}`, negativePrompt: `${BASE_NEGATIVE}, ${SAFE_NEGATIVE}` };
+    ? { model, prompt, negativePrompt: BASE_NEGATIVE, adult }
+    : { model, prompt: `${prompt} ${SAFE_SUFFIX}`, negativePrompt: `${BASE_NEGATIVE}, ${SAFE_NEGATIVE}`, adult };
 }
 
 /**
  * Makes one scene image of a chat: the active model writes the image prompt from the latest messages, then
- * RunPod draws it. Only a click on "Generate scene" calls this service.
+ * RunPod draws it. Only a click on "Generate scene" calls this service. The image uses the server RunPod key, so
+ * each scene costs energy, also for a user with an own text model. One price covers the prompt and the image.
  */
 @Injectable()
 export class ScenesService {
   private readonly logger = new Logger(ScenesService.name);
-  /**
-   * The IDs of the users with a running job. One job for each user at a time also keeps the daily count
-   * correct. The API runs as one container, so memory is enough.
-   */
+  /** The IDs of the users with a running job. The API runs as one container, so memory is enough. */
   private readonly running = new Set<string>();
 
   constructor(
@@ -43,6 +42,8 @@ export class ScenesService {
     private readonly chats: ChatsService,
     private readonly proxies: ProxiesService,
     private readonly files: FilesService,
+    private readonly energy: EnergyService,
+    private readonly charge: AiChargeService,
     @Inject(AI_CLIENT_FACTORY) private readonly clients: AiClientFactory,
     @Inject(SCENE_IMAGE_CLIENT) private readonly images: SceneImageClient,
   ) {}
@@ -61,15 +62,28 @@ export class ScenesService {
 
   private async make(user: User, chatId: string): Promise<SceneView> {
     const context = await this.chats.loadForReply(chatId, user);
-    const { chat, character, history } = context;
-    const used = await this.prisma.sceneImage.count({
-      where: { userId: user.id, createdAt: { gte: new Date(Date.now() - DAY_MS) } },
-    });
-    if (used >= SCENE_DAILY_LIMIT) {
-      throw new HttpException({ error: "scene_limit" }, 429);
+    const loaded = await this.proxies.loadTarget(user);
+    const settings = await this.energy.settings();
+    const sceneModel = await this.prisma.sceneModel.findUniqueOrThrow({ where: { key: settings.sceneModelKey } });
+    if (loaded.free) {
+      await this.charge.checkCap(user, settings);
     }
-    const prompt = await this.writePrompt(user, context);
-    const image = await this.images.generate(sceneImageRequest(prompt, character.isAdult)).catch((error: unknown) => {
+    const spend = await this.energy.spend(user.id, sceneEnergyPrice(sceneModel, settings), "scene", {
+      chatId: context.chat.id,
+      freeModelId: loaded.free?.id,
+    });
+    try {
+      return await this.draw(user, context, loaded, sceneModel.key as SceneModelKey);
+    } catch (error) {
+      await this.energy.refund(spend);
+      throw error;
+    }
+  }
+
+  private async draw(user: User, context: ReplyContext, loaded: LoadedTarget, model: SceneModelKey): Promise<SceneView> {
+    const { chat, character, history } = context;
+    const prompt = await this.writePrompt(user, context, loaded);
+    const image = await this.images.generate(sceneImageRequest(model, prompt, character.isAdult)).catch((error: unknown) => {
       if (error instanceof SceneImageError) {
         this.logger.warn(`The scene image failed: ${error.message}`);
         throw new HttpException({ error: error.code }, error.code === "scene_timeout" ? 504 : 502);
@@ -90,8 +104,8 @@ export class ScenesService {
   }
 
   /** One short call to the active proxy that describes the scene for the image model. */
-  private async writePrompt(user: User, chat: ReplyContext): Promise<string> {
-    const { target, customPrompt, contextTokens } = await this.proxies.loadTarget(user);
+  private async writePrompt(user: User, chat: ReplyContext, loaded: LoadedTarget): Promise<string> {
+    const { target, customPrompt, contextTokens, free } = loaded;
     const { character, history } = chat;
     const messages = buildScenePrompt(
       { character, customPrompt, contextTokens, memory: chat.chat.memory, userName: user.name, history },
@@ -108,7 +122,7 @@ export class ScenesService {
       text = completion.choices[0]?.message.content ?? "";
     } catch (error) {
       this.logger.warn({ msg: "Proxy scene prompt failed", ...aiErrorLogFields(error) });
-      throw new HttpException({ error: toAiError(error) }, 502);
+      throw new HttpException({ error: await this.charge.callError(toAiError(error), user, free) }, 502);
     }
     const prompt = cleanScenePrompt(text);
     if (!prompt) {

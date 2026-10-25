@@ -24,6 +24,14 @@ const envSchema = z.object({
     .refine((key) => key.length === 32, "KEY_ENCRYPTION_KEY must be the base64 text of 32 bytes"),
   /** The RunPod API key for the scene images. Only the API reads it. The browser never gets it. */
   RUNPOD_API_KEY: z.string({ error: "RUNPOD_API_KEY is missing" }).min(1, "RUNPOD_API_KEY is empty"),
+  /**
+   * The OpenRouter API key for the free models. Only the API reads it. The browser never gets it. With no key, the
+   * free models are off, and a user must add an own model. An empty value, as in the env example, is no key.
+   */
+  OPENROUTER_API_KEY: z
+    .string()
+    .optional()
+    .transform((value) => value?.trim() || undefined),
   /** The directory for the uploaded images. In Docker, it is a volume. */
   UPLOAD_DIR: z.string().min(1).default("./uploads"),
   PORT: z.coerce.number().int().positive().default(3001),
