@@ -12,7 +12,7 @@ import { type FormEvent, useState } from "react";
 import { Field } from "@/components/ui/form-field";
 import { ApiError } from "@/lib/api";
 import { createPersona, updatePersona } from "../api";
-import { Modal } from "./modal";
+import { Modal } from "@/components/ui/modal";
 
 const NAME_MESSAGE = `Enter a name of ${PERSONA_NAME_MAX} characters or less.`;
 const DESCRIPTION_MESSAGE = `Use ${PERSONA_DESCRIPTION_MAX.toLocaleString("en-US")} characters or less.`;

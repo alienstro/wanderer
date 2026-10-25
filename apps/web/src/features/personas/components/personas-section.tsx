@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PERSONA_LIMIT, type Persona } from "@wanderer/shared";
 import { useState } from "react";
 import { deletePersona, fetchPersonas, makeDefaultPersona, personasKey } from "../api";
-import { Modal } from "./modal";
+import { Modal } from "@/components/ui/modal";
 import { PersonaDialog } from "./persona-dialog";
 
 const LIMIT_TEXT = `You can save up to ${PERSONA_LIMIT} personas.`;
