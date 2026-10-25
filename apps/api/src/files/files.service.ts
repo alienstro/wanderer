@@ -46,17 +46,21 @@ export class FilesService {
     return { id, url: fileUrl(id) };
   }
 
-  /** Gives the bytes of a file, or null for an unknown ID. */
-  async read(id: string): Promise<Buffer | null> {
+  /**
+   * Gives the bytes of a file, or null for an unknown ID. A scene image comes from a private chat, so only its
+   * owner gets it. Another viewer gets null, as for an unknown ID.
+   */
+  async read(id: string, viewerId: string | null): Promise<{ data: Buffer; private: boolean } | null> {
     if (!isUuid(id)) {
       return null;
     }
-    const file = await this.prisma.file.findUnique({ where: { id } });
-    if (!file) {
+    const file = await this.prisma.file.findUnique({ where: { id }, include: { sceneImage: { select: { id: true } } } });
+    const isPrivate = Boolean(file?.sceneImage);
+    if (!file || (isPrivate && file.ownerId !== viewerId)) {
       return null;
     }
     try {
-      return await this.storage.read(file.path);
+      return { data: await this.storage.read(file.path), private: isPrivate };
     } catch (error) {
       // A row with no bytes is a lost file, for example after a deploy without the volume.
       if ((error as NodeJS.ErrnoException).code === "ENOENT") {

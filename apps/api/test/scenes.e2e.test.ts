@@ -80,12 +80,22 @@ describe("scene images", () => {
     expect(images.requests).toEqual([{ prompt: expect.stringContaining("A misty forest at dawn."), negativePrompt: expect.stringContaining("nudity") }]);
     expect(fake.requests.at(-1)!.body.messages?.at(-1)?.content).toContain("Describe the current scene");
 
-    const file = await request(app.getHttpServer()).get(res.body.url).expect(200);
+    const file = await request(app.getHttpServer()).get(res.body.url).set("Cookie", user.cookie).expect(200);
     const meta = await sharp(file.body as Buffer).metadata();
     expect([meta.format, meta.width, meta.height]).toEqual(["webp", 1024, 1024]);
 
     const detail = await request(app.getHttpServer()).get(`/chats/${chatId}`).set("Cookie", user.cookie).expect(200);
     expect(detail.body.scenes).toEqual([res.body]);
+  });
+
+  it("a scene image shows only to the owner of the chat, and no shared cache keeps it", async () => {
+    fake.next({ pieces: ["A forest."] });
+    const { url } = (await generate().expect(201)).body as { url: string };
+    const owner = await request(app.getHttpServer()).get(url).set("Cookie", user.cookie).expect(200);
+    expect(owner.headers["cache-control"]).toBe("private, no-store");
+    await request(app.getHttpServer()).get(url).expect(404);
+    const other = await userWithSession(app, 2);
+    await request(app.getHttpServer()).get(url).set("Cookie", other.cookie).expect(404);
   });
 
   it("a RunPod failure gives 502 scene_failed and saves no image, and the user can try again", async () => {
@@ -143,7 +153,7 @@ describe("scene images", () => {
     fake.next({ pieces: ["A forest."] });
     const scene = (await generate().expect(201)).body as { url: string };
     await request(app.getHttpServer()).delete(`/chats/${chatId}`).set("Origin", WEB_ORIGIN).set("Cookie", user.cookie).expect(204);
-    await request(app.getHttpServer()).get(scene.url).expect(404);
+    await request(app.getHttpServer()).get(scene.url).set("Cookie", user.cookie).expect(404);
     expect(await prisma.file.count({ where: { ownerId: user.user.id } })).toBe(0);
     expect(await prisma.sceneImage.count({ where: { userId: user.user.id } })).toBe(1);
   });
