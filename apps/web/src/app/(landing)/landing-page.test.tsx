@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SIGNED_IN_HINT_COOKIE } from "@/lib/signed-in-hint";
-import { LANDING_DEFINITION } from "./landing-view";
+import { LANDING_DEFINITION } from "@/features/landing";
 import LandingPage from "./page";
 
 const serverApiFetch = vi.fn();

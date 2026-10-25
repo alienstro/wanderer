@@ -1,0 +1,28 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { __nameCamel__ListKey, fetch__Name__List } from "../api";
+
+/** The __label__ list of the user. A route page renders it. */
+export function __Name__List() {
+  const list = useQuery({ queryKey: __nameCamel__ListKey, queryFn: fetch__Name__List });
+
+  if (list.isError) {
+    return <p className="m-0 text-error">The list did not load. Reload the page.</p>;
+  }
+  if (!list.data) {
+    return null;
+  }
+  if (list.data.length === 0) {
+    return <p className="m-0 text-muted">Nothing here yet.</p>;
+  }
+  return (
+    <ul className="m-0 flex flex-col gap-2 p-0">
+      {list.data.map((item) => (
+        <li key={item.id} className="list-none">
+          {item.name}
+        </li>
+      ))}
+    </ul>
+  );
+}

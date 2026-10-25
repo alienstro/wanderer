@@ -54,6 +54,19 @@ export async function deleteCommentsOf(tx: Prisma.TransactionClient, authorId: s
     WHERE c.id = g.character_id`;
 }
 
+/**
+ * Deletes one comment and takes 1 from the count of its character, inside the transaction of the caller. The update
+ * accepts only a comment that is not deleted, so it gives false and changes no count for a second delete.
+ */
+export async function deleteComment(tx: Prisma.TransactionClient, commentId: string, characterId: string): Promise<boolean> {
+  const gone = await tx.characterComment.updateMany({ where: { id: commentId, deletedAt: null }, data: { deletedAt: new Date() } });
+  if (gone.count === 0) {
+    return false;
+  }
+  await tx.character.update({ where: { id: characterId }, data: { commentCount: { decrement: 1 } } });
+  return true;
+}
+
 @Injectable()
 export class CommentsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -133,14 +146,9 @@ export class CommentsService {
         : new NotFoundException(NOT_FOUND);
     }
     await this.prisma.$transaction(async (tx) => {
-      const gone = await tx.characterComment.updateMany({
-        where: { id: row.id, deletedAt: null },
-        data: { deletedAt: new Date() },
-      });
-      if (gone.count === 0) {
+      if (!(await deleteComment(tx, row.id, row.characterId))) {
         throw new NotFoundException(NOT_FOUND);
       }
-      await tx.character.update({ where: { id: row.characterId }, data: { commentCount: { decrement: 1 } } });
     });
   }
 

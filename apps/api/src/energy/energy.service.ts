@@ -1,6 +1,7 @@
 import { BadRequestException, HttpException, Injectable } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { toEnergy } from "@wanderer/shared";
-import { EventsService } from "../events/events.service.js";
+import { sendAppEvent } from "../events/app-events.js";
 import type { EnergyReason, EnergySettings, Prisma } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
@@ -50,7 +51,7 @@ function nextRefill(now: Date): Date {
 export class EnergyService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly events: EventsService,
+    private readonly emitter: EventEmitter2,
   ) {}
 
   /** The admin values. The API reads the row at each action, so a change needs no restart. */
@@ -85,6 +86,11 @@ export class EnergyService {
     });
   }
 
+  /** Sets the own daily amount of a user, in hundredths. Null uses the daily energy of the settings again. */
+  async setDailyEnergy(userId: string, dailyEnergy: number | null): Promise<void> {
+    await this.prisma.user.update({ where: { id: userId }, data: { dailyEnergy } });
+  }
+
   /**
    * Takes the price before the model call. A balance below the price gives 429 `energy_low` with the balance, the
    * price and the next refill time, and records an `energy_too_low` event. A price of 0 also saves a row, so the
@@ -111,7 +117,7 @@ export class EnergyService {
       return { ok: true as const, entry };
     });
     if (!result.ok) {
-      await this.events.record("energy_too_low", { userId, reason });
+      await sendAppEvent(this.emitter, "energy_too_low", { userId, reason });
       throw new HttpException(
         { error: "energy_low", balance: toEnergy(result.balance), price: toEnergy(price), nextRefillAt: nextRefill(now).toISOString() },
         429,

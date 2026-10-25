@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { serverApiFetch } from "@/lib/server-api";
 import { SIGNED_IN_HINT_COOKIE } from "@/lib/signed-in-hint";
-import { LANDING_DEFINITION, LandingView } from "./landing-view";
+import { LANDING_DEFINITION, LandingView } from "@/features/landing";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 

@@ -62,6 +62,7 @@ function toChatDetail(chat: DetailChat, user: User): ChatDetail {
     canSend: characterAccess(chat.character, user) === "ok",
     opening: { index: Math.max(0, Math.min(chat.openingIndex, count - 1)), count },
     scenes: chat.sceneImages.map(toSceneView),
+    personaName: chat.personaName,
   };
 }
 
@@ -148,12 +149,16 @@ export class ChatsService {
     const chat = await this.prisma.$transaction(async (tx) => {
       // The chat count goes up for each new chat and does not go down when a chat is deleted.
       await tx.character.update({ where: { id: characterId }, data: { chatCount: { increment: 1 } } });
+      // The chat keeps a copy of the default persona. A later edit or delete of the persona does not change it.
+      const persona = await tx.persona.findFirst({ where: { userId: user.id, isDefault: true } });
       return tx.chat.create({
         data: {
           userId: user.id,
           characterId,
           title: character.chatName || character.title,
           openingIndex,
+          personaName: persona?.name ?? null,
+          personaDescription: persona?.description ?? null,
           messages: { create: { role: "assistant", content: opening.text, position: 0 } },
         },
         include: detailInclude,
@@ -162,13 +167,23 @@ export class ChatsService {
     return toChatDetail(chat, user);
   }
 
-  async list(user: User, characterId: string | undefined): Promise<ChatListResponse> {
-    if (characterId !== undefined && !isUuid(characterId)) {
+  /** With `latestPerCharacter` "true", the list has only the newest chat of each character. */
+  async list(
+    user: User,
+    characterId: string | undefined,
+    latestPerCharacter: string | undefined,
+  ): Promise<ChatListResponse> {
+    if (
+      (characterId !== undefined && !isUuid(characterId)) ||
+      (latestPerCharacter !== undefined && latestPerCharacter !== "true")
+    ) {
       throw new BadRequestException({ error: "invalid_query" });
     }
     const chats = await this.prisma.chat.findMany({
       where: { userId: user.id, characterId },
       orderBy: { lastMessageAt: "desc" },
+      // Prisma keeps the first chat of each character in the order above, so the newest chat stays.
+      distinct: latestPerCharacter === "true" ? ["characterId"] : undefined,
       take: LIST_LIMIT,
       // The count comes in the same query, so the list does not load each message.
       include: {
@@ -229,7 +244,7 @@ export class ChatsService {
     await this.findOwn(user, id);
     const scenes = await this.prisma.file.findMany({ where: { sceneImage: { chatId: id } }, select: { id: true, path: true } });
     await this.prisma.$transaction([
-      this.prisma.file.deleteMany({ where: { id: { in: scenes.map((file) => file.id) } } }),
+      this.files.deleteRows(scenes.map((file) => file.id)),
       this.prisma.chat.delete({ where: { id } }),
     ]);
     await this.files.removeBytes(scenes.map((file) => file.path));

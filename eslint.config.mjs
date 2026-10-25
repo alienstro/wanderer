@@ -1,6 +1,48 @@
 import js from "@eslint/js";
+import boundaries from "eslint-plugin-boundaries";
 import globals from "globals";
 import tseslint from "typescript-eslint";
+import { tableOwnerConfigs } from "./apps/api/table-owners.mjs";
+
+// The import rules of the web app. docs/architecture.md explains them: app → features → components/ui, lib.
+const webBoundaries = {
+  files: ["apps/web/src/**/*.{ts,tsx}"],
+  plugins: { boundaries },
+  settings: {
+    "boundaries/elements": [
+      { type: "app", pattern: "src/app" },
+      { type: "feature", pattern: "src/features/*", capture: ["featureName"] },
+      { type: "ui", pattern: "src/components/ui" },
+      { type: "lib", pattern: "src/lib" },
+    ],
+    // ESLint runs in each package folder, so the path to the tsconfig is absolute.
+    "import/resolver": { typescript: { project: `${import.meta.dirname}/apps/web/tsconfig.json` } },
+  },
+  rules: {
+    "boundaries/dependencies": [
+      "error",
+      {
+        default: "disallow",
+        message:
+          "A {{from.element.types.[0]}} file must not import this {{to.element.types.[0]}} file. Import another feature only through its index.ts. See docs/architecture.md, import rules.",
+        policies: [
+          { from: { element: { type: "app" } }, allow: { to: { element: { types: { anyOf: ["app", "ui", "lib"] } } } } },
+          // A route imports a feature only through its index.ts.
+          { from: { element: { type: "app" } }, allow: { to: { element: { type: "feature", fileInternalPath: "index.ts" } } } },
+          { from: { element: { type: "feature" } }, allow: { to: { element: { types: { anyOf: ["ui", "lib"] } } } } },
+          // A feature imports its own files, and only the index.ts of another feature.
+          {
+            from: { element: { type: "feature" } },
+            allow: { to: { element: { type: "feature", captured: { featureName: "{{from.element.captured.featureName}}" } } } },
+          },
+          { from: { element: { type: "feature" } }, allow: { to: { element: { type: "feature", fileInternalPath: "index.ts" } } } },
+          { from: { element: { type: "ui" } }, allow: { to: { element: { types: { anyOf: ["ui", "lib"] } } } } },
+          { from: { element: { type: "lib" } }, allow: { to: { element: { type: "lib" } } } },
+        ],
+      },
+    ],
+  },
+};
 
 export default tseslint.config(
   { ignores: ["**/dist/**", "**/.next/**", "**/.next-e2e/**", "**/node_modules/**", "**/generated/**", "**/next-env.d.ts", "e2e/.tmp/**", "e2e/test-results/**", "e2e/playwright-report/**"] },
@@ -15,6 +57,17 @@ export default tseslint.config(
       ],
     },
   },
+  // A long source file does too many jobs. Split it. Test files are exempt.
+  {
+    files: ["**/src/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.{ts,tsx}"],
+    rules: { "max-lines": ["error", { max: 400, skipBlankLines: true, skipComments: true }] },
+  },
+  webBoundaries,
+  // Only the owner module of a table writes to it.
+  ...tableOwnerConfigs("apps/api/src"),
   // Plain .mjs scripts run in Node.
   { files: ["**/*.mjs"], languageOptions: { globals: globals.node } },
+  // The .cjs config files (dependency-cruiser) are CommonJS in Node.
+  { files: ["**/*.cjs"], languageOptions: { globals: globals.node, sourceType: "commonjs" } },
 );

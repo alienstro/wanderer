@@ -1,0 +1,13 @@
+import { Module } from "@nestjs/common";
+import { AuthModule } from "../auth/auth.module.js";
+import { __Name__Controller } from "./__name__.controller.js";
+import { __Name__Service } from "./__name__.service.js";
+
+@Module({
+  imports: [AuthModule],
+  controllers: [__Name__Controller],
+  providers: [__Name__Service],
+  // Export a provider here only when another module must call this module.
+  exports: [],
+})
+export class __Name__Module {}

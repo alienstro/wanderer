@@ -1,0 +1,31 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from "@testing-library/react";
+import type { __Name__View } from "@wanderer/shared";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { __Name__List } from "./__name__-list";
+
+function renderWith(items: __Name__View[]) {
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json(items)));
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <__Name__List />
+    </QueryClientProvider>,
+  );
+}
+
+describe("__Name__List", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("shows a line when the list is empty", async () => {
+    renderWith([]);
+    expect(await screen.findByText("Nothing here yet.")).toBeInTheDocument();
+  });
+
+  it("shows the name of each item", async () => {
+    renderWith([{ id: "1", name: "First" }]);
+    expect(await screen.findByText("First")).toBeInTheDocument();
+  });
+});

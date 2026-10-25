@@ -1,0 +1,15 @@
+import { Injectable } from "@nestjs/common";
+import type { __Name__View } from "@wanderer/shared";
+import type { User } from "../generated/prisma/client.js";
+
+/**
+ * The business rules of the __label__ feature, and the Prisma calls on the tables that this module owns. Add each
+ * new table to apps/api/table-owners.mjs and to the table owners in docs/architecture.md.
+ */
+@Injectable()
+export class __Name__Service {
+  /** The __label__ list of the user. It is empty until the feature has a table. */
+  async list(_user: User): Promise<__Name__View[]> {
+    return [];
+  }
+}

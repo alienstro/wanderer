@@ -26,6 +26,14 @@ export function toMeResponse(user: User, activeProxy: ActiveProxy): MeResponse {
   };
 }
 
+/**
+ * Makes a new proxy the active proxy when the user has no active proxy. The proxies module calls it inside the
+ * transaction that saves the proxy. The me module owns the profile columns of users (docs/architecture.md).
+ */
+export async function activateFirstProxy(tx: Prisma.TransactionClient, userId: string, proxyId: string): Promise<void> {
+  await tx.user.updateMany({ where: { id: userId, activeProxyId: null }, data: { activeProxyId: proxyId } });
+}
+
 @Injectable()
 export class MeService {
   constructor(
@@ -53,6 +61,16 @@ export class MeService {
       ? await this.prisma.proxy.findUnique({ where: { id: user.activeProxyId }, ...activeProxySelect })
       : null;
     return toMeResponse(user, activeProxy);
+  }
+
+  /** Makes a proxy the active proxy. The caller checks that the user owns the proxy. */
+  setActiveProxy(userId: string, proxyId: string): Promise<User> {
+    return this.prisma.user.update({ where: { id: userId }, data: { activeProxyId: proxyId } });
+  }
+
+  /** Picks a free model and clears the active proxy, so that the next reply uses the free model. */
+  setFreeModel(userId: string, freeModelId: string): Promise<User> {
+    return this.prisma.user.update({ where: { id: userId }, data: { freeModelId, activeProxyId: null } });
   }
 
   /**

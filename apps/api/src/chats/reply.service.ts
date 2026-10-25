@@ -1,16 +1,17 @@
 import { BadRequestException, ConflictException, Inject, Injectable, Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { type AiErrorCode, messageInputSchema } from "@wanderer/shared";
 import type { Response } from "express";
 import { AI_CLIENT_FACTORY, type AiClientFactory, type AiTarget } from "../ai/ai-client.js";
 import { aiErrorLogFields, toAiError } from "../ai/ai-errors.js";
 import { AiChargeService } from "../energy/ai-charge.service.js";
-import { EventsService } from "../events/events.service.js";
+import { sendAppEvent } from "../events/app-events.js";
 import type { Message, User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { ProxiesService } from "../proxies/proxies.service.js";
 import { ChatLocks } from "./chat-locks.js";
 import { ChatsService, toMessageView } from "./chats.service.js";
-import { buildReplyPrompt } from "./prompt.js";
+import { buildReplyPrompt, promptUser } from "./prompt.js";
 import { openSse, type SseWriter } from "./sse.js";
 
 export interface ReplyTiming {
@@ -55,7 +56,7 @@ export class ReplyService {
     private readonly prisma: PrismaService,
     private readonly chats: ChatsService,
     private readonly proxies: ProxiesService,
-    private readonly events: EventsService,
+    private readonly emitter: EventEmitter2,
     private readonly charge: AiChargeService,
     @Inject(AI_CLIENT_FACTORY) private readonly clients: AiClientFactory,
     @Inject(REPLY_TIMING) private readonly timing: ReplyTiming,
@@ -95,7 +96,7 @@ export class ReplyService {
         customPrompt,
         contextTokens,
         memory: chat.memory,
-        userName: user.name,
+        ...promptUser(chat, user),
         history: promptHistory,
       });
       const result = await this.generate(target, prompt, res, sse);
@@ -114,7 +115,7 @@ export class ReplyService {
       const error = result.error && (await this.charge.callError(result.error, user, free));
       // A Stop of the user is not a failure, so it gives no error and no event.
       if (error) {
-        await this.events.record("ai_reply_failed", { userId: user.id, characterId: chat.characterId, reason: error });
+        await sendAppEvent(this.emitter, "ai_reply_failed", { userId: user.id, characterId: chat.characterId, reason: error });
       }
       if (result.clientGone) {
         return;
@@ -129,7 +130,7 @@ export class ReplyService {
       if (!replied) {
         await this.charge.refund(spend);
       }
-      await this.events.record("ai_reply_failed", { userId: user.id, characterId: chat.characterId, reason: "internal_error" });
+      await sendAppEvent(this.emitter, "ai_reply_failed", { userId: user.id, characterId: chat.characterId, reason: "internal_error" });
       if (!sse) {
         throw error;
       }

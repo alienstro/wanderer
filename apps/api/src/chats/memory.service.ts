@@ -1,13 +1,14 @@
 import { BadRequestException, HttpException, Inject, Injectable, Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { estimateTokens, MEMORY_MAX, memoryDraftInputSchema, type MemoryDraftResponse } from "@wanderer/shared";
 import { AI_CLIENT_FACTORY, type AiClientFactory } from "../ai/ai-client.js";
 import { aiErrorLogFields, toAiError } from "../ai/ai-errors.js";
 import { AiChargeService } from "../energy/ai-charge.service.js";
-import { EventsService } from "../events/events.service.js";
+import { sendAppEvent } from "../events/app-events.js";
 import type { Message, User } from "../generated/prisma/client.js";
 import { ProxiesService } from "../proxies/proxies.service.js";
 import { ChatsService } from "./chats.service.js";
-import { buildSummaryPrompt, summaryInputTokens, windowStart } from "./prompt.js";
+import { buildSummaryPrompt, promptUser, summaryInputTokens, windowStart } from "./prompt.js";
 
 const SUMMARY_MAX_TOKENS = 800;
 const SUMMARY_TIMEOUT_MS = 60_000;
@@ -34,7 +35,7 @@ export class MemoryService {
   constructor(
     private readonly chats: ChatsService,
     private readonly proxies: ProxiesService,
-    private readonly events: EventsService,
+    private readonly emitter: EventEmitter2,
     private readonly charge: AiChargeService,
     @Inject(AI_CLIENT_FACTORY) private readonly clients: AiClientFactory,
   ) {}
@@ -53,7 +54,7 @@ export class MemoryService {
     const { target, customPrompt, contextTokens, free } = await this.proxies.loadTarget(user);
     const memory = parsed.data.memory ?? chat.memory;
     const through = parsed.data.throughPosition === undefined ? chat.memoryThroughPosition : parsed.data.throughPosition;
-    const input = { character, customPrompt, contextTokens, memory, userName: user.name, history };
+    const input = { character, customPrompt, contextTokens, memory, ...promptUser(chat, user), history };
     const uncovered = history
       .slice(0, windowStart(input, 0))
       .filter((message) => through === null || message.position > through);
@@ -77,12 +78,12 @@ export class MemoryService {
       this.logger.warn({ msg: "Proxy summary failed", ...aiErrorLogFields(error) });
       await this.charge.refund(spend);
       const code = await this.charge.callError(toAiError(error), user, free);
-      await this.events.record("summary_failed", { userId: user.id, characterId: chat.characterId, reason: code });
+      await sendAppEvent(this.emitter, "summary_failed", { userId: user.id, characterId: chat.characterId, reason: code });
       throw new HttpException({ error: code }, 502);
     }
     if (!text) {
       await this.charge.refund(spend);
-      await this.events.record("summary_failed", { userId: user.id, characterId: chat.characterId, reason: "empty_summary" });
+      await sendAppEvent(this.emitter, "summary_failed", { userId: user.id, characterId: chat.characterId, reason: "empty_summary" });
       throw new HttpException({ error: "summary_failed" }, 502);
     }
     return { memory: text.slice(0, MEMORY_MAX), throughPosition: last.position };

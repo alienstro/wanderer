@@ -37,9 +37,20 @@ export interface PromptInput {
   contextTokens: number;
   /** The memory text of the chat. The user writes it, or saves a summary draft. */
   memory: string;
+  /** The persona name of the chat, or the account name when the chat has no persona. */
   userName: string;
+  /** The persona description of the chat. Empty when the chat has no persona. */
+  userDescription: string;
   /** The messages of the chat, oldest first. The opening is the first message. */
   history: Array<{ role: "user" | "assistant"; content: string }>;
+}
+
+/** The user values of the prompt. The chat copy of the persona wins over the account name. */
+export function promptUser(
+  chat: { personaName: string | null; personaDescription: string | null },
+  account: { name: string },
+): { userName: string; userDescription: string } {
+  return { userName: chat.personaName ?? account.name, userDescription: chat.personaDescription ?? "" };
 }
 
 function fill(text: string, input: PromptInput): string {
@@ -54,6 +65,8 @@ function systemText(input: PromptInput): string {
     ["Instructions", input.customPrompt],
     ["Personality", character.personality],
     ["Scenario", character.scenario],
+    // The name goes before the description, so the model knows whose facts they are.
+    ["User", input.userDescription.trim() ? `{{user}}: ${input.userDescription.trim()}` : ""],
     ["Example dialogs", character.exampleDialogs],
     ["Memory", input.memory],
   ];

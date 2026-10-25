@@ -1,7 +1,6 @@
 "use client";
 
-import { AdminNav } from "@/components/admin-nav";
-import { AdminReports } from "@/components/admin-reports";
+import { AdminNav, AdminReports } from "@/features/admin";
 import { useRequireLogin } from "@/lib/use-require-login";
 
 /** The admin page with the open reports. A visitor goes to /login, and a normal user sees a short message. */

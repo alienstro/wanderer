@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import {
   AI_ERROR_TEXT,
   type MeResponse,
@@ -19,14 +20,14 @@ import { aiErrorLogFields, toAiError } from "../ai/ai-errors.js";
 import { MODEL_LIST_CLIENT, type ModelListClient, ModelListError, modelsUrl } from "../ai/model-list.js";
 import { assertProxyUrl, BlockedUrlError } from "../ai/url-guard.js";
 import { ApiKeysService } from "../api-keys/api-keys.service.js";
-import { EventsService } from "../events/events.service.js";
+import { sendAppEvent } from "../events/app-events.js";
 import { KeyDecryptError } from "../api-keys/key-cipher.js";
 import { isUuid } from "../common/uuid.js";
 import { ENV, type Env } from "../config/env.js";
 import { OPENROUTER_CHAT_URL } from "../free-models/free-models.js";
 import { FreeModelsService } from "../free-models/free-models.service.js";
 import type { ApiKey, FreeModel, Proxy, User } from "../generated/prisma/client.js";
-import { MeService } from "../me/me.service.js";
+import { activateFirstProxy, MeService } from "../me/me.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 const NOT_FOUND = { error: "not_found" };
@@ -94,7 +95,7 @@ export class ProxiesService {
     private readonly prisma: PrismaService,
     private readonly me: MeService,
     private readonly apiKeys: ApiKeysService,
-    private readonly events: EventsService,
+    private readonly emitter: EventEmitter2,
     private readonly freeModels: FreeModelsService,
     @Inject(AI_CLIENT_FACTORY) private readonly clients: AiClientFactory,
     @Inject(MODEL_LIST_CLIENT) private readonly modelLists: ModelListClient,
@@ -120,7 +121,7 @@ export class ProxiesService {
     }
     const row = await this.prisma.$transaction(async (tx) => {
       const created = await tx.proxy.create({ data: { userId: user.id, ...input }, include: WITH_KEY });
-      await tx.user.updateMany({ where: { id: user.id, activeProxyId: null }, data: { activeProxyId: created.id } });
+      await activateFirstProxy(tx, user.id, created.id);
       return created;
     });
     return toProxyView(row, user.activeProxyId ?? row.id);
@@ -146,7 +147,7 @@ export class ProxiesService {
 
   async activate(user: User, id: string): Promise<MeResponse> {
     await this.findOwn(user, id);
-    const updated = await this.prisma.user.update({ where: { id: user.id }, data: { activeProxyId: id } });
+    const updated = await this.me.setActiveProxy(user.id, id);
     return this.me.toResponse(updated);
   }
 
@@ -158,7 +159,7 @@ export class ProxiesService {
       target = this.target(row);
     } catch (error) {
       if (error instanceof KeyDecryptError) {
-        await this.events.record("proxy_test_failed", { userId: user.id, reason: "invalid_key" });
+        await sendAppEvent(this.emitter, "proxy_test_failed", { userId: user.id, reason: "invalid_key" });
         return { ok: false, error: "invalid_key", message: AI_ERROR_TEXT.invalid_key };
       }
       throw error;
@@ -176,7 +177,7 @@ export class ProxiesService {
     } catch (error) {
       this.logger.warn({ msg: "Proxy test failed", ...aiErrorLogFields(error) });
       const code = toAiError(error);
-      await this.events.record("proxy_test_failed", { userId: user.id, reason: code });
+      await sendAppEvent(this.emitter, "proxy_test_failed", { userId: user.id, reason: code });
       return { ok: false, error: code, message: AI_ERROR_TEXT[code] };
     }
   }
@@ -212,7 +213,7 @@ export class ProxiesService {
       }
       if (error instanceof ModelListError) {
         this.logger.warn({ msg: "Proxy model list failed", code: error.code });
-        await this.events.record("model_list_failed", { userId: user.id, reason: error.code });
+        await sendAppEvent(this.emitter, "model_list_failed", { userId: user.id, reason: error.code });
         return modelsFailure(error.code);
       }
       throw error;
