@@ -68,6 +68,8 @@ export interface EnergyView {
   nextRefillAt: string;
   /** The text model of the user: an own model, a free model, or none. */
   model: "own" | "free" | null;
+  /** The display name of the free model. It is null when the model is not "free". */
+  freeModelName: string | null;
   /** The text prices are 0 on an own model. The scene price is the same for each user. */
   prices: { reply: number; choices: number; memory: number; scene: number };
 }

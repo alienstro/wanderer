@@ -82,6 +82,7 @@ export class FreeModelsService {
       dailyEnergy: toEnergy(dailyEnergy),
       nextRefillAt: nextRefillAt.toISOString(),
       model: user.activeProxyId ? "own" : free ? "free" : null,
+      freeModelName: free?.displayName ?? null,
       prices: {
         reply: free ? toEnergy(textEnergyPrice(free, settings) ?? 0) : 0,
         choices: free ? toEnergy(settings.choicesPrice) : 0,
