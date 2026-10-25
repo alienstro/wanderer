@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cinzel, Inter } from "next/font/google";
 import type { ReactNode } from "react";
-import { Toaster } from "@/components/toaster";
+import { Toaster } from "@/components/ui/toaster";
 import { QueryProvider } from "@/lib/query-provider";
 import "./globals.css";
 

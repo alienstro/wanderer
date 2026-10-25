@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { apiFetch, fileSrc } from "@/lib/api";
 import { useMe } from "@/lib/query-provider";
-import { Avatar } from "./avatar";
+import { Avatar } from "@/components/ui/avatar";
 
 const RECENT_COUNT = 8;
 

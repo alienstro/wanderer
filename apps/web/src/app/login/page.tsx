@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CenteredCard } from "@/components/centered-card";
+import { CenteredCard } from "@/components/ui/centered-card";
 import { type LoginError, LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Log in · Wanderer" };

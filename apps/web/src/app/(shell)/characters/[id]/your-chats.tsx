@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ChatListResponse, ChatSummary } from "@wanderer/shared";
 import Link from "next/link";
 import { useId, useState } from "react";
-import { InlineMarkdown } from "@/components/markdown";
+import { InlineMarkdown } from "@/components/ui/markdown";
 import { apiFetch } from "@/lib/api";
 import { messagesLabel } from "@/lib/format";
 import { useMe } from "@/lib/query-provider";

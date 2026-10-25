@@ -3,7 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ChoicesResponse, MeResponse } from "@wanderer/shared";
 import { useState } from "react";
-import { RefreshIcon } from "@/components/icons";
+import { RefreshIcon } from "@/components/ui/icons";
 import { apiFetch } from "@/lib/api";
 
 export interface ReplyChoicesState {

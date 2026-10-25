@@ -2,7 +2,7 @@ import { type CharacterCard as Card, OPENINGS_MAX } from "@wanderer/shared";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { CharacterCard } from "@/components/character-card";
-import { Logo } from "@/components/logo";
+import { Logo } from "@/components/ui/logo";
 import { CONTACT_EMAIL, OPERATOR_NAME } from "@/lib/legal";
 import { CharacterPreview, ModelPreview, ReplyChoicesPreview } from "./feature-previews";
 import { SessionRedirect } from "./session-redirect";

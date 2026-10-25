@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { MeResponse } from "@wanderer/shared";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { CenteredCard } from "@/components/centered-card";
+import { CenteredCard } from "@/components/ui/centered-card";
 import { useMe } from "@/lib/query-provider";
 import { HandleForm } from "./handle-form";
 

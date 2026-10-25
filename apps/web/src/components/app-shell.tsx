@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Logo } from "./logo";
+import { Logo } from "@/components/ui/logo";
 import { ModelCard } from "./model-card";
 import { RecentChats } from "./recent-chats";
 import { SidebarDrawer } from "./sidebar-drawer";

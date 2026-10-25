@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { CharacterDetail, CharacterLikeState } from "@wanderer/shared";
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { HeartIcon } from "@/components/heart-icon";
+import { HeartIcon } from "@/components/ui/heart-icon";
 import { apiFetch } from "@/lib/api";
 import { likesLabel } from "@/lib/format";
 import { useMe } from "@/lib/query-provider";

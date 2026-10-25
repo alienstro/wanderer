@@ -16,7 +16,7 @@ import {
 } from "@wanderer/shared";
 import { useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
-import { Field } from "./form-field";
+import { Field } from "@/components/ui/form-field";
 import { ModelPicker } from "./model-picker";
 
 /** The select value that shows the fields for a new saved key. */

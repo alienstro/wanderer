@@ -16,7 +16,7 @@ import {
 import { useRef, useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
 import { CharacterCard } from "../character-card";
-import { Field, Switch } from "../form-field";
+import { Field, Switch } from "@/components/ui/form-field";
 import { AvatarField } from "./avatar-field";
 import { BioToolbar } from "./bio-toolbar";
 import { OpeningsEditor } from "./openings-editor";

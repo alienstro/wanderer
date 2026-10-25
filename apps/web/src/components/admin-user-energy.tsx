@@ -12,8 +12,8 @@ import { type FormEvent, useState } from "react";
 import { adminErrorText, optionalNumber } from "@/lib/admin-energy";
 import { ApiError, apiFetch } from "@/lib/api";
 import { AdminSection } from "./admin-section";
-import { Field } from "./form-field";
-import { NumberedPager } from "./pager";
+import { Field } from "@/components/ui/form-field";
+import { NumberedPager } from "@/components/ui/pager";
 
 const QUERY_KEY = "admin-user-energy";
 const dateFormat = new Intl.DateTimeFormat("en", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });

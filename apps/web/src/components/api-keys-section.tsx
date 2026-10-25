@@ -3,7 +3,7 @@
 import { API_KEY_LIMIT, apiKeyCreateSchema, type ApiKeyInUse, type ApiKeyView } from "@wanderer/shared";
 import { useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
-import { Field } from "./form-field";
+import { Field } from "@/components/ui/form-field";
 
 const NAME_MESSAGE = "Enter a name of 60 characters or less.";
 const KEY_MESSAGE = "Enter the API key.";

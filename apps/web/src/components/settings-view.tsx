@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
-import { Field, Switch } from "./form-field";
+import { Field, Switch } from "@/components/ui/form-field";
 
 const DELETE_WORD = "DELETE";
 

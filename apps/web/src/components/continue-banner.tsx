@@ -5,7 +5,7 @@ import type { ChatListResponse } from "@wanderer/shared";
 import Link from "next/link";
 import { apiFetch, fileSrc } from "@/lib/api";
 import { useMe } from "@/lib/query-provider";
-import { Avatar } from "./avatar";
+import { Avatar } from "@/components/ui/avatar";
 
 /** "Continue your chat": the latest chat of the user, with its last line. Nothing shows with no chats. */
 export function ContinueBanner() {

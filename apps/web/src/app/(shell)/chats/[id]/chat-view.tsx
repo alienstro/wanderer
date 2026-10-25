@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Avatar } from "@/components/avatar";
+import { Avatar } from "@/components/ui/avatar";
 import { ApiError, apiFetch, fileSrc } from "@/lib/api";
 import { streamChat } from "@/lib/chat-stream";
 import { useRequireLogin } from "@/lib/use-require-login";

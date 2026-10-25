@@ -1,5 +1,5 @@
 import type { CharacterDetail } from "@wanderer/shared";
-import { Markdown } from "@/components/markdown";
+import { Markdown } from "@/components/ui/markdown";
 import { fileSrc } from "@/lib/api";
 import { chatsLabel, statusLabel } from "@/lib/format";
 import { CharacterComments } from "./comments";

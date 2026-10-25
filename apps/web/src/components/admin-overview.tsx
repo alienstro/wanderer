@@ -21,8 +21,8 @@ import {
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
-import { Pager, usePager } from "./pager";
-import { TrendLine } from "./trend-line";
+import { Pager, usePager } from "@/components/ui/pager";
+import { TrendLine } from "@/components/ui/trend-line";
 
 const QUERY_KEY = "admin-overview";
 const dateFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" });

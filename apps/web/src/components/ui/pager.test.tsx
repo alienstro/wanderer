@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { NumberedPager, pageNumbers } from "./pager";
+import { NumberedPager, pageNumbers } from "@/components/ui/pager";
 
 describe("pageNumbers", () => {
   it("shows each page when there are 7 pages or less", () => {

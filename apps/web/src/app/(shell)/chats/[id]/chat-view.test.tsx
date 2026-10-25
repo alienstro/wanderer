@@ -5,7 +5,7 @@ import type { ChatDetail, ChatStreamEvent, MessageView, SceneView } from "@wande
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Toaster } from "@/components/toaster";
+import { Toaster } from "@/components/ui/toaster";
 import { ApiError } from "@/lib/api";
 import { ChatView } from "./chat-view";
 

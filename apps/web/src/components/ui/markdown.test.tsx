@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { InlineMarkdown, Markdown } from "./markdown";
+import { InlineMarkdown, Markdown } from "@/components/ui/markdown";
 
 describe("Markdown", () => {
   it("**bold**, *italic*, <u>under</u>, and [link](https://a.b) render as strong, em, u, and a", () => {

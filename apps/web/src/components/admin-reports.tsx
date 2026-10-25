@@ -5,7 +5,7 @@ import { type AdminReport, type AdminReportList, REPORT_REASON_LABELS, type Repo
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
-import { Pager, usePager } from "./pager";
+import { Pager, usePager } from "@/components/ui/pager";
 
 const QUERY_KEY = ["admin-reports"];
 const dateFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" });

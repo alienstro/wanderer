@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/query-provider";
-import { Avatar } from "./avatar";
+import { Avatar } from "@/components/ui/avatar";
 
 /** The foot of the sidebar: the user row with the account menu, or a "Log in" pill for a visitor. The rail shows only the avatar. */
 export function UserRow() {

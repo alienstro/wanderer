@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { fileSrc } from "@/lib/api";
 import { chatsLabel, likesLabel } from "@/lib/format";
-import { HeartIcon } from "./heart-icon";
+import { HeartIcon } from "@/components/ui/heart-icon";
 
 const BADGE =
   "inline-flex items-center gap-[5px] rounded-full bg-[rgba(10,10,12,0.72)] px-[9px] py-1 text-xs font-semibold whitespace-nowrap text-text";

@@ -2,7 +2,7 @@
 
 import { OPENINGS_MAX } from "@wanderer/shared";
 import { useId, useState } from "react";
-import { Markdown } from "../markdown";
+import { Markdown } from "@/components/ui/markdown";
 
 const ICON = { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
 

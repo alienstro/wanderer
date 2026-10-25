@@ -2,9 +2,9 @@
 
 import type { MessageView } from "@wanderer/shared";
 import { useState } from "react";
-import { Avatar } from "@/components/avatar";
-import { PencilIcon, RefreshIcon, TrashIcon } from "@/components/icons";
-import { Markdown } from "@/components/markdown";
+import { Avatar } from "@/components/ui/avatar";
+import { PencilIcon, RefreshIcon, TrashIcon } from "@/components/ui/icons";
+import { Markdown } from "@/components/ui/markdown";
 
 export interface MessageItemProps {
   message: Pick<MessageView, "role" | "content">;

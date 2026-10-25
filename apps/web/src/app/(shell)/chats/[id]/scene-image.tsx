@@ -2,7 +2,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 import type { SceneView } from "@wanderer/shared";
-import { ImageIcon } from "@/components/icons";
+import { ImageIcon } from "@/components/ui/icons";
 import { ApiError, apiFetch, fileSrc } from "@/lib/api";
 
 /** The text for a failed scene image. An AI error of the model has its own text in the chat page. */
