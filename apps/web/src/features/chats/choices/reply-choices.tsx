@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ChoicesResponse, MeResponse } from "@wanderer/shared";
 import { useState } from "react";
 import { RefreshIcon } from "@/components/ui/icons";
+import { useRefreshEnergy } from "@/features/energy";
 import { apiFetch } from "@/lib/api";
 
 export interface ReplyChoicesState {
@@ -21,10 +22,18 @@ export interface ReplyChoicesState {
  */
 export function useReplyChoices(chatId: string, round: number, visible: boolean): ReplyChoicesState {
   const [nonce, setNonce] = useState(0);
+  const refreshEnergy = useRefreshEnergy();
   const enabled = visible && round > 0;
   const query = useQuery({
     queryKey: ["choices", chatId, round, nonce],
-    queryFn: () => apiFetch<ChoicesResponse>(`/chats/${chatId}/choices`, { method: "POST" }),
+    queryFn: async () => {
+      try {
+        return await apiFetch<ChoicesResponse>(`/chats/${chatId}/choices`, { method: "POST" });
+      } finally {
+        // A set of choices on a free model costs energy, and a failure gives it back.
+        refreshEnergy();
+      }
+    },
     enabled,
     retry: false,
     staleTime: Infinity,

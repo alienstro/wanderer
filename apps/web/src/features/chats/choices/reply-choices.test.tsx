@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ChatDetail, ChatStreamEvent, MessageView } from "@wanderer/shared";
 import type { ReactNode } from "react";
@@ -145,6 +145,21 @@ describe("reply choices", () => {
     open();
     expect(await screen.findByRole("button", { name: "Bye." })).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Reply choices" })).toHaveAttribute("aria-busy", "false");
+  });
+
+  it('"New choices" loads the energy again, because a set of choices costs energy', async () => {
+    const fetchMock = stubApi();
+    replyWith("Nice to meet you.");
+    withClient(<ChatView chatId="chat1" />);
+    await send("Hi");
+    const list = await screen.findByRole("group", { name: "Reply choices" });
+    await within(list).findByRole("button", { name: "Bye." });
+    const energyCalls = () => fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/energy")).length;
+    await waitFor(() => expect(energyCalls()).toBeGreaterThan(0));
+    const before = energyCalls();
+    await userEvent.click(screen.getByRole("button", { name: "New choices" }));
+    await within(list).findByRole("button", { name: "No way." });
+    await waitFor(() => expect(energyCalls()).toBe(before + 1));
   });
 
   it('"New choices" sits in the bar of the text box, not in the list of choices', async () => {

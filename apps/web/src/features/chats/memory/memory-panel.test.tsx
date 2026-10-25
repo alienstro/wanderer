@@ -1,7 +1,10 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ChatMemory } from "@wanderer/shared";
+import type { ChatMemory, EnergyView } from "@wanderer/shared";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { useEnergy } from "@/features/energy";
 import { MemoryButton } from "./memory-panel";
 
 type Answer = { status?: number; body: unknown };
@@ -18,8 +21,24 @@ function stubFetch(...answers: Answer[]) {
 
 const saved: ChatMemory = { text: "Mira owes {{user}} a sword.", throughPosition: null };
 
-async function openPanel(memory: ChatMemory = saved, onSaved = vi.fn()) {
-  render(<MemoryButton chatId="c1" memory={memory} onSaved={onSaved} />);
+function withClient(ui: ReactNode) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
+
+/** Loads the energy as the sidebar card does, so a refresh of the panel sends a new /energy request. */
+function EnergyProbe() {
+  useEnergy();
+  return null;
+}
+
+async function openPanel(memory: ChatMemory = saved, onSaved = vi.fn(), extra: ReactNode = null) {
+  withClient(
+    <>
+      <MemoryButton chatId="c1" memory={memory} onSaved={onSaved} />
+      {extra}
+    </>,
+  );
   await userEvent.click(screen.getByRole("button", { name: "Memory" }));
   return { box: screen.getByLabelText("Memory text") as HTMLTextAreaElement, onSaved };
 }
@@ -107,5 +126,57 @@ describe("MemoryButton", () => {
     await userEvent.click(screen.getByRole("button", { name: "Summarize" }));
     await vi.waitFor(() => expect(box.value).toBe("Draft 2."));
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({ memory: "Draft.", throughPosition: 12 });
+  });
+
+  describe("energy", () => {
+    /** 00:00 UTC is 8:00 AM in Manila. */
+    const REFILL = "2026-10-26T00:00:00.000Z";
+    const energy: EnergyView = {
+      balance: 0.5,
+      dailyEnergy: 50,
+      nextRefillAt: REFILL,
+      model: "free",
+      freeModelName: "Gemma",
+      prices: { reply: 2, choices: 0.5, memory: 1, scene: 5 },
+    };
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    /** Answers /me, /energy, and the summary with the given answer. */
+    function stubEnergy(summary: Answer) {
+      const fetchMock = vi.fn(async (url: string) => {
+        if (url.endsWith("/me")) {
+          return Response.json({ id: "u1", activeProxy: null });
+        }
+        if (url.endsWith("/energy")) {
+          return Response.json(energy);
+        }
+        return Response.json(summary.body, { status: summary.status ?? 200 });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      return fetchMock;
+    }
+
+    const energyCalls = (fetchMock: ReturnType<typeof stubEnergy>) =>
+      fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/energy")).length;
+
+    it("a summary with too little energy shows the price, the balance and the refill time", async () => {
+      vi.stubEnv("TZ", "Asia/Manila");
+      stubEnergy({ status: 429, body: { error: "energy_low", balance: 0.5, price: 1, nextRefillAt: REFILL } });
+      await openPanel();
+      await userEvent.click(screen.getByRole("button", { name: "Summarize" }));
+      expect(await screen.findByText("A memory summary costs 1 energy. You have 0.5. Your energy refills at 8:00 AM.")).toBeTruthy();
+    });
+
+    it("after a summary ends, the energy loads again", async () => {
+      const fetchMock = stubEnergy({ body: { memory: "Draft.", throughPosition: 12 } });
+      await openPanel(saved, vi.fn(), <EnergyProbe />);
+      await waitFor(() => expect(energyCalls(fetchMock)).toBe(1));
+      await userEvent.click(screen.getByRole("button", { name: "Summarize" }));
+      await screen.findByText("Draft, not saved");
+      await waitFor(() => expect(energyCalls(fetchMock)).toBe(2));
+    });
   });
 });
