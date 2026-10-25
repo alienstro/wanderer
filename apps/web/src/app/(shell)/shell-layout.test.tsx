@@ -8,7 +8,7 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => (name === "wanderer_sidebar" && sidebarCookie ? { name, value: sidebarCookie } : undefined) }),
 }));
 // The shell shows only the state that the layout gives it. The sidebar tests check the shell itself.
-vi.mock("@/components/app-shell", () => ({
+vi.mock("@/features/shell/components/app-shell", () => ({
   AppShell: ({ children, defaultRail }: { children: ReactNode; defaultRail: boolean }) => (
     <div data-testid="shell" data-rail={defaultRail}>
       {children}

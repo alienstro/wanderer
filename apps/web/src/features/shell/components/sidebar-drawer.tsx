@@ -1,7 +1,7 @@
 "use client";
 
 import { type MouseEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
-import { saveSidebarRail } from "@/lib/sidebar-rail";
+import { saveSidebarRail } from "@/features/shell/sidebar-rail";
 import { Logo } from "@/components/ui/logo";
 
 const iconProps = {
