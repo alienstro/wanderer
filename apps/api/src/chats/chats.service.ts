@@ -62,6 +62,7 @@ function toChatDetail(chat: DetailChat, user: User): ChatDetail {
     canSend: characterAccess(chat.character, user) === "ok",
     opening: { index: Math.max(0, Math.min(chat.openingIndex, count - 1)), count },
     scenes: chat.sceneImages.map(toSceneView),
+    personaName: chat.personaName,
   };
 }
 
@@ -148,12 +149,16 @@ export class ChatsService {
     const chat = await this.prisma.$transaction(async (tx) => {
       // The chat count goes up for each new chat and does not go down when a chat is deleted.
       await tx.character.update({ where: { id: characterId }, data: { chatCount: { increment: 1 } } });
+      // The chat keeps a copy of the default persona. A later edit or delete of the persona does not change it.
+      const persona = await tx.persona.findFirst({ where: { userId: user.id, isDefault: true } });
       return tx.chat.create({
         data: {
           userId: user.id,
           characterId,
           title: character.chatName || character.title,
           openingIndex,
+          personaName: persona?.name ?? null,
+          personaDescription: persona?.description ?? null,
           messages: { create: { role: "assistant", content: opening.text, position: 0 } },
         },
         include: detailInclude,
