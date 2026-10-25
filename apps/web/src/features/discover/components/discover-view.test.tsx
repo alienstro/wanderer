@@ -47,13 +47,13 @@ const chats = {
   ],
 };
 
-/** A logged-in user: /me gives the user, /chats the chats, /characters/for-you the For you list. */
+/** A logged-in user: /me gives the user, /chats?latestPerCharacter=true the chats, /characters/for-you the For you list. */
 function stubUser(options: { chats?: typeof chats; forYou?: CharacterCard[] } = {}) {
   const fetchMock = vi.fn(async (url: string) => {
     if (url.endsWith("/me")) {
       return Response.json({ id: "u1", name: "Robin", handle: "robin", replyChoicesOn: true, activeProxy: null });
     }
-    if (url.endsWith("/chats")) {
+    if (url.endsWith("/chats?latestPerCharacter=true")) {
       return Response.json(options.chats ?? { items: [] });
     }
     if (url.endsWith("/characters/for-you")) {
@@ -208,7 +208,7 @@ describe("DiscoverView", () => {
     const fetchMock = stubUser();
     renderView({ items: [card(1)], nextCursor: null });
     await screen.findByText("Welcome back, Robin");
-    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/chats"))).toBe(true));
+    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/chats?latestPerCharacter=true"))).toBe(true));
     expect(screen.queryByRole("link", { name: /Continue your chat/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "For you" })).not.toBeInTheDocument();
   });

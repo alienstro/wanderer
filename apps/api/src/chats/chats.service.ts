@@ -162,13 +162,23 @@ export class ChatsService {
     return toChatDetail(chat, user);
   }
 
-  async list(user: User, characterId: string | undefined): Promise<ChatListResponse> {
-    if (characterId !== undefined && !isUuid(characterId)) {
+  /** With `latestPerCharacter` "true", the list has only the newest chat of each character. */
+  async list(
+    user: User,
+    characterId: string | undefined,
+    latestPerCharacter: string | undefined,
+  ): Promise<ChatListResponse> {
+    if (
+      (characterId !== undefined && !isUuid(characterId)) ||
+      (latestPerCharacter !== undefined && latestPerCharacter !== "true")
+    ) {
       throw new BadRequestException({ error: "invalid_query" });
     }
     const chats = await this.prisma.chat.findMany({
       where: { userId: user.id, characterId },
       orderBy: { lastMessageAt: "desc" },
+      // Prisma keeps the first chat of each character in the order above, so the newest chat stays.
+      distinct: latestPerCharacter === "true" ? ["characterId"] : undefined,
       take: LIST_LIMIT,
       // The count comes in the same query, so the list does not load each message.
       include: {

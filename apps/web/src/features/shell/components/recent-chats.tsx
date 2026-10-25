@@ -1,24 +1,22 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import type { ChatListResponse } from "@wanderer/shared";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { apiFetch, fileSrc } from "@/lib/api";
+import { useRecentChats } from "@/features/chats";
+import { fileSrc } from "@/lib/api";
 import { useMe } from "@/lib/query-provider";
 import { Avatar } from "@/components/ui/avatar";
 
 const RECENT_COUNT = 8;
 
-/** The newest chats of the user in the sidebar. A visitor and a user with no chats see nothing. The rail hides the list. */
+/**
+ * The newest chat of each character in the sidebar, so a character shows one time.
+ * A visitor and a user with no chats see nothing. The rail hides the list.
+ */
 export function RecentChats() {
   const pathname = usePathname();
   const { data: me } = useMe();
-  const chats = useQuery({
-    queryKey: ["chats"],
-    queryFn: () => apiFetch<ChatListResponse>("/chats"),
-    enabled: Boolean(me),
-  });
+  const chats = useRecentChats();
   const items = chats.data?.items.slice(0, RECENT_COUNT) ?? [];
   if (!me || items.length === 0) {
     return null;
