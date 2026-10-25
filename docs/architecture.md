@@ -43,12 +43,12 @@ A feature has the **same folder name in each place**. For example, energy is in
 | `auth` | `auth/` | `auth/` | `features/auth/` | Google sign-in, sessions, terms, handle |
 | `characters` | `characters/` | `characters/`, `tags/` | `features/characters/` | Characters, the character form, likes |
 | `chats` | `chats/` | `chats/` | `features/chats/` | Chats, replies, choices, memory |
-| `comments` | `comments/` | `comments/` | in `features/characters/` | Comments on a character |
+| `comments` | `comments/` | `comments/` | `features/comments/` | Comments on a character |
 | `discover` | in `characters/` | in `characters/` | `features/discover/` | The Discover page |
-| `energy` | `energy/` | `energy/` | in `features/settings/`, `features/admin/` | The energy balance and spends |
+| `energy` | `energy/` | `energy/` | in `features/admin/` | The energy balance and spends |
 | `events` | — | `events/` | — | The app events that the admin overview counts |
 | `files` | — | `files/` | — | Uploaded images |
-| `free-models` | in `energy/` | `free-models/` | in `features/settings/` | The free models of the app |
+| `free-models` | in `energy/` | `free-models/` | in `features/admin/` | The free models of the app |
 | `landing` | — | — | `features/landing/` | The landing page |
 | `legal` | — | — | `features/legal/` | Terms and Privacy |
 | `me` | in `auth/` | `me/` | in `features/settings/` | The profile and preferences of the user |
@@ -70,6 +70,9 @@ Support modules of the API: `common/`, `config/`, `health/`, `prisma/`, `securit
 | `*.controller.ts` (API) | Reads the request, checks it with the shared zod schema, calls the service | Hold business rules or Prisma calls |
 | `*.service.ts` (API) | Business rules and Prisma calls on the tables that its module owns | Know about HTTP |
 | `packages/shared` | Schemas, types, error codes | Import React, Next.js or NestJS |
+
+**Note:** Many older API services check the request body with the zod schema themselves. Move the check to the
+controller when you change such a module. `pnpm new:feature` makes a controller that follows the rule.
 
 ## Import rules
 
