@@ -31,11 +31,13 @@ describe("admin overview", () => {
   beforeEach(async () => {
     await prisma.appEvent.deleteMany();
     await prisma.user.deleteMany();
+    await prisma.freeModel.deleteMany();
     admin = await userWithSession(app, 1, { role: "admin" });
     member = await userWithSession(app, 2);
   });
 
   afterAll(async () => {
+    await prisma.freeModel.deleteMany();
     await app.close();
   });
 
@@ -80,6 +82,37 @@ describe("admin overview", () => {
       const body = await stats("period=today&tz=UTC");
       expect(body.days).toEqual([utcDay(Date.now())]);
       expect(body.metrics.newUsers).toEqual({ total: 1, series: [1] });
+    });
+
+    it("counts the free model replies and users, the energy by action, low energy and busy answers", async () => {
+      const model = await prisma.freeModel.create({ data: { openrouterId: "overview/test:free", displayName: "Overview" } });
+      const spend = (userId: string, reason: "reply" | "choices" | "memory" | "scene", amount: number) =>
+        prisma.energyEntry.create({ data: { userId, amount: -amount, reason, freeModelId: reason === "scene" ? null : model.id } });
+      for (let i = 0; i < 3; i++) {
+        await spend(member.user.id, "reply", 34);
+      }
+      for (let i = 0; i < 2; i++) {
+        await spend(admin.user.id, "reply", 34);
+      }
+      // A failed reply gave its energy back, so it is not a reply and it spent nothing.
+      const failed = await spend(member.user.id, "reply", 34);
+      await prisma.energyEntry.create({ data: { userId: member.user.id, amount: 34, reason: "refund", refundOfId: failed.id } });
+      await spend(member.user.id, "choices", 50);
+      await spend(member.user.id, "memory", 100);
+      await spend(member.user.id, "scene", 30);
+      await prisma.energyEntry.create({ data: { userId: member.user.id, amount: 2000, reason: "refill" } });
+      await prisma.appEvent.createMany({ data: [{ type: "energy_too_low", reason: "scene" }, { type: "free_model_busy", reason: "cap" }] });
+
+      const { metrics } = await stats("period=today&tz=UTC");
+
+      expect(metrics.freeReplies).toEqual({ total: 5, series: [5] });
+      expect(metrics.freeUsers).toEqual({ total: 2, series: [2] });
+      expect(metrics.energyReply).toEqual({ total: 1.7, series: [1.7] });
+      expect(metrics.energyChoices.total).toBe(0.5);
+      expect(metrics.energyMemory.total).toBe(1);
+      expect(metrics.energyScene.total).toBe(0.3);
+      expect(metrics.energyTooLow.total).toBe(1);
+      expect(metrics.freeModelBusy.total).toBe(1);
     });
 
     it("groups by the day of the tz", async () => {
@@ -242,13 +275,31 @@ describe("admin overview", () => {
     it("is ok with no failures in the last hour, and counts only the last hour", async () => {
       await addReplies(3);
       await addFailures(4, minutesAgo(90));
-      expect(await health()).toEqual({ status: "ok", replies: 3, failedReplies: 0 });
+      expect(await health()).toEqual({ status: "ok", replies: 3, failedReplies: 0, freeReplies: 0, freeModelBusy: 0 });
+    });
+
+    it("counts the free model replies and the busy answers of the last hour", async () => {
+      const model = await prisma.freeModel.create({ data: { openrouterId: "health/test:free", displayName: "Health" } });
+      await prisma.energyEntry.createMany({
+        data: [
+          { userId: member.user.id, amount: -34, reason: "reply", freeModelId: model.id, createdAt: minutesAgo(10) },
+          { userId: member.user.id, amount: -34, reason: "reply", freeModelId: model.id, createdAt: minutesAgo(90) },
+        ],
+      });
+      await prisma.appEvent.createMany({
+        data: [
+          { type: "free_model_busy", reason: "rate_limited", createdAt: minutesAgo(5) },
+          { type: "free_model_busy", reason: "cap", createdAt: minutesAgo(90) },
+        ],
+      });
+
+      expect(await health()).toMatchObject({ freeReplies: 1, freeModelBusy: 1 });
     });
 
     it("is some_problems when 10% or more of the replies failed", async () => {
       await addReplies(9);
       await addFailures(1);
-      expect(await health()).toEqual({ status: "some_problems", replies: 9, failedReplies: 1 });
+      expect(await health()).toEqual({ status: "some_problems", replies: 9, failedReplies: 1, freeReplies: 0, freeModelBusy: 0 });
     });
 
     it("is down when 5 or more replies were tried and 50% or more failed", async () => {

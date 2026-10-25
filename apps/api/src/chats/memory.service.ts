@@ -2,6 +2,7 @@ import { BadRequestException, HttpException, Inject, Injectable, Logger } from "
 import { estimateTokens, MEMORY_MAX, memoryDraftInputSchema, type MemoryDraftResponse } from "@wanderer/shared";
 import { AI_CLIENT_FACTORY, type AiClientFactory } from "../ai/ai-client.js";
 import { aiErrorLogFields, toAiError } from "../ai/ai-errors.js";
+import { AiChargeService } from "../energy/ai-charge.service.js";
 import { EventsService } from "../events/events.service.js";
 import type { Message, User } from "../generated/prisma/client.js";
 import { ProxiesService } from "../proxies/proxies.service.js";
@@ -34,6 +35,7 @@ export class MemoryService {
     private readonly chats: ChatsService,
     private readonly proxies: ProxiesService,
     private readonly events: EventsService,
+    private readonly charge: AiChargeService,
     @Inject(AI_CLIENT_FACTORY) private readonly clients: AiClientFactory,
   ) {}
 
@@ -48,7 +50,7 @@ export class MemoryService {
     if (!parsed.success || (parsed.data.throughPosition ?? 0) > lastPosition) {
       throw new BadRequestException({ error: "invalid_memory" });
     }
-    const { target, customPrompt, contextTokens } = await this.proxies.loadTarget(user);
+    const { target, customPrompt, contextTokens, free } = await this.proxies.loadTarget(user);
     const memory = parsed.data.memory ?? chat.memory;
     const through = parsed.data.throughPosition === undefined ? chat.memoryThroughPosition : parsed.data.throughPosition;
     const input = { character, customPrompt, contextTokens, memory, userName: user.name, history };
@@ -60,6 +62,8 @@ export class MemoryService {
     if (!last) {
       return { memory, throughPosition: through };
     }
+    // Only a draft that calls the model costs energy. Each failure below gives the energy back.
+    const spend = await this.charge.chargeText(user, free, "memory", chat.id);
     let text: string;
     try {
       const completion = await this.clients
@@ -71,11 +75,13 @@ export class MemoryService {
       text = completion.choices[0]?.message.content?.trim() ?? "";
     } catch (error) {
       this.logger.warn({ msg: "Proxy summary failed", ...aiErrorLogFields(error) });
-      const code = toAiError(error);
+      await this.charge.refund(spend);
+      const code = await this.charge.callError(toAiError(error), user, free);
       await this.events.record("summary_failed", { userId: user.id, characterId: chat.characterId, reason: code });
       throw new HttpException({ error: code }, 502);
     }
     if (!text) {
+      await this.charge.refund(spend);
       await this.events.record("summary_failed", { userId: user.id, characterId: chat.characterId, reason: "empty_summary" });
       throw new HttpException({ error: "summary_failed" }, 502);
     }

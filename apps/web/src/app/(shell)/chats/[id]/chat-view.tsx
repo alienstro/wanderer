@@ -57,6 +57,7 @@ const AI_ERROR_STEP: Record<AiErrorCode, { text: string; settings?: boolean }> =
   blocked_url: { text: "Use a different proxy URL in Settings.", settings: true },
   provider_unreachable: { text: "Check the proxy URL in Settings, or try again later.", settings: true },
   provider_error: { text: "This problem is usually short. Try again in a moment." },
+  free_model_busy: { text: "Try again in a few minutes, or pick your own model in Settings.", settings: true },
 };
 
 /** The text for an error before the stream starts, such as a busy chat or a rate limit. */

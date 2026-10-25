@@ -1,5 +1,5 @@
 import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from "@nestjs/common";
-import type { AppEventType } from "../generated/prisma/client.js";
+import type { AppEventType, Prisma } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 /** The API deletes app events that are older than this number of days. */
@@ -12,6 +12,8 @@ export interface EventFields {
   characterId?: string;
   /** A short, safe code, such as an AI error code. Never prompt text, message text, keys or URLs. */
   reason?: string;
+  /** The old and the new value of an admin change. Never a key. */
+  details?: Prisma.InputJsonValue;
 }
 
 /** Writes the app events that the admin overview counts, and deletes the old ones each day. */
@@ -42,10 +44,12 @@ export class EventsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /** Deletes the events older than EVENT_KEEP_DAYS and gives the number of deleted rows. */
+  /** Deletes the events older than EVENT_KEEP_DAYS and gives the number of deleted rows. The admin changes stay. */
   async prune(now = new Date()): Promise<number> {
     const before = new Date(now.getTime() - EVENT_KEEP_DAYS * DAY_MS);
-    const { count } = await this.prisma.appEvent.deleteMany({ where: { createdAt: { lt: before } } });
+    const { count } = await this.prisma.appEvent.deleteMany({
+      where: { createdAt: { lt: before }, type: { not: "admin_change" } },
+    });
     return count;
   }
 

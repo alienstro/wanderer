@@ -1,5 +1,4 @@
 import type { NestExpressApplication } from "@nestjs/platform-express";
-import { SCENE_DAILY_LIMIT } from "@wanderer/shared";
 import sharp from "sharp";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -17,6 +16,7 @@ import { createCharacter } from "./support/characters.js";
 import { addProxy, startChat } from "./support/chat-stream.js";
 import { WEB_ORIGIN } from "./support/env.js";
 import { type FakeAiServer, startFakeAiServer, UnguardedAiClientFactory } from "./support/fake-ai-server.js";
+import { resetEnergySettings } from "./support/free-models.js";
 import { pngImage } from "./support/images.js";
 import { MemoryStorage } from "./support/memory-storage.js";
 import { type TestUser, userWithSession } from "./support/users.js";
@@ -62,6 +62,7 @@ describe("scene images", () => {
 
   beforeEach(async () => {
     await prisma.user.deleteMany();
+    await resetEnergySettings(prisma);
     images.requests.length = 0;
     user = await userWithSession(app, 1);
     chatId = await startChat(app, user, await createCharacter(app, user.cookie));
@@ -69,6 +70,7 @@ describe("scene images", () => {
   });
 
   afterAll(async () => {
+    await resetEnergySettings(prisma);
     await app.close();
     await fake.close();
   });
@@ -77,7 +79,14 @@ describe("scene images", () => {
     fake.next({ pieces: ['Prompt: "A misty forest at dawn."'] });
     const res = await generate().expect(201);
     expect(res.body).toMatchObject({ afterPosition: 0, url: expect.stringMatching(/^\/files\/[0-9a-f-]{36}$/) });
-    expect(images.requests).toEqual([{ prompt: expect.stringContaining("A misty forest at dawn."), negativePrompt: expect.stringContaining("nudity") }]);
+    expect(images.requests).toEqual([
+      {
+        model: "flux-schnell",
+        prompt: expect.stringContaining("A misty forest at dawn."),
+        negativePrompt: expect.stringContaining("nudity"),
+        adult: false,
+      },
+    ]);
     expect(fake.requests.at(-1)!.body.messages?.at(-1)?.content).toContain("Describe the current scene");
 
     const file = await request(app.getHttpServer()).get(res.body.url).set("Cookie", user.cookie).expect(200);
@@ -126,21 +135,37 @@ describe("scene images", () => {
     expect(images.requests).toHaveLength(1);
   });
 
-  it("a user at the daily limit gets 429 scene_limit and no job", async () => {
-    await prisma.sceneImage.createMany({
-      data: Array.from({ length: SCENE_DAILY_LIMIT }, () => ({ userId: user.user.id, afterPosition: 0 })),
+  it("a scene takes 0.3 energy from a user with an own text model", async () => {
+    fake.next({ pieces: ["A forest."] });
+    await generate().expect(201);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: user.user.id } })).energy).toBe(2000 - 30);
+    expect(await prisma.energyEntry.findMany({ where: { reason: "scene" } })).toMatchObject([{ amount: -30, chatId }]);
+  });
+
+  it("a failed image gives the energy back", async () => {
+    fake.next({ pieces: ["A forest."] });
+    images.next(() => Promise.reject(new SceneImageError("scene_failed", "The RunPod job ended with FAILED")));
+    await generate().expect(502);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: user.user.id } })).energy).toBe(2000);
+  });
+
+  it("a user with too little energy gets 429 energy_low and no job", async () => {
+    await prisma.user.update({ where: { id: user.user.id }, data: { energy: 29, energyRefilledAt: new Date() } });
+    expect((await generate().expect(429)).body).toEqual({
+      error: "energy_low",
+      balance: 0.29,
+      price: 0.3,
+      nextRefillAt: expect.any(String),
     });
-    expect((await generate().expect(429)).body).toEqual({ error: "scene_limit" });
     expect(images.requests).toHaveLength(0);
   });
 
-  it("the images of the day before do not count for the limit", async () => {
-    const yesterday = new Date(Date.now() - 25 * 60 * 60 * 1000);
-    await prisma.sceneImage.createMany({
-      data: Array.from({ length: SCENE_DAILY_LIMIT }, () => ({ userId: user.user.id, afterPosition: 0, createdAt: yesterday })),
-    });
+  it("the scene model of the settings makes the image, at its own price", async () => {
+    await prisma.energySettings.update({ where: { id: 1 }, data: { sceneModelKey: "z-image-turbo" } });
     fake.next({ pieces: ["A forest."] });
     await generate().expect(201);
+    expect(images.requests.map((sent) => sent.model)).toEqual(["z-image-turbo"]);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: user.user.id } })).energy).toBe(2000 - 50);
   });
 
   it("the chat of another user gives 404", async () => {
@@ -149,7 +174,7 @@ describe("scene images", () => {
     expect(images.requests).toHaveLength(0);
   });
 
-  it("a deleted chat removes its images, and the images still count for the limit", async () => {
+  it("a deleted chat removes its images, and the scene rows stay", async () => {
     fake.next({ pieces: ["A forest."] });
     const scene = (await generate().expect(201)).body as { url: string };
     await request(app.getHttpServer()).delete(`/chats/${chatId}`).set("Origin", WEB_ORIGIN).set("Cookie", user.cookie).expect(204);

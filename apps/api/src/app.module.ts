@@ -7,6 +7,7 @@ import { AuthModule } from "./auth/auth.module.js";
 import { CharactersModule } from "./characters/characters.module.js";
 import { ChatsModule } from "./chats/chats.module.js";
 import { CommentsModule } from "./comments/comments.module.js";
+import { EnergyModule } from "./energy/energy.module.js";
 import { EventsModule } from "./events/events.module.js";
 import { ApiKeysModule } from "./api-keys/api-keys.module.js";
 import { ENV, type Env } from "./config/env.js";
@@ -44,6 +45,7 @@ export class AppModule {
         ]),
         PrismaModule,
         EventsModule,
+        EnergyModule,
         AuthModule,
         FilesModule,
         CharactersModule,

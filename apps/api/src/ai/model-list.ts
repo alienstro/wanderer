@@ -48,7 +48,7 @@ export function modelIds(body: unknown): string[] {
 }
 
 /** Reads the body as text, and stops when it is larger than MODEL_LIST_MAX_BYTES. */
-async function readCapped(res: Awaited<ReturnType<typeof undiciFetch>>): Promise<string> {
+export async function readCapped(res: Awaited<ReturnType<typeof undiciFetch>>): Promise<string> {
   if (Number(res.headers.get("content-length")) > MODEL_LIST_MAX_BYTES) {
     await res.body?.cancel();
     throw new ModelListError("no_model_list");

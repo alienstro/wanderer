@@ -33,6 +33,14 @@ model User {
   /// The user instructions for the style and the content of the reply choices. Empty means none.
   replyChoicesPrompt String    @default("") @map("reply_choices_prompt")
   activeProxyId      String?   @unique @map("active_proxy_id") @db.Uuid
+  /// The energy balance in hundredths, so 0.5 energy is 50. It refills to the daily amount at 00:00 UTC.
+  energy             Int       @default(0)
+  /// The time of the last refill. Null before the first action that uses energy.
+  energyRefilledAt   DateTime? @map("energy_refilled_at")
+  /// The own daily amount of the user in hundredths, set by an admin. Null means the daily energy of the settings.
+  dailyEnergy        Int?      @map("daily_energy")
+  /// The free model that the user picked. Null means the default free model.
+  freeModelId        String?   @map("free_model_id") @db.Uuid
   createdAt          DateTime  @default(now()) @map("created_at")
 
   sessions         Session[]
@@ -49,6 +57,9 @@ model User {
   comments         CharacterComment[]
   appEvents        AppEvent[]
   sceneImages      SceneImage[]
+  freeModel        FreeModel?         @relation(fields: [freeModelId], references: [id], onDelete: SetNull)
+  energyEntries    EnergyEntry[]
+  energySettings   EnergySettings[]
 
   @@map("users")
 }
@@ -250,10 +261,11 @@ model Chat {
   lastMessageAt         DateTime @default(now()) @map("last_message_at")
   createdAt             DateTime @default(now()) @map("created_at")
 
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  character   Character    @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  messages    Message[]
-  sceneImages SceneImage[]
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  character     Character     @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  messages      Message[]
+  sceneImages   SceneImage[]
+  energyEntries EnergyEntry[]
 
   @@index([userId, lastMessageAt])
   @@index([userId, characterId])
@@ -365,6 +377,12 @@ enum AppEventType {
   summary_failed
   proxy_test_failed
   model_list_failed
+  /// A user had too little energy for an action.
+  energy_too_low
+  /// A free model call got a 429 answer, or the global daily cap was full. The reason tells which.
+  free_model_busy
+  /// An admin changed an energy or model setting. The details hold the old and the new value.
+  admin_change
 }
 
 /// One action or failure that no other table records. The admin overview counts these rows.
@@ -376,6 +394,8 @@ model AppEvent {
   characterId String?      @map("character_id") @db.Uuid
   /// A short code, such as an AI error code. Empty when the type tells all.
   reason      String       @default("")
+  /// The old and the new value of an admin change. Null for the other types.
+  details     Json?
   createdAt   DateTime     @default(now()) @map("created_at")
 
   user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -404,4 +424,109 @@ model SceneImage {
   @@index([chatId, createdAt])
   @@index([userId, createdAt])
   @@map("scene_images")
+}
+
+enum EnergyReason {
+  reply
+  choices
+  memory
+  scene
+  refund
+  refill
+  /// An admin added, took away or set energy on the balance of a user.
+  admin
+}
+
+/// One change of the energy balance of a user: a spend (minus), a refund or a refill (plus). The sum of the rows
+/// after the last refill gives the balance, so the admin can see why a balance changed.
+model EnergyEntry {
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
+  /// The change in hundredths of energy.
+  amount      Int
+  reason      EnergyReason
+  chatId      String?      @map("chat_id") @db.Uuid
+  /// The free model of a text call. Null for an own model and for a refill.
+  freeModelId String?      @map("free_model_id") @db.Uuid
+  /// The spend that a refund gives back. One spend has one refund or none.
+  refundOfId  String?      @unique @map("refund_of_id") @db.Uuid
+  /// The save order. Two rows of one transaction, such as a refill and a spend, have the same time.
+  seq         Int          @default(autoincrement())
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chat      Chat?        @relation(fields: [chatId], references: [id], onDelete: SetNull)
+  freeModel FreeModel?   @relation(fields: [freeModelId], references: [id], onDelete: SetNull)
+  refundOf  EnergyEntry? @relation("Refund", fields: [refundOfId], references: [id], onDelete: Cascade)
+  refund    EnergyEntry? @relation("Refund")
+
+  @@index([userId, createdAt])
+  @@index([reason, createdAt])
+  @@map("energy_entries")
+}
+
+/// An OpenRouter model that users can chat with on the server key. The key stays in the env, never in this table.
+model FreeModel {
+  id                 String    @id @default(uuid()) @db.Uuid
+  /// The OpenRouter model id, such as google/gemma-4-31b-it:free.
+  openrouterId       String    @unique @map("openrouter_id")
+  displayName        String    @map("display_name")
+  enabled            Boolean   @default(false)
+  /// The model of a user who picked none. Only one row can be the default.
+  isDefault          Boolean   @default(false) @map("is_default")
+  sortOrder          Int       @default(0) @map("sort_order")
+  /// The USD prices for each token of the paid version (the id with no ":free"). Null when OpenRouter has none.
+  promptPriceUsd     Decimal?  @map("prompt_price_usd") @db.Decimal(20, 12)
+  completionPriceUsd Decimal?  @map("completion_price_usd") @db.Decimal(20, 12)
+  pricesFetchedAt    DateTime? @map("prices_fetched_at")
+  /// The markup in percent. Null means the text default of the settings.
+  markupPercent      Int?      @map("markup_percent")
+  /// The energy price of a reply in hundredths. It wins over the OpenRouter price. Null means none.
+  manualEnergyPrice  Int?      @map("manual_energy_price")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  users         User[]
+  energyEntries EnergyEntry[]
+
+  @@unique([isDefault], map: "free_models_one_default_key", where: raw("is_default"))
+  @@map("free_models")
+}
+
+/// A RunPod image model that the app supports. The code has one adapter for each key, so an admin cannot add a key.
+model SceneModel {
+  key           String  @id
+  /// The RunPod cost of one image in USD, from the RunPod docs or the bill.
+  costUsd       Decimal @map("cost_usd") @db.Decimal(12, 6)
+  /// The markup in percent. Null means the image default of the settings.
+  markupPercent Int?    @map("markup_percent")
+  enabled       Boolean @default(true)
+
+  settings EnergySettings[]
+
+  @@map("scene_models")
+}
+
+/// The admin values for energy and models. The table has exactly one row, with id 1.
+model EnergySettings {
+  id                  Int      @id @default(1)
+  /// Each value in hundredths of energy.
+  dailyEnergy         Int      @default(2000) @map("daily_energy")
+  choicesPrice        Int      @default(0) @map("choices_price")
+  memoryPrice         Int      @default(100) @map("memory_price")
+  sceneModelKey       String   @default("flux-schnell") @map("scene_model_key")
+  /// The markup of each model that has no markup of its own and no group default.
+  globalMarkupPercent Int      @default(0) @map("global_markup_percent")
+  /// The group defaults. Null means the global markup.
+  textMarkupPercent   Int?     @map("text_markup_percent")
+  imageMarkupPercent  Int?     @map("image_markup_percent")
+  /// The number of free model requests of all users in one UTC day. Keep it below the OpenRouter limit.
+  freeDailyCap        Int      @default(950) @map("free_daily_cap")
+  updatedById         String?  @map("updated_by") @db.Uuid
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+
+  sceneModel SceneModel @relation(fields: [sceneModelKey], references: [key], onDelete: Restrict)
+  updatedBy  User?      @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("energy_settings")
 }

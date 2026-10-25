@@ -1,9 +1,10 @@
 import { setTimeout as sleep } from "node:timers/promises";
+import type { SceneModelKey } from "@wanderer/shared";
+import { SCENE_MODELS } from "./scene-models.js";
 
-const BASE_URL = "https://api.runpod.ai/v2/black-forest-labs-flux-1-schnell";
+const API_URL = "https://api.runpod.ai/v2";
 /** The result URLs of RunPod are on this host or on its subdomains. */
 const IMAGE_HOST = "runpod.ai";
-const IMAGE_SIZE = 1024;
 const POLL_MS = 1_000;
 const TIMEOUT_MS = 90_000;
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -23,8 +24,11 @@ export class SceneImageError extends Error {
 }
 
 export interface SceneImageRequest {
+  model: SceneModelKey;
   prompt: string;
   negativePrompt: string;
+  /** True for an 18+ character. */
+  adult: boolean;
 }
 
 /** Makes one image from a text prompt. A test replaces it with a fake. */
@@ -48,8 +52,8 @@ interface JobStatus {
 }
 
 /**
- * Calls the FLUX.1 [schnell] endpoint of RunPod. It starts the job with /run and reads /status, because
- * /runsync can pass the HTTP time limit of a proxy. Only the API server holds the key.
+ * Calls a RunPod public image endpoint. It starts the job with /run and reads /status, because /runsync can pass
+ * the HTTP time limit of a proxy. Only the API server holds the key.
  */
 export class RunPodClient implements SceneImageClient {
   private readonly fetch: typeof fetch;
@@ -67,18 +71,9 @@ export class RunPodClient implements SceneImageClient {
 
   async generate(request: SceneImageRequest): Promise<Buffer> {
     const deadline = Date.now() + this.timeoutMs;
-    const started = await this.call("POST", "/run", {
-      input: {
-        prompt: request.prompt,
-        seed: -1,
-        num_inference_steps: 4,
-        guidance: 7,
-        negative_prompt: request.negativePrompt,
-        image_format: "png",
-        width: IMAGE_SIZE,
-        height: IMAGE_SIZE,
-      },
-    });
+    const model = SCENE_MODELS[request.model];
+    const baseUrl = `${API_URL}/${model.endpointId}`;
+    const started = await this.call("POST", `${baseUrl}/run`, { input: model.input(request) });
     const jobId = started.id;
     if (typeof jobId !== "string" || jobId.length === 0) {
       throw new SceneImageError("scene_failed", "RunPod gave no job ID");
@@ -89,18 +84,18 @@ export class RunPodClient implements SceneImageClient {
         throw new SceneImageError("scene_failed", `The RunPod job ended with ${job.status}`);
       }
       if (Date.now() >= deadline) {
-        await this.call("POST", `/cancel/${jobId}`).catch(() => undefined);
+        await this.call("POST", `${baseUrl}/cancel/${jobId}`).catch(() => undefined);
         throw new SceneImageError("scene_timeout", "The RunPod job passed the time limit");
       }
       await sleep(this.pollMs);
-      job = await this.call("GET", `/status/${jobId}`);
+      job = await this.call("GET", `${baseUrl}/status/${jobId}`);
     }
     // The live endpoint gives `output.result`. The RunPod docs show `output.image_url`, so both work.
     return this.download(job.output?.result ?? job.output?.image_url);
   }
 
-  private async call(method: "GET" | "POST", path: string, body?: unknown): Promise<JobStatus> {
-    const res = await this.fetch(`${BASE_URL}${path}`, {
+  private async call(method: "GET" | "POST", url: string, body?: unknown): Promise<JobStatus> {
+    const res = await this.fetch(url, {
       method,
       headers: {
         Authorization: `Bearer ${this.apiKey}`,

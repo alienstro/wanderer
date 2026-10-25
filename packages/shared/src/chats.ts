@@ -7,8 +7,13 @@ export const MESSAGE_MAX = 8000;
 export const LAST_MESSAGE_MAX = 140;
 /** The memory of a chat keeps facts after their messages leave the history window. */
 export const MEMORY_MAX = 2000;
-/** Each scene image costs money on the RunPod account, so a user makes this number of images in 24 hours, or less. */
-export const SCENE_DAILY_LIMIT = 20;
+/** The RunPod image models that the API has an adapter for. Each scene image costs energy. */
+export const SCENE_MODEL_KEYS = ["flux-schnell", "z-image-turbo"] as const;
+export type SceneModelKey = (typeof SCENE_MODEL_KEYS)[number];
+export const SCENE_MODEL_LABELS: Record<SceneModelKey, string> = {
+  "flux-schnell": "Flux Schnell",
+  "z-image-turbo": "Z-Image Turbo",
+};
 
 const openingIndexSchema = z
   .number()

@@ -67,7 +67,7 @@ interface StubOptions {
 function stubApi({
   status = 200,
   healthStatus = status,
-  health = { status: "ok", replies: 10, failedReplies: 0 },
+  health = { status: "ok", replies: 10, failedReplies: 0, freeReplies: 0, freeModelBusy: 0 },
   metrics = {},
 }: StubOptions = {}) {
   const stats = makeStats({
@@ -164,7 +164,7 @@ describe("AdminOverview", () => {
   });
 
   it("shows Some problems from the health endpoint", async () => {
-    stubApi({ health: { status: "some_problems", replies: 9, failedReplies: 1 } });
+    stubApi({ health: { status: "some_problems", replies: 9, failedReplies: 1, freeReplies: 0, freeModelBusy: 0 } });
     renderView();
     expect(await screen.findByText("Some problems")).toBeTruthy();
   });
