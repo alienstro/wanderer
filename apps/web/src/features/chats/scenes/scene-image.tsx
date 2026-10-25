@@ -2,7 +2,8 @@
 
 import { useMutation } from "@tanstack/react-query";
 import type { SceneView } from "@wanderer/shared";
-import { ImageIcon } from "@/components/ui/icons";
+import { BoltIcon, ImageIcon } from "@/components/ui/icons";
+import { useRefreshEnergy } from "@/features/energy";
 import { ApiError, apiFetch, fileSrc } from "@/lib/api";
 
 /** The text for a failed scene image. An AI error of the model has its own text in the chat page. */
@@ -23,21 +24,46 @@ export function sceneErrorText(error: unknown): string {
   return "The scene image did not generate. Try again.";
 }
 
-/** Starts one scene image. The API makes the image in a few seconds, then the page adds it to the chat. */
+/**
+ * Starts one scene image. The API makes the image in a few seconds, then the page adds it to the chat. The energy
+ * loads again after each job, because the API takes the price first and gives it back on a failure.
+ */
 export function useSceneJob(chatId: string, onMade: (scene: SceneView) => void, onError: (error: unknown) => void) {
+  const refreshEnergy = useRefreshEnergy();
   return useMutation({
     mutationFn: () => apiFetch<SceneView>(`/chats/${chatId}/scenes`, { method: "POST" }),
     onSuccess: onMade,
     onError,
+    onSettled: refreshEnergy,
   });
 }
 
-/** The "Generate scene" button in the bar of the text box. It is disabled while a job runs, so a second click starts nothing. */
-export function GenerateSceneButton({ busy, disabled, onClick }: { busy: boolean; disabled: boolean; onClick: () => void }) {
+interface GenerateSceneProps {
+  busy: boolean;
+  disabled: boolean;
+  /** The energy price of one scene image. It is undefined while the energy loads. */
+  price?: number;
+  onClick: () => void;
+}
+
+/**
+ * The "Generate scene" button in the bar of the text box, with the price. It is disabled while a job runs, so a second
+ * click starts nothing. A low balance does not disable it: a click shows the reason.
+ */
+export function GenerateSceneButton({ busy, disabled, price, onClick }: GenerateSceneProps) {
   return (
     <button type="button" className="msg-action" disabled={busy || disabled} aria-busy={busy} onClick={onClick}>
       <ImageIcon />
       {busy ? "Making the scene…" : "Generate scene"}
+      {!busy && price !== undefined && (
+        <>
+          <span aria-hidden="true" className="inline-flex items-center gap-0.5 text-muted">
+            · {price}
+            <BoltIcon />
+          </span>
+          <span className="sr-only">, {price} energy</span>
+        </>
+      )}
     </button>
   );
 }

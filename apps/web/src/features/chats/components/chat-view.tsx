@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Avatar } from "@/components/ui/avatar";
 import { ApiError, apiFetch, fileSrc } from "@/lib/api";
 import { streamChat } from "@/features/chats/chat-stream";
+import { ENERGY_LOW_TITLE, energyLowText, useEnergy, useRefreshEnergy } from "@/features/energy";
 import { useRequireLogin } from "@/lib/use-require-login";
 import { Composer } from "./composer";
 import { MemoryButton } from "@/features/chats/memory/memory-panel";
@@ -78,6 +79,8 @@ export function ChatView({ chatId }: { chatId: string }) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const queryKey = ["chat", chatId];
+  const energy = useEnergy();
+  const refreshEnergy = useRefreshEnergy();
   const chat = useQuery({
     queryKey,
     queryFn: () => apiFetch<ChatDetail>(`/chats/${chatId}`),
@@ -116,7 +119,10 @@ export function ChatView({ chatId }: { chatId: string }) {
     (scene) => patchChat((detail) => ({ ...detail, scenes: [...detail.scenes, scene] })),
     (error) => {
       const code = error instanceof ApiError ? error.code : null;
-      if (isAiErrorCode(code)) {
+      const energyLow = energyLowText(error, "scene");
+      if (energyLow) {
+        showEnergyLow(energyLow);
+      } else if (isAiErrorCode(code)) {
         showAiError(code);
       } else if (mountedRef.current) {
         toast.error(sceneErrorText(error), { id: ERROR_TOAST_ID, duration: Number.POSITIVE_INFINITY });
@@ -144,6 +150,13 @@ export function ChatView({ chatId }: { chatId: string }) {
       duration: Number.POSITIVE_INFINITY,
       action: step.settings ? { label: "Open Settings", onClick: () => router.push("/settings/models") } : undefined,
     });
+  }
+
+  /** The action costs more than the balance. The text has the price, the balance and the refill time. */
+  function showEnergyLow(text: string) {
+    if (mountedRef.current) {
+      toast.error(ENERGY_LOW_TITLE, { id: ERROR_TOAST_ID, description: text, duration: Number.POSITIVE_INFINITY });
+    }
   }
 
   /**
@@ -197,7 +210,10 @@ export function ChatView({ chatId }: { chatId: string }) {
       });
     } catch (caught) {
       const code = caught instanceof ApiError ? caught.code : null;
-      if (isAiErrorCode(code)) {
+      const energyLow = energyLowText(caught, "reply");
+      if (energyLow) {
+        showEnergyLow(energyLow);
+      } else if (isAiErrorCode(code)) {
         showAiError(code);
       } else if (mountedRef.current) {
         toast.error(sendErrorText(caught), { id: ERROR_TOAST_ID, duration: Number.POSITIVE_INFINITY });
@@ -216,6 +232,8 @@ export function ChatView({ chatId }: { chatId: string }) {
       }
       setLive(null);
       void queryClient.invalidateQueries({ queryKey: ["chats"] });
+      // The API takes the price before the reply and gives it back on a failure, so each end can change the balance.
+      refreshEnergy();
     }
   }
 
@@ -343,6 +361,7 @@ export function ChatView({ chatId }: { chatId: string }) {
                     <GenerateSceneButton
                       busy={sceneJob.isPending}
                       disabled={!me.activeProxy}
+                      price={energy.data?.prices.scene}
                       onClick={() => {
                         toast.dismiss(ERROR_TOAST_ID);
                         sceneJob.mutate();
