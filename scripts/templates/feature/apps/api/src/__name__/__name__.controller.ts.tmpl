@@ -1,0 +1,18 @@
+import { Controller, Get, UseGuards } from "@nestjs/common";
+import type { __Name__View } from "@wanderer/shared";
+import { CurrentUser } from "../auth/current-user.decorator.js";
+import { SessionGuard } from "../auth/session.guard.js";
+import type { User } from "../generated/prisma/client.js";
+import { __Name__Service } from "./__name__.service.js";
+
+/** Reads the request, checks a body with the shared zod schema, and calls the service. No business rules here. */
+@Controller("__name__")
+@UseGuards(SessionGuard)
+export class __Name__Controller {
+  constructor(private readonly service: __Name__Service) {}
+
+  @Get()
+  list(@CurrentUser() user: User): Promise<__Name__View[]> {
+    return this.service.list(user);
+  }
+}

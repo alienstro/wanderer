@@ -1,0 +1,36 @@
+import type { NestExpressApplication } from "@nestjs/platform-express";
+import request from "supertest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { PrismaService } from "../../src/prisma/prisma.service.js";
+import { createTestApp } from "../support/app.js";
+import { userWithSession } from "../support/users.js";
+
+describe("GET /__name__", () => {
+  let app: NestExpressApplication;
+  let prisma: PrismaService;
+
+  beforeAll(async () => {
+    app = await createTestApp();
+    prisma = app.get(PrismaService);
+  });
+
+  beforeEach(async () => {
+    await prisma.user.deleteMany();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it("gives 401 without a session", async () => {
+    const res = await request(app.getHttpServer()).get("/__name__");
+    expect(res.status).toBe(401);
+  });
+
+  it("gives the list of the user", async () => {
+    const { cookie } = await userWithSession(app, 1);
+    const res = await request(app.getHttpServer()).get("/__name__").set("Cookie", cookie);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+});

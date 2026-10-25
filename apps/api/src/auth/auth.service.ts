@@ -1,6 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { ENV, type Env } from "../config/env.js";
-import { EventsService } from "../events/events.service.js";
+import { sendAppEvent } from "../events/app-events.js";
 import { Prisma } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { GoogleProfile } from "./google-oidc.js";
@@ -17,7 +18,7 @@ export class AuthService {
     @Inject(ENV) private readonly env: Env,
     private readonly prisma: PrismaService,
     private readonly sessions: SessionService,
-    private readonly events: EventsService,
+    private readonly emitter: EventEmitter2,
   ) {}
 
   /**
@@ -48,7 +49,7 @@ export class AuthService {
     }
     await this.prisma.termsAcceptance.create({ data: { userId: user.id, version: termsVersion } });
     const session = await this.sessions.create(user.id);
-    await this.events.record("login", { userId: user.id });
+    await sendAppEvent(this.emitter, "login", { userId: user.id });
     return { kind: "ok", ...session, hasHandle: user.handle !== null };
   }
 }

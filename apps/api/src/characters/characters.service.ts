@@ -51,6 +51,25 @@ function rethrowUniqueError(error: unknown): never {
   throw error;
 }
 
+/** Hides a character, inside the transaction of the caller. An admin action on a report uses it. */
+export async function hideCharacter(tx: Prisma.TransactionClient, characterId: string): Promise<void> {
+  await tx.character.update({ where: { id: characterId }, data: { status: "hidden" } });
+}
+
+/** Hides each published character of a creator, inside the transaction of the caller. A ban uses it. */
+export async function hideCharactersOf(tx: Prisma.TransactionClient, creatorId: string): Promise<void> {
+  await tx.character.updateMany({ where: { creatorId, status: "published" }, data: { status: "hidden" } });
+}
+
+/**
+ * Deletes a character inside the transaction of the caller, and gives the id of its avatar file. The caller removes
+ * the file after the transaction, with CharactersService.removeAvatarFile.
+ */
+export async function deleteCharacter(tx: Prisma.TransactionClient, characterId: string): Promise<string | null> {
+  const deleted = await tx.character.delete({ where: { id: characterId }, select: { avatarFileId: true } });
+  return deleted.avatarFileId;
+}
+
 @Injectable()
 export class CharactersService {
   private readonly logger = new Logger(CharactersService.name);

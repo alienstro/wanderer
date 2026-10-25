@@ -1,30 +1,27 @@
 import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from "@nestjs/common";
-import type { AppEventType, Prisma } from "../generated/prisma/client.js";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import type { AppEventType } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { APP_EVENTS, type EventFields } from "./app-events.js";
 
 /** The API deletes app events that are older than this number of days. */
 export const EVENT_KEEP_DAYS = 90;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export interface EventFields {
-  userId?: string;
-  characterId?: string;
-  /** A short, safe code, such as an AI error code. Never prompt text, message text, keys or URLs. */
-  reason?: string;
-  /** The old and the new value of an admin change. Never a key. */
-  details?: Prisma.InputJsonValue;
-}
-
-/** Writes the app events that the admin overview counts, and deletes the old ones each day. */
+/** Saves the app events that the other modules send, for the admin overview, and deletes the old ones each day. */
 @Injectable()
 export class EventsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EventsService.name);
   private timer: NodeJS.Timeout | undefined;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emitter: EventEmitter2,
+  ) {}
 
   onModuleInit(): void {
+    this.subscribe();
     // A deploy restarts the API, so the first prune runs at the start, not after one day.
     void this.pruneSafely();
     this.timer = setInterval(() => void this.pruneSafely(), DAY_MS);
@@ -33,6 +30,13 @@ export class EventsService implements OnModuleInit, OnModuleDestroy {
 
   onModuleDestroy(): void {
     clearInterval(this.timer);
+  }
+
+  /** Listens to each app event of APP_EVENTS, and saves a row for each one. */
+  subscribe(): void {
+    for (const [type, name] of Object.entries(APP_EVENTS) as [AppEventType, string][]) {
+      this.emitter.on(name, (fields: EventFields) => this.record(type, fields));
+    }
   }
 
   /** Saves one event. A failed write goes to the log only, so it never stops the request of the user. */

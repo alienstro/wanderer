@@ -1,0 +1,13 @@
+import { describe, expect, it } from "vitest";
+import { __NAME___NAME_MAX, create__Name__RequestSchema } from "./__name__.js";
+
+describe("create__Name__RequestSchema", () => {
+  it("trims the name", () => {
+    expect(create__Name__RequestSchema.parse({ name: "  A name  " })).toEqual({ name: "A name" });
+  });
+
+  it("rejects an empty name and a name that is too long", () => {
+    expect(create__Name__RequestSchema.safeParse({ name: " " }).success).toBe(false);
+    expect(create__Name__RequestSchema.safeParse({ name: "x".repeat(__NAME___NAME_MAX + 1) }).success).toBe(false);
+  });
+});

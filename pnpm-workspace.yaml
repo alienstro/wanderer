@@ -10,3 +10,5 @@ allowBuilds:
   prisma: true
   # esbuild (through tsx) loads its binary from an optional platform package, so its install script is not necessary.
   esbuild: false
+  # unrs-resolver (through eslint-import-resolver-typescript) also loads its binary from an optional platform package.
+  unrs-resolver: false

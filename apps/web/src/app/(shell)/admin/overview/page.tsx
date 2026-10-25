@@ -1,7 +1,6 @@
 "use client";
 
-import { AdminNav } from "@/components/admin-nav";
-import { AdminOverview } from "@/components/admin-overview";
+import { AdminNav, AdminOverview } from "@/features/admin";
 import { useRequireLogin } from "@/lib/use-require-login";
 
 /** The admin overview of the app. A visitor goes to /login, and a normal user sees a short message. */

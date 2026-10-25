@@ -1,6 +1,6 @@
 "use client";
 
-import { SettingsView } from "@/components/settings-view";
+import { SettingsView } from "@/features/settings";
 import { useRequireLogin } from "@/lib/use-require-login";
 
 /** The account settings page. A visitor goes to /login. */

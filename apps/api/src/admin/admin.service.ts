@@ -7,12 +7,14 @@ import {
   type ReportAction,
   resolveReportRequestSchema,
 } from "@wanderer/shared";
-import { CharactersService } from "../characters/characters.service.js";
+import { banUser } from "../auth/session.service.js";
+import { CharactersService, deleteCharacter, hideCharacter, hideCharactersOf } from "../characters/characters.service.js";
 import { decodeReportCursor, encodeReportCursor } from "../characters/cursor.js";
-import { deleteCommentsOf } from "../comments/comments.service.js";
+import { deleteComment, deleteCommentsOf } from "../comments/comments.service.js";
 import { isUuid } from "../common/uuid.js";
 import type { Prisma, User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { closeCharacterReports, closeCommentReports, closeReport } from "../reports/reports.service.js";
 
 const reportInclude = {
   character: { select: { id: true, creatorId: true, status: true, creator: { select: { handle: true } } } },
@@ -136,8 +138,7 @@ export class AdminService {
     const closed = { status: "closed" as const, action, resolvedById: admin.id, resolvedAt: new Date() };
 
     const avatarFileId = await this.prisma.$transaction(async (tx) => {
-      const own = await tx.report.updateMany({ where: { id: report.id, status: "open" }, data: closed });
-      if (own.count === 0) {
+      if (!(await closeReport(tx, report.id, closed))) {
         throw new ConflictException({ error: "report_closed" });
       }
       if (action === "none" || characterId === null) {
@@ -147,18 +148,17 @@ export class AdminService {
         await this.resolveCommentInTransaction(tx, commentId, action, closed);
         return null;
       }
-      await tx.report.updateMany({ where: { characterId, target: "character", status: "open" }, data: closed });
+      await closeCharacterReports(tx, characterId, closed);
       if (action === "banned") {
         const character = await tx.character.findUniqueOrThrow({ where: { id: characterId } });
         await this.banInTransaction(tx, character.creatorId);
         return null;
       }
       if (action === "hidden") {
-        await tx.character.update({ where: { id: characterId }, data: { status: "hidden" } });
+        await hideCharacter(tx, characterId);
         return null;
       }
-      const deleted = await tx.character.delete({ where: { id: characterId }, select: { avatarFileId: true } });
-      return deleted.avatarFileId;
+      return deleteCharacter(tx, characterId);
     });
     if (avatarFileId) {
       await this.characters.removeAvatarFile(avatarFileId);
@@ -174,19 +174,13 @@ export class AdminService {
     action: Exclude<ReportAction, "none">,
     closed: Prisma.ReportUpdateManyMutationInput,
   ): Promise<void> {
-    await tx.report.updateMany({ where: { commentId, status: "open" }, data: closed });
+    await closeCommentReports(tx, commentId, closed);
     const comment = await tx.characterComment.findUniqueOrThrow({ where: { id: commentId } });
     if (action === "banned") {
       await this.banInTransaction(tx, comment.authorId);
       return;
     }
-    const gone = await tx.characterComment.updateMany({
-      where: { id: commentId, deletedAt: null },
-      data: { deletedAt: new Date() },
-    });
-    if (gone.count > 0) {
-      await tx.character.update({ where: { id: comment.characterId }, data: { commentCount: { decrement: 1 } } });
-    }
+    await deleteComment(tx, commentId, comment.characterId);
   }
 
   /** Bans a user. The ban ends their sessions at once and hides their published characters and their comments. */
@@ -206,9 +200,8 @@ export class AdminService {
     if (user.role === "admin") {
       throw new BadRequestException({ error: "cannot_ban_admin" });
     }
-    await tx.user.updateMany({ where: { id: userId, bannedAt: null }, data: { bannedAt: new Date() } });
-    await tx.session.deleteMany({ where: { userId } });
-    await tx.character.updateMany({ where: { creatorId: userId, status: "published" }, data: { status: "hidden" } });
+    await banUser(tx, userId);
+    await hideCharactersOf(tx, userId);
     await deleteCommentsOf(tx, userId);
   }
 }

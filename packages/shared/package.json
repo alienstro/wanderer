@@ -16,6 +16,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
+    "depcruise": "depcruise src --config .dependency-cruiser.cjs --output-type err",
     "test": "vitest run --maxWorkers=1"
   },
   "dependencies": {

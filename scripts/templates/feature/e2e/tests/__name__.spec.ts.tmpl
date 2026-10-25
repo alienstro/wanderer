@@ -1,0 +1,12 @@
+import { expect, test } from "@playwright/test";
+import { E2E_USERS } from "../support/users.js";
+
+test.describe("__label__", () => {
+  test.use({ storageState: E2E_USERS.creator.storageState });
+
+  // Remove "fixme" when the page of the feature exists, and write the steps of a real user.
+  test.fixme("a user opens the __label__ page", async ({ page }) => {
+    await page.goto("/__name__");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  });
+});

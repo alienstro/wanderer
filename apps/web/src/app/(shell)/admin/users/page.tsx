@@ -1,7 +1,6 @@
 "use client";
 
-import { AdminNav } from "@/components/admin-nav";
-import { AdminUserEnergyList } from "@/components/admin-user-energy";
+import { AdminNav, AdminUserEnergyList } from "@/features/admin";
 import { useRequireLogin } from "@/lib/use-require-login";
 
 /** The admin page for the energy of each user. A normal user sees a short message. */

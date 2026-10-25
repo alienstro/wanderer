@@ -1,5 +1,6 @@
 import { type DynamicModule, Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
+import { EventEmitterModule } from "@nestjs/event-emitter";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { LoggerModule } from "nestjs-pino";
 import { AdminModule } from "./admin/admin.module.js";
@@ -43,6 +44,8 @@ export class AppModule {
           { name: "default", ttl: 60_000, limit: Number.MAX_SAFE_INTEGER },
           { name: USER_THROTTLER, ttl: 60_000, limit: Number.MAX_SAFE_INTEGER },
         ]),
+        // The modules send their side effects as events. docs/architecture.md has the event list.
+        EventEmitterModule.forRoot(),
         PrismaModule,
         EventsModule,
         EnergyModule,
