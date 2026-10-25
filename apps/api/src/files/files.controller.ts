@@ -13,8 +13,8 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
 import type { Response } from "express";
-import { CurrentUser } from "../auth/current-user.decorator.js";
-import { SessionGuard } from "../auth/session.guard.js";
+import { CurrentUser, OptionalUser } from "../auth/current-user.decorator.js";
+import { OptionalSessionGuard, SessionGuard } from "../auth/session.guard.js";
 import type { User } from "../generated/prisma/client.js";
 import { AllowMultipart } from "../security/origin.guard.js";
 import { FilesService } from "./files.service.js";
@@ -57,17 +57,19 @@ export class FilesController {
     return withImageCheck(() => this.files.saveAvatar(user.id, file.buffer));
   }
 
+  /** An avatar is public. A scene image goes only to its owner, and no shared cache keeps it. */
   @Get(":id")
-  async read(@Param("id") id: string, @Res() res: Response): Promise<void> {
-    const data = await this.files.read(id);
-    if (!data) {
+  @UseGuards(OptionalSessionGuard)
+  async read(@OptionalUser() user: User | null, @Param("id") id: string, @Res() res: Response): Promise<void> {
+    const file = await this.files.read(id, user?.id ?? null);
+    if (!file) {
       throw new NotFoundException({ error: "not_found" });
     }
     res.set({
       "Content-Type": "image/webp",
       "X-Content-Type-Options": "nosniff",
-      "Cache-Control": "public, max-age=31536000, immutable",
+      "Cache-Control": file.private ? "private, no-store" : "public, max-age=31536000, immutable",
     });
-    res.send(data);
+    res.send(file.data);
   }
 }

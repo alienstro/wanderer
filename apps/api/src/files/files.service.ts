@@ -3,7 +3,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { isUuid } from "../common/uuid.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { FILE_STORAGE, type FileStorage } from "./file-storage.js";
-import { toAvatarWebp } from "./image.js";
+import { toAvatarWebp, toSceneWebp } from "./image.js";
 
 export function fileUrl(id: string): string {
   return `/files/${id}`;
@@ -20,13 +20,24 @@ export class FilesService {
 
   /** Stores a clean WebP copy of the image. It throws InvalidImageError and stores nothing for a bad image. */
   async saveAvatar(ownerId: string, input: Buffer): Promise<{ id: string; url: string }> {
-    const avatar = await toAvatarWebp(input);
+    return this.saveWebp(ownerId, await toAvatarWebp(input));
+  }
+
+  /** Stores a 1024×1024 WebP copy of a scene image. It throws InvalidImageError for broken bytes. */
+  async saveScene(ownerId: string, input: Buffer): Promise<{ id: string; url: string }> {
+    return this.saveWebp(ownerId, await toSceneWebp(input));
+  }
+
+  private async saveWebp(
+    ownerId: string,
+    image: { data: Buffer; width: number; height: number },
+  ): Promise<{ id: string; url: string }> {
     const id = randomUUID();
     const path = `${id}.webp`;
-    await this.storage.save(path, avatar.data);
+    await this.storage.save(path, image.data);
     try {
       await this.prisma.file.create({
-        data: { id, ownerId, path, mime: "image/webp", size: avatar.data.length, width: avatar.width, height: avatar.height },
+        data: { id, ownerId, path, mime: "image/webp", size: image.data.length, width: image.width, height: image.height },
       });
     } catch (error) {
       await this.storage.remove(path);
@@ -35,17 +46,21 @@ export class FilesService {
     return { id, url: fileUrl(id) };
   }
 
-  /** Gives the bytes of a file, or null for an unknown ID. */
-  async read(id: string): Promise<Buffer | null> {
+  /**
+   * Gives the bytes of a file, or null for an unknown ID. A scene image comes from a private chat, so only its
+   * owner gets it. Another viewer gets null, as for an unknown ID.
+   */
+  async read(id: string, viewerId: string | null): Promise<{ data: Buffer; private: boolean } | null> {
     if (!isUuid(id)) {
       return null;
     }
-    const file = await this.prisma.file.findUnique({ where: { id } });
-    if (!file) {
+    const file = await this.prisma.file.findUnique({ where: { id }, include: { sceneImage: { select: { id: true } } } });
+    const isPrivate = Boolean(file?.sceneImage);
+    if (!file || (isPrivate && file.ownerId !== viewerId)) {
       return null;
     }
     try {
-      return await this.storage.read(file.path);
+      return { data: await this.storage.read(file.path), private: isPrivate };
     } catch (error) {
       // A row with no bytes is a lost file, for example after a deploy without the volume.
       if ((error as NodeJS.ErrnoException).code === "ENOENT") {

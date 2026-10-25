@@ -18,6 +18,8 @@ export function testEnv(overrides: Record<string, string> = {}): Env {
     LOG_LEVEL: "silent",
     // A fixed test key: 32 bytes of 0x01. Never use it outside tests.
     KEY_ENCRYPTION_KEY: Buffer.alloc(32, 1).toString("base64"),
+    // A fake key. The tests replace the RunPod client, so no test calls RunPod.
+    RUNPOD_API_KEY: "test-runpod-key",
     ...overrides,
   });
 }

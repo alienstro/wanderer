@@ -574,7 +574,12 @@
     cursor: pointer;
   }
 
-  .msg-action:hover {
+  .msg-action:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  .msg-action:hover:not(:disabled) {
     background: var(--color-hover);
     color: var(--color-text);
   }

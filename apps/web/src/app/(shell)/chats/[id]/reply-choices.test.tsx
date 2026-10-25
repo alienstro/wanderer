@@ -34,6 +34,7 @@ const detail: ChatDetail = {
   memory: { text: "", throughPosition: null },
   canSend: true,
   opening: { index: 0, count: 1 },
+  scenes: [],
 };
 
 const SETS = [
