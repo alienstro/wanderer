@@ -207,9 +207,10 @@
   /*
    * In the rail, each label becomes a tooltip on hover and on keyboard focus.
    * The label stays in the DOM, so a screen reader reads the name of each icon.
+   * The items of the account menu also use .nav, but they keep their full width and their text.
    */
   @media (min-width: 761px) {
-    [data-rail="true"] .nav {
+    [data-rail="true"] .nav:not([role="menuitem"]) {
       position: relative;
       justify-content: center;
       width: 40px;
