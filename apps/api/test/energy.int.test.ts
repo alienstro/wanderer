@@ -1,4 +1,5 @@
 import { HttpException } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { EnergyService } from "../src/energy/energy.service.js";
 import { EventsService } from "../src/events/events.service.js";
@@ -7,7 +8,10 @@ import { testEnv } from "./support/env.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const prisma = new PrismaService(testEnv());
-const energy = new EnergyService(prisma, new EventsService(prisma));
+// The events service listens, so an energy_too_low event saves a row as in the app.
+const emitter = new EventEmitter2();
+new EventsService(prisma, emitter).subscribe();
+const energy = new EnergyService(prisma, emitter);
 
 async function balanceOf(userId: string): Promise<number> {
   return (await prisma.user.findUniqueOrThrow({ where: { id: userId } })).energy;

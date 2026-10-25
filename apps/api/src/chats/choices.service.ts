@@ -1,9 +1,10 @@
 import { ConflictException, HttpException, Inject, Injectable, Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import type { ChoicesResponse } from "@wanderer/shared";
 import { AI_CLIENT_FACTORY, type AiClientFactory } from "../ai/ai-client.js";
 import { aiErrorLogFields, toAiError } from "../ai/ai-errors.js";
 import { AiChargeService } from "../energy/ai-charge.service.js";
-import { EventsService } from "../events/events.service.js";
+import { sendAppEvent } from "../events/app-events.js";
 import type { User } from "../generated/prisma/client.js";
 import { type LoadedTarget, ProxiesService } from "../proxies/proxies.service.js";
 import { ChatsService, type ReplyContext } from "./chats.service.js";
@@ -21,7 +22,7 @@ export class ChoicesService {
   constructor(
     private readonly chats: ChatsService,
     private readonly proxies: ProxiesService,
-    private readonly events: EventsService,
+    private readonly emitter: EventEmitter2,
     private readonly charge: AiChargeService,
     @Inject(AI_CLIENT_FACTORY) private readonly clients: AiClientFactory,
   ) {}
@@ -71,7 +72,7 @@ export class ChoicesService {
       } catch (error) {
         this.logger.warn({ msg: "Proxy choices failed", ...aiErrorLogFields(error) });
         const code = await this.charge.callError(toAiError(error), user, free);
-        await this.events.record("choices_failed", { userId: user.id, characterId: chat.characterId, reason: code });
+        await sendAppEvent(this.emitter, "choices_failed", { userId: user.id, characterId: chat.characterId, reason: code });
         throw new HttpException({ error: code }, 502);
       }
       const choices = parseChoices(text);
@@ -79,7 +80,7 @@ export class ChoicesService {
         return { choices };
       }
     }
-    await this.events.record("choices_failed", { userId: user.id, characterId: chat.characterId, reason: "bad_choices" });
+    await sendAppEvent(this.emitter, "choices_failed", { userId: user.id, characterId: chat.characterId, reason: "bad_choices" });
     throw new HttpException({ error: "choices_failed" }, 502);
   }
 }

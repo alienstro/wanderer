@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import {
   type AdminEnergyEntry,
   type AdminUserEnergy,
@@ -13,7 +14,7 @@ import {
 import type { z } from "zod";
 import { isUuid } from "../common/uuid.js";
 import { dayStart, EnergyService } from "../energy/energy.service.js";
-import { EventsService } from "../events/events.service.js";
+import { sendAppEvent } from "../events/app-events.js";
 import type { EnergySettings, Prisma, User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
@@ -72,7 +73,7 @@ export class UserEnergyAdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly energy: EnergyService,
-    private readonly events: EventsService,
+    private readonly emitter: EventEmitter2,
   ) {}
 
   /**
@@ -159,6 +160,6 @@ export class UserEnergyAdminService {
   }
 
   private audit(admin: User, userId: string, old: object, next: object): Promise<void> {
-    return this.events.record("admin_change", { userId: admin.id, reason: "user_energy", details: { userId, old, new: next } as Prisma.InputJsonObject });
+    return sendAppEvent(this.emitter, "admin_change", { userId: admin.id, reason: "user_energy", details: { userId, old, new: next } as Prisma.InputJsonObject });
   }
 }

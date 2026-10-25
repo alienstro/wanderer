@@ -9,6 +9,7 @@ import {
   type OnModuleDestroy,
   type OnModuleInit,
 } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import {
   AI_ERROR_TEXT,
   type AdminEnergySettings,
@@ -36,7 +37,7 @@ import { OPENROUTER_PRICES_CLIENT, type OpenRouterPricesClient, paidId } from ".
 import { isUuid } from "../common/uuid.js";
 import { ENV, type Env } from "../config/env.js";
 import { EnergyService } from "../energy/energy.service.js";
-import { EventsService } from "../events/events.service.js";
+import { sendAppEvent } from "../events/app-events.js";
 import { OPENROUTER_CHAT_URL, textEnergyPrice, textMarkup } from "../free-models/free-models.js";
 import { type EnergySettings, type FreeModel, Prisma, type SceneModel, type User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -130,7 +131,7 @@ export class EnergyAdminService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly energy: EnergyService,
-    private readonly events: EventsService,
+    private readonly emitter: EventEmitter2,
     @Inject(AI_CLIENT_FACTORY) private readonly clients: AiClientFactory,
     @Inject(OPENROUTER_PRICES_CLIENT) private readonly prices: OpenRouterPricesClient,
     @Inject(ENV) private readonly env: Env,
@@ -325,7 +326,7 @@ export class EnergyAdminService implements OnModuleInit, OnModuleDestroy {
   }
 
   private audit(admin: User, target: string, old: object | null, next: object | null): Promise<void> {
-    return this.events.record("admin_change", {
+    return sendAppEvent(this.emitter, "admin_change", {
       userId: admin.id,
       reason: target,
       details: JSON.parse(JSON.stringify({ old, new: next })) as Prisma.InputJsonObject,

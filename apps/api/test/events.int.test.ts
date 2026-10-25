@@ -1,12 +1,16 @@
 import { randomUUID } from "node:crypto";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { sendAppEvent } from "../src/events/app-events.js";
 import { EVENT_KEEP_DAYS, EventsService } from "../src/events/events.service.js";
 import { PrismaService } from "../src/prisma/prisma.service.js";
 import { testEnv } from "./support/env.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const prisma = new PrismaService(testEnv());
-const events = new EventsService(prisma);
+const emitter = new EventEmitter2();
+const events = new EventsService(prisma, emitter);
+events.subscribe();
 
 describe("EventsService", () => {
   beforeEach(async () => {
@@ -26,6 +30,21 @@ describe("EventsService", () => {
     const rows = await prisma.appEvent.findMany();
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ type: "ai_reply_failed", userId: user.id, characterId: null, reason: "timeout" });
+  });
+
+  it("saves a row for an event that another module sends", async () => {
+    const user = await prisma.user.create({ data: { email: "user@example.com", googleSub: "google-sub-1", name: "User" } });
+
+    await sendAppEvent(emitter, "summary_failed", { userId: user.id, reason: "empty_summary" });
+
+    const rows = await prisma.appEvent.findMany();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ type: "summary_failed", userId: user.id, reason: "empty_summary" });
+  });
+
+  it("does not throw when the write of a sent event fails", async () => {
+    await expect(sendAppEvent(emitter, "login", { userId: randomUUID() })).resolves.toBeUndefined();
+    expect(await prisma.appEvent.count()).toBe(0);
   });
 
   it("does not throw when the write fails", async () => {

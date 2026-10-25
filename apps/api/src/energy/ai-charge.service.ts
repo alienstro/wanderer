@@ -1,6 +1,7 @@
 import { HttpException, Injectable } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import type { AiErrorCode } from "@wanderer/shared";
-import { EventsService } from "../events/events.service.js";
+import { sendAppEvent } from "../events/app-events.js";
 import { textEnergyPrice } from "../free-models/free-models.js";
 import type { EnergySettings, FreeModel, User } from "../generated/prisma/client.js";
 import { type EnergySpend, EnergyService, type SpendReason } from "./energy.service.js";
@@ -25,7 +26,7 @@ function textPrice(action: Exclude<SpendReason, "scene">, free: FreeModel, setti
 export class AiChargeService {
   constructor(
     private readonly energy: EnergyService,
-    private readonly events: EventsService,
+    private readonly emitter: EventEmitter2,
   ) {}
 
   /** Takes the price of a text action on a free model before the call. Null for an own model. */
@@ -49,7 +50,7 @@ export class AiChargeService {
    */
   async checkCap(user: User, settings: EnergySettings): Promise<void> {
     if ((await this.energy.freeRequestsToday()) >= settings.freeDailyCap) {
-      await this.events.record("free_model_busy", { userId: user.id, reason: "cap" });
+      await sendAppEvent(this.emitter, "free_model_busy", { userId: user.id, reason: "cap" });
       throw new HttpException({ error: "free_model_busy" }, 503);
     }
   }
@@ -69,7 +70,7 @@ export class AiChargeService {
     if (!free || !SHARED_LIMIT_ERRORS.has(code)) {
       return code;
     }
-    await this.events.record("free_model_busy", { userId: user.id, reason: code });
+    await sendAppEvent(this.emitter, "free_model_busy", { userId: user.id, reason: code });
     return "free_model_busy";
   }
 }

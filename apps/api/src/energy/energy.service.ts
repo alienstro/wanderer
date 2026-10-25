@@ -1,6 +1,7 @@
 import { BadRequestException, HttpException, Injectable } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { toEnergy } from "@wanderer/shared";
-import { EventsService } from "../events/events.service.js";
+import { sendAppEvent } from "../events/app-events.js";
 import type { EnergyReason, EnergySettings, Prisma } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
@@ -50,7 +51,7 @@ function nextRefill(now: Date): Date {
 export class EnergyService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly events: EventsService,
+    private readonly emitter: EventEmitter2,
   ) {}
 
   /** The admin values. The API reads the row at each action, so a change needs no restart. */
@@ -116,7 +117,7 @@ export class EnergyService {
       return { ok: true as const, entry };
     });
     if (!result.ok) {
-      await this.events.record("energy_too_low", { userId, reason });
+      await sendAppEvent(this.emitter, "energy_too_low", { userId, reason });
       throw new HttpException(
         { error: "energy_low", balance: toEnergy(result.balance), price: toEnergy(price), nextRefillAt: nextRefill(now).toISOString() },
         429,
