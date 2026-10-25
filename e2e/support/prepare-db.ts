@@ -17,5 +17,8 @@ rmSync(UPLOAD_DIR, { recursive: true, force: true });
 mkdirSync(UPLOAD_DIR, { recursive: true });
 await withDb(async (client) => {
   // The other user tables refer to users, so CASCADE empties them too. The tags table stays.
-  await client.query("TRUNCATE users CASCADE");
+  // CASCADE also empties energy_settings (its updated_by refers to users), so the reset adds back
+  // the row of the migration, with the default values. The API reads this row at each energy action.
+  await client.query("TRUNCATE users, energy_settings CASCADE");
+  await client.query("INSERT INTO energy_settings (id) VALUES (1)");
 });
