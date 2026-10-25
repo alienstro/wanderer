@@ -65,7 +65,7 @@ function CallToAction() {
     <div className="flex flex-wrap items-center justify-center gap-4">
       <Link
         href="/login"
-        className="inline-flex min-h-14 items-center gap-3 rounded-full bg-accent py-1.5 pr-7 pl-1.5 text-[16px] font-semibold text-white no-underline shadow-[0_0_0_7px_rgb(99_46_255/0.14),0_0_0_15px_rgb(99_46_255/0.06)] hover:bg-accent-hover"
+        className="inline-flex min-h-14 items-center gap-3 rounded-full bg-accent py-1.5 pr-7 pl-1.5 text-[16px] font-semibold text-white no-underline shadow-[0_0_0_7px_rgb(99_46_255/0.14),0_0_0_15px_rgb(99_46_255/0.06)] transition hover:bg-accent-hover motion-safe:active:scale-[0.97]"
       >
         <span className="flex size-11 items-center justify-center rounded-full bg-white text-accent">
           <Arrow />
@@ -328,17 +328,17 @@ export function LandingView({ characters }: { characters: Card[] }) {
               </div>
               <nav aria-label="Footer: explore" className="flex flex-col gap-2.5 text-[14px]">
                 <span className="text-[12px] font-semibold tracking-[0.08em] text-subtle uppercase">Explore</span>
-                <Link href="/discover" className="text-muted no-underline hover:text-text">Discover</Link>
-                <Link href="/login" className="text-muted no-underline hover:text-text">Log in</Link>
+                <Link href="/discover" className="text-muted no-underline transition-colors hover:text-text">Discover</Link>
+                <Link href="/login" className="text-muted no-underline transition-colors hover:text-text">Log in</Link>
               </nav>
               <nav aria-label="Footer: legal" className="flex flex-col gap-2.5 text-[14px]">
                 <span className="text-[12px] font-semibold tracking-[0.08em] text-subtle uppercase">Legal</span>
-                <Link href="/terms" className="text-muted no-underline hover:text-text">Terms of Service</Link>
-                <Link href="/privacy" className="text-muted no-underline hover:text-text">Privacy Policy</Link>
+                <Link href="/terms" className="text-muted no-underline transition-colors hover:text-text">Terms of Service</Link>
+                <Link href="/privacy" className="text-muted no-underline transition-colors hover:text-text">Privacy Policy</Link>
               </nav>
               <div className="flex flex-col gap-2.5 text-[14px]">
                 <span className="text-[12px] font-semibold tracking-[0.08em] text-subtle uppercase">Contact</span>
-                <a href={`mailto:${CONTACT_EMAIL}`} className="break-all text-muted no-underline hover:text-text">
+                <a href={`mailto:${CONTACT_EMAIL}`} className="break-all text-muted no-underline transition-colors hover:text-text">
                   {CONTACT_EMAIL}
                 </a>
               </div>

@@ -39,7 +39,7 @@ export const PRICE_HEAD = "max-[760px]:hidden";
 export const PRICE_BODY = "max-[760px]:block";
 export const PRICE_ROW =
   "border-t border-line align-top max-[760px]:grid max-[760px]:grid-cols-[3.5rem_1fr_1fr_1fr] max-[760px]:gap-3 max-[760px]:p-4 max-[760px]:[grid-template-areas:'on_name_name_edit''pick_cost_markup_price']";
-export const PRICE_EDIT_ROW = "bg-surface-2 max-[760px]:block";
+export const PRICE_EDIT_ROW = "appear bg-surface-2 max-[760px]:block";
 export const PRICE_EDIT_CELL = "max-[760px]:block";
 export const PRICE_CELL = {
   on: "py-3.5 pr-2 pl-4 max-[760px]:p-0 max-[760px]:[grid-area:on]",

@@ -1,0 +1,245 @@
+/*
+ * The motion of the app: the open and close animations, and the hover and press feedback.
+ * The tokens (--duration-*, --ease-*) are in globals.css.
+ *
+ * Each transform is inside `prefers-reduced-motion: no-preference`. With "Reduce motion", nothing moves or
+ * scales, and only a short fade stays. A browser with no @starting-style shows each part with no animation.
+ */
+@layer components {
+  /* Hover and press feedback. The hover colors are in globals.css. */
+  :is(.pill, .chip, .icon-btn, .nav, .seg, .msg-action, .choice) {
+    transition-property: color, background-color, border-color, opacity, transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .nav:active {
+    background: var(--color-current);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    :is(.pill, .chip, .icon-btn, .seg, .msg-action):not(:disabled, [aria-disabled="true"]):active {
+      transform: scale(0.96);
+    }
+
+    .choice:not(:disabled):active {
+      transform: scale(0.99);
+    }
+  }
+
+  /*
+   * The modal <dialog> (components/ui/modal.tsx). The panel fills the dialog, so a click on the dialog itself is
+   * a click on the backdrop.
+   */
+  .modal {
+    position: fixed;
+    max-width: 100vw;
+    max-height: 100dvh;
+    padding: 0;
+    border: 0;
+    overflow: visible;
+    background: transparent;
+    color: inherit;
+    opacity: 0;
+    transition-property: opacity, transform;
+    transition-duration: var(--duration-base);
+    transition-timing-function: var(--ease-in);
+  }
+
+  .modal[open] {
+    display: flex;
+    flex-direction: column;
+    opacity: 1;
+    transform: none;
+    transition-timing-function: var(--ease-out);
+  }
+
+  .modal::backdrop {
+    background: rgb(0 0 0 / 0);
+    transition-property: background-color;
+    transition-duration: var(--duration-base);
+  }
+
+  .modal[open]::backdrop {
+    background: rgb(0 0 0 / 0.6);
+  }
+
+  @starting-style {
+    .modal[open] {
+      opacity: 0;
+    }
+
+    .modal[open]::backdrop {
+      background: rgb(0 0 0 / 0);
+    }
+  }
+
+  /*
+   * The close animation keeps the dialog in the top layer until the fade ends. A browser with no `overlay`
+   * (Firefox) closes the dialog at once, because the dialog would fall below the page during the fade.
+   */
+  @supports (overlay: auto) {
+    .modal {
+      transition-property: opacity, transform, display, overlay;
+      transition-behavior: allow-discrete;
+    }
+
+    .modal::backdrop {
+      transition-property: background-color, display, overlay;
+      transition-behavior: allow-discrete;
+    }
+  }
+
+  .modal-panel {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 0;
+    padding: 20px;
+    overflow-y: auto;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  }
+
+  .modal-center {
+    width: min(480px, calc(100vw - 32px));
+    max-height: 85dvh;
+    margin: auto;
+  }
+
+  /* A panel on the right side on a computer, and a bottom sheet on a phone. */
+  .modal-sheet {
+    width: min(460px, 100vw);
+    height: 100dvh;
+    margin: 0 0 0 auto;
+    transition-duration: var(--duration-slow);
+  }
+
+  @media (max-width: 760px) {
+    .modal-sheet {
+      width: 100vw;
+      height: auto;
+      max-height: 85dvh;
+      margin: auto 0 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .modal-center {
+      transform: scale(0.96);
+    }
+
+    .modal-sheet {
+      transform: translateX(100%);
+    }
+
+    @media (max-width: 760px) {
+      .modal-sheet {
+        transform: translateY(100%);
+      }
+    }
+
+    @starting-style {
+      .modal-center[open] {
+        transform: scale(0.96);
+      }
+
+      .modal-sheet[open] {
+        transform: translateX(100%);
+      }
+
+      @media (max-width: 760px) {
+        .modal-sheet[open] {
+          transform: translateY(100%);
+        }
+      }
+    }
+  }
+
+  /*
+   * A pop-up menu that stays on the page and uses the `hidden` attribute. The `display` transition keeps the menu
+   * on the screen until the fade ends.
+   */
+  .menu-pop {
+    opacity: 1;
+    transform: none;
+    transition-property: opacity, transform, display;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+    transition-behavior: allow-discrete;
+  }
+
+  .menu-pop[hidden] {
+    opacity: 0;
+    transition-timing-function: var(--ease-in);
+  }
+
+  @starting-style {
+    .menu-pop:not([hidden]) {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .menu-pop[hidden] {
+      transform: translateY(4px) scale(0.98);
+    }
+
+    @starting-style {
+      .menu-pop:not([hidden]) {
+        transform: translateY(4px) scale(0.98);
+      }
+    }
+  }
+
+  /*
+   * A <details> that opens and closes with a fade and a height change. A browser with no ::details-content or no
+   * `interpolate-size` opens it at once.
+   */
+  .disclosure {
+    interpolate-size: allow-keywords;
+  }
+
+  .disclosure::details-content {
+    block-size: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition-property: opacity, content-visibility;
+    transition-duration: var(--duration-base);
+    transition-timing-function: var(--ease-in);
+    transition-behavior: allow-discrete;
+  }
+
+  .disclosure[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+    transition-timing-function: var(--ease-out);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .disclosure::details-content {
+      transition-property: block-size, opacity, content-visibility;
+    }
+  }
+
+  /* A part that fades in when it comes onto the page, such as an edit row. It has no close animation. */
+  .appear {
+    transition-property: opacity, transform;
+    transition-duration: var(--duration-base);
+    transition-timing-function: var(--ease-out);
+  }
+
+  @starting-style {
+    .appear {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    @starting-style {
+      .appear {
+        transform: translateY(-4px);
+      }
+    }
+  }
+}

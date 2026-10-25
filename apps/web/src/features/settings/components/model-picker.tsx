@@ -30,7 +30,7 @@ export function ModelPicker({ models, onPick }: { models: string[]; onPick: (mod
             <li key={model}>
               <button
                 type="button"
-                className="w-full rounded-lg px-2.5 py-1.5 text-left break-all hover:bg-hover"
+                className="w-full rounded-lg px-2.5 py-1.5 text-left break-all transition-colors hover:bg-hover active:bg-(--color-current)"
                 onClick={() => onPick(model)}
               >
                 {model}

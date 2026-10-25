@@ -47,7 +47,7 @@ export function OpeningSwitcher({ chatId, index, count, onChanged, onLocked }: O
     }
   }
 
-  const arrowClass = "grid size-10 place-items-center rounded-full text-text hover:bg-surface disabled:opacity-40";
+  const arrowClass = "grid size-10 place-items-center rounded-full text-text transition hover:bg-surface motion-safe:enabled:active:scale-95 disabled:opacity-40";
   return (
     <div className="flex flex-col gap-1">
       <div className="grid grid-cols-[2.5rem_1fr_2.5rem] items-center">

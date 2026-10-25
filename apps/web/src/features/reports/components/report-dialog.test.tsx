@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ReportButton } from "./report-dialog";
@@ -64,14 +64,16 @@ describe("ReportButton", () => {
     expect(note.getAttribute("maxlength")).toBe("500");
   });
 
-  it("closes with the Close button and with Escape", async () => {
+  it("closes with the Close button and with Escape, and gives the focus back to Report", async () => {
     stubFetch();
     await openDialog();
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
-    expect(screen.queryByRole("dialog")).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByRole("button", { name: "Report" })).toHaveFocus();
     await userEvent.click(screen.getByRole("button", { name: "Report" }));
     await userEvent.keyboard("{Escape}");
-    expect(screen.queryByRole("dialog")).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByRole("button", { name: "Report" })).toHaveFocus();
   });
 });
 

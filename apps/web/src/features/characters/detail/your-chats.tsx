@@ -3,8 +3,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ChatListResponse, ChatSummary } from "@wanderer/shared";
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { InlineMarkdown } from "@/components/ui/markdown";
+import { Modal } from "@/components/ui/modal";
 import { apiFetch } from "@/lib/api";
 import { messagesLabel } from "@/lib/format";
 import { useMe } from "@/lib/query-provider";
@@ -75,32 +76,14 @@ const PREVIEW_COUNT = 3;
 
 /** All the chats of the user with this character, in a list that scrolls inside the dialog. */
 function AllChatsDialog({ items, onDeleted, onClose }: { items: ChatSummary[]; onDeleted: () => void; onClose: () => void }) {
-  const titleId = useId();
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="flex max-h-[80dvh] w-full max-w-[640px] flex-col gap-4 panel p-5 shadow-[0_16px_40px_rgba(0,0,0,0.6)]"
-        onClick={(event) => event.stopPropagation()}
-        onKeyDown={(event) => event.key === "Escape" && onClose()}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <h2 id={titleId} className="m-0 text-lg font-bold">
-            Your chats
-          </h2>
-          <button type="button" className="pill pill-soft" onClick={onClose} autoFocus>
-            Close
-          </button>
-        </div>
-        <ul className="m-0 flex min-h-0 list-none flex-col gap-2.5 overflow-y-auto p-0">
-          {items.map((chat) => (
-            <ChatRow key={chat.id} chat={chat} onDeleted={onDeleted} />
-          ))}
-        </ul>
-      </div>
-    </div>
+    <Modal title="Your chats" closeButton onClose={onClose} className="w-[min(640px,calc(100vw-32px))] max-h-[80dvh]">
+      <ul className="m-0 flex min-h-0 list-none flex-col gap-2.5 overflow-y-auto p-0">
+        {items.map((chat) => (
+          <ChatRow key={chat.id} chat={chat} onDeleted={onDeleted} />
+        ))}
+      </ul>
+    </Modal>
   );
 }
 

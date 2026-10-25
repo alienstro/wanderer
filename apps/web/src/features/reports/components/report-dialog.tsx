@@ -8,6 +8,7 @@ import {
   type ReportReason,
 } from "@wanderer/shared";
 import { type FormEvent, useId, useState } from "react";
+import { Modal } from "@/components/ui/modal";
 import { ApiError, apiFetch } from "@/lib/api";
 
 /** A report is about a character or about a comment. */
@@ -56,7 +57,6 @@ export function ReportButton({ className, ...target }: ReportTarget & { classNam
 
 function ReportDialog({ target, onClose }: { target: ReportTarget; onClose: () => void }) {
   const { path, noun, reasons } = targetOf(target);
-  const titleId = useId();
   const noteId = useId();
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [note, setNote] = useState("");
@@ -85,69 +85,52 @@ function ReportDialog({ target, onClose }: { target: ReportTarget; onClose: () =
   }
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="flex w-full max-w-[460px] flex-col gap-4 panel p-5 shadow-[0_16px_40px_rgba(0,0,0,0.6)]"
-        onClick={(event) => event.stopPropagation()}
-        onKeyDown={(event) => event.key === "Escape" && onClose()}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <h2 id={titleId} className="m-0 text-lg font-bold">
-            Report this {noun}
-          </h2>
-          <button type="button" className="pill pill-soft" onClick={onClose} autoFocus>
-            Close
-          </button>
-        </div>
-        {sent ? (
-          <p className="m-0 text-muted">Thanks. The admin will look at it.</p>
-        ) : (
-          <form className="flex flex-col gap-4" onSubmit={(event) => void send(event)}>
-            <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
-              <legend className="label mb-2">Reason</legend>
-              {reasons.map((value) => (
-                <label key={value} className="flex items-center gap-2.5">
-                  <input
-                    type="radio"
-                    name="reason"
-                    value={value}
-                    checked={reason === value}
-                    onChange={() => setReason(value)}
-                  />
-                  {REPORT_REASON_LABELS[value]}
-                </label>
-              ))}
-            </fieldset>
-            <div className="flex flex-col gap-2">
-              <label htmlFor={noteId} className="label">
-                Note (optional)
+    <Modal title={`Report this ${noun}`} closeButton onClose={onClose} className="w-[min(460px,calc(100vw-32px))]">
+      {sent ? (
+        <p className="m-0 text-muted">Thanks. The admin will look at it.</p>
+      ) : (
+        <form className="flex flex-col gap-4" onSubmit={(event) => void send(event)}>
+          <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
+            <legend className="label mb-2">Reason</legend>
+            {reasons.map((value) => (
+              <label key={value} className="flex items-center gap-2.5">
+                <input
+                  type="radio"
+                  name="reason"
+                  value={value}
+                  checked={reason === value}
+                  onChange={() => setReason(value)}
+                />
+                {REPORT_REASON_LABELS[value]}
               </label>
-              <textarea
-                id={noteId}
-                className="field"
-                rows={3}
-                maxLength={REPORT_NOTE_MAX}
-                value={note}
-                onChange={(event) => setNote(event.target.value)}
-              />
-              <span className="hint">
-                {note.length} / {REPORT_NOTE_MAX}
-              </span>
-            </div>
-            {error && (
-              <p role="alert" className="m-0 text-[13px] text-error">
-                {error}
-              </p>
-            )}
-            <button type="submit" className="pill pill-accent self-start" disabled={!reason || busy}>
-              Send report
-            </button>
-          </form>
-        )}
-      </div>
-    </div>
+            ))}
+          </fieldset>
+          <div className="flex flex-col gap-2">
+            <label htmlFor={noteId} className="label">
+              Note (optional)
+            </label>
+            <textarea
+              id={noteId}
+              className="field"
+              rows={3}
+              maxLength={REPORT_NOTE_MAX}
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+            />
+            <span className="hint">
+              {note.length} / {REPORT_NOTE_MAX}
+            </span>
+          </div>
+          {error && (
+            <p role="alert" className="m-0 text-[13px] text-error">
+              {error}
+            </p>
+          )}
+          <button type="submit" className="pill pill-accent self-start" disabled={!reason || busy}>
+            Send report
+          </button>
+        </form>
+      )}
+    </Modal>
   );
 }

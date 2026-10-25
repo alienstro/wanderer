@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Persona, PersonaListResponse } from "@wanderer/shared";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { PersonasSection } from "./personas-section";
 
 function persona(id: string, name: string, isDefault = false): Persona {
@@ -53,16 +53,6 @@ function renderSection() {
 }
 
 describe("PersonasSection", () => {
-  beforeAll(() => {
-    // jsdom has no modal dialog. The stubs only open and close the element.
-    HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
-      this.setAttribute("open", "");
-    };
-    HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
-      this.removeAttribute("open");
-    };
-  });
-
   afterEach(() => {
     vi.unstubAllGlobals();
   });
