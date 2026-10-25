@@ -38,7 +38,6 @@ You need Node 24 (`.nvmrc`), pnpm (`corepack enable`), and Docker.
    DATABASE_URL=postgresql://wanderer:wanderer@localhost:5433/wanderer
    WEB_ORIGIN=http://localhost:3100
    GOOGLE_CALLBACK_URL=http://localhost:3001/auth/google/callback
-   RUNPOD_API_KEY=local-fake-key
    ```
 
    To sign in, you also need a Google OAuth client (`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`).
