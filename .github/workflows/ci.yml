@@ -1,4 +1,4 @@
-# CI: checks each pull request to main with lint, typecheck, the tests and the import rules.
+# CI: checks each pull request to main with lint, typecheck, the tests and the import rules (dependency-cruiser).
 # The e2e tests stay local, because they build both apps and take too long for each PR.
 name: CI
 
@@ -50,3 +50,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm verify
+
+      - run: pnpm depcruise

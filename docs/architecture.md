@@ -91,11 +91,16 @@ app  →  features  →  components/ui, lib  →  @wanderer/shared
 
 | Rule | Tool | Where |
 |---|---|---|
-| `app → features → ui, lib` | `eslint-plugin-boundaries` | `eslint.config.mjs`, in `pnpm lint` |
-| A feature imports only the `index.ts` of another feature | `dependency-cruiser` | `.dependency-cruiser.cjs`, in `pnpm depcruise` |
-| `packages/shared` has no React and no NestJS | `dependency-cruiser` | `.dependency-cruiser.cjs` |
+| `app → features → ui, lib`, and a web feature imports only the `index.ts` of another feature | `eslint-plugin-boundaries` | `eslint.config.mjs`, in `pnpm lint` |
+| A feature imports only the `index.ts` of another feature (web and shared) | `dependency-cruiser` | `apps/web/.dependency-cruiser.cjs`, `packages/shared/.dependency-cruiser.cjs` |
+| `packages/shared` has no React, Next.js, NestJS or Prisma | `dependency-cruiser` | `packages/shared/.dependency-cruiser.cjs` |
+| A package imports no file of another package (only `@wanderer/shared` by name) | `dependency-cruiser` | `.dependency-cruiser.cjs` (the base that each package extends) |
+| Source code imports no test code | `dependency-cruiser` | `.dependency-cruiser.cjs` |
 | No circular imports | `dependency-cruiser` | `.dependency-cruiser.cjs` |
 | 400 lines for each source file | ESLint `max-lines` | `eslint.config.mjs` |
+
+`pnpm depcruise` runs dependency-cruiser in each package, one at a time. Each package has its own config,
+because dependency-cruiser reads the `paths` of a tsconfig relative to the folder that it runs in.
 
 CI runs `pnpm verify` and `pnpm depcruise` on each pull request to `main`.
 

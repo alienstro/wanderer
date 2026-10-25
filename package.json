@@ -13,12 +13,16 @@
     "test": "pnpm -r --workspace-concurrency=1 test",
     "verify": "pnpm lint && pnpm typecheck && pnpm test",
     "e2e": "pnpm --filter @wanderer/e2e build && pnpm --filter @wanderer/e2e e2e",
+    "depcruise": "pnpm -r --workspace-concurrency=1 depcruise",
     "smoke": "node scripts/smoke.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.0.0",
+    "dependency-cruiser": "^18.6.0",
     "eslint": "^10.13.0",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-boundaries": "^7.2.0",
     "globals": "^17.13.0",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.72.0",
