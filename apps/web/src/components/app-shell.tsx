@@ -10,10 +10,11 @@ import { UserRow } from "./user-row";
  * The sidebar (links, Recent chats, the model card, and the user row) and the main area.
  * The sidebar floats with round corners, as the header bar of the landing page.
  * On a phone a thin top bar opens the sidebar as a drawer, so each page starts with its own content.
+ * The backdrop is on the shell, not on main, so it also shows behind and around the sidebar and the rail.
  */
 export function AppShell({ children, defaultRail }: { children: ReactNode; defaultRail: boolean }) {
   return (
-    <div className="flex min-h-dvh max-[760px]:flex-col">
+    <div className="app-backdrop flex min-h-dvh max-[760px]:flex-col">
       <SidebarDrawer defaultRail={defaultRail}>
         <Logo />
         <SidebarNav />
@@ -23,7 +24,7 @@ export function AppShell({ children, defaultRail }: { children: ReactNode; defau
           <UserRow />
         </div>
       </SidebarDrawer>
-      <main className="app-backdrop min-w-0 flex-1">{children}</main>
+      <main className="min-w-0 flex-1">{children}</main>
     </div>
   );
 }
