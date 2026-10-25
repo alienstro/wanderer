@@ -3,8 +3,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PERSONA_LIMIT, type Persona } from "@wanderer/shared";
 import { useState } from "react";
+import { Modal, ModalClose } from "@/components/ui/modal";
 import { deletePersona, fetchPersonas, makeDefaultPersona, personasKey } from "../api";
-import { Modal } from "./modal";
 import { PersonaDialog } from "./persona-dialog";
 
 const LIMIT_TEXT = `You can save up to ${PERSONA_LIMIT} personas.`;
@@ -27,9 +27,9 @@ function DeleteModal({ persona, onDone, onClose }: { persona: Persona; onDone: (
 
   return (
     <Modal title={`Delete ${persona.name}?`} onClose={onClose}>
-      <p className="m-0 mb-4 text-muted">Old chats keep this persona.</p>
+      <p className="m-0 text-muted">Old chats keep this persona.</p>
       {error && (
-        <p role="alert" className="m-0 mb-3 text-error">
+        <p role="alert" className="m-0 text-error">
           {error}
         </p>
       )}
@@ -37,9 +37,7 @@ function DeleteModal({ persona, onDone, onClose }: { persona: Persona; onDone: (
         <button type="button" className="pill pill-danger pill-sm" disabled={deleting} onClick={() => void remove()}>
           Delete
         </button>
-        <button type="button" className="pill pill-ghost pill-sm" onClick={onClose}>
-          Cancel
-        </button>
+        <ModalClose className="pill pill-ghost pill-sm">Cancel</ModalClose>
       </div>
     </Modal>
   );

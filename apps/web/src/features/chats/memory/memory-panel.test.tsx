@@ -84,6 +84,14 @@ describe("MemoryButton", () => {
     await vi.waitFor(() => expect(onSaved).toHaveBeenCalledWith(after));
   });
 
+  it("Save closes the panel and gives the focus back to the Memory button", async () => {
+    stubFetch({ body: { text: "New fact.", throughPosition: null } });
+    await openPanel();
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByRole("button", { name: "Memory" })).toHaveFocus();
+  });
+
   it("Save without a draft sends only the text", async () => {
     const fetchMock = stubFetch({ body: { text: "New fact.", throughPosition: null } });
     const { box } = await openPanel();

@@ -117,7 +117,7 @@ export function LegalPage({
               <a
                 key={section.id}
                 href={`#${section.id}`}
-                className="-ml-px border-l border-transparent py-1.5 pl-4 text-[13px] text-muted no-underline hover:border-accent-hover hover:text-text"
+                className="-ml-px border-l border-transparent py-1.5 pl-4 text-[13px] text-muted no-underline transition-colors hover:border-accent-hover hover:text-text"
               >
                 {section.title}
               </a>

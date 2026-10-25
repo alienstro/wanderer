@@ -290,7 +290,7 @@ export function AdminUserEnergyList() {
               {users.data.users.flatMap((user) => [
                 <UserRow key={user.id} user={user} open={open === user.id} onToggle={() => setOpen(open === user.id ? null : user.id)} />,
                 open === user.id && (
-                  <tr key={`${user.id}-panel`} className="bg-surface-2 max-[760px]:block">
+                  <tr key={`${user.id}-panel`} className="appear bg-surface-2 max-[760px]:block">
                     <td colSpan={4} className="max-[760px]:block">
                       <UserEnergyPanel user={user} onChanged={changed} />
                     </td>

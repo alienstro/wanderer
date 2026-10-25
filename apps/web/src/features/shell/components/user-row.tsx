@@ -52,7 +52,7 @@ export function UserRow() {
         aria-label="Account menu"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center gap-2.5 rounded-xl border-0 bg-transparent px-2 py-1.5 text-left text-text hover:bg-hover rail:p-1"
+        className="flex w-full items-center gap-2.5 rounded-xl border-0 bg-transparent px-2 py-1.5 text-left text-text transition-colors hover:bg-hover active:bg-(--color-current) rail:p-1"
       >
         <Avatar name={me.name} src={me.pictureUrl} size={32} />
         <span className="flex min-w-0 flex-col rail:hidden">
@@ -60,28 +60,28 @@ export function UserRow() {
           {me.handle && <span className="truncate text-xs text-subtle">@{me.handle}</span>}
         </span>
       </button>
-      {open && (
-        <div
-          role="menu"
-          aria-label="Account"
-          className="absolute bottom-12 left-0 z-20 flex w-[220px] flex-col rounded-[14px] border border-field-line bg-surface p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.6)]"
-        >
-          <Link role="menuitem" href="/my-characters" className="nav" onClick={() => setOpen(false)}>
-            My characters
+      {/* The menu stays on the page, so that it can fade out. `hidden` takes it out of the focus order. */}
+      <div
+        role="menu"
+        aria-label="Account"
+        hidden={!open}
+        className="menu-pop absolute bottom-12 left-0 z-20 flex w-[220px] origin-bottom-left flex-col rounded-[14px] border border-field-line bg-surface p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.6)]"
+      >
+        <Link role="menuitem" href="/my-characters" className="nav" onClick={() => setOpen(false)}>
+          My characters
+        </Link>
+        <Link role="menuitem" href="/settings" className="nav" onClick={() => setOpen(false)}>
+          Settings
+        </Link>
+        {me.role === "admin" && (
+          <Link role="menuitem" href="/admin" className="nav" onClick={() => setOpen(false)}>
+            Admin
           </Link>
-          <Link role="menuitem" href="/settings" className="nav" onClick={() => setOpen(false)}>
-            Settings
-          </Link>
-          {me.role === "admin" && (
-            <Link role="menuitem" href="/admin" className="nav" onClick={() => setOpen(false)}>
-              Admin
-            </Link>
-          )}
-          <button type="button" role="menuitem" className="nav" onClick={() => void logOut()}>
-            Log out
-          </button>
-        </div>
-      )}
+        )}
+        <button type="button" role="menuitem" className="nav" onClick={() => void logOut()}>
+          Log out
+        </button>
+      </div>
     </div>
   );
 }

@@ -81,7 +81,7 @@ export function CharacterView({ detail }: { detail: CharacterDetail }) {
           Definition
         </h2>
         {detail.definition ? (
-          <details className="rounded-[16px] border border-line bg-surface">
+          <details className="disclosure rounded-[16px] border border-line bg-surface">
             <summary className="flex min-h-[46px] cursor-pointer items-center px-4 font-semibold">Show the personality and scenario</summary>
             <div className="flex flex-col gap-2.5 px-4 pb-4 whitespace-pre-wrap text-[#c4c4cc] [overflow-wrap:anywhere]">
               <p className="m-0">

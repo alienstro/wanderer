@@ -10,9 +10,9 @@ import {
 } from "@wanderer/shared";
 import { type FormEvent, useState } from "react";
 import { Field } from "@/components/ui/form-field";
+import { Modal, ModalClose } from "@/components/ui/modal";
 import { ApiError } from "@/lib/api";
 import { createPersona, updatePersona } from "../api";
-import { Modal } from "./modal";
 
 const NAME_MESSAGE = `Enter a name of ${PERSONA_NAME_MAX} characters or less.`;
 const DESCRIPTION_MESSAGE = `Use ${PERSONA_DESCRIPTION_MAX.toLocaleString("en-US")} characters or less.`;
@@ -107,9 +107,7 @@ export function PersonaDialog({
           <button type="submit" className="pill pill-accent pill-sm" disabled={saving}>
             Save
           </button>
-          <button type="button" className="pill pill-ghost pill-sm" onClick={onClose}>
-            Cancel
-          </button>
+          <ModalClose className="pill pill-ghost pill-sm">Cancel</ModalClose>
         </div>
       </form>
     </Modal>

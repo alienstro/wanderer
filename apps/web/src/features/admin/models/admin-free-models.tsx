@@ -157,7 +157,7 @@ export function FreeModelsSection({ models, onChanged }: { models: AdminFreeMode
         </p>
       )}
       {editing === "new" && (
-        <div className="panel">
+        <div className="appear panel">
           <FreeModelForm onSaved={saved} onCancel={() => setEditing(null)} />
         </div>
       )}
