@@ -1,0 +1,15 @@
+import { z } from "zod";
+
+/** The longest name of a __label__. Change the schemas to the fields of the feature. */
+export const __NAME___NAME_MAX = 100;
+
+export const create__Name__RequestSchema = z.object({
+  name: z.string().trim().min(1).max(__NAME___NAME_MAX),
+});
+export type Create__Name__Request = z.infer<typeof create__Name__RequestSchema>;
+
+/** One __label__, as the API sends it. */
+export interface __Name__View {
+  id: string;
+  name: string;
+}

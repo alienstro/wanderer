@@ -14,7 +14,8 @@
     "verify": "pnpm lint && pnpm typecheck && pnpm test",
     "e2e": "pnpm --filter @wanderer/e2e build && pnpm --filter @wanderer/e2e e2e",
     "depcruise": "pnpm -r --workspace-concurrency=1 depcruise",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "new:feature": "node scripts/new-feature.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

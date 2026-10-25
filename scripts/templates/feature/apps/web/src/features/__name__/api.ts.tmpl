@@ -1,0 +1,9 @@
+import type { __Name__View } from "@wanderer/shared";
+import { apiFetch } from "@/lib/api";
+
+/** The query key of the __label__ list. A change to the list loads it again with this key. */
+export const __nameCamel__ListKey = ["__name__"] as const;
+
+export function fetch__Name__List(): Promise<__Name__View[]> {
+  return apiFetch<__Name__View[]>("/__name__");
+}
