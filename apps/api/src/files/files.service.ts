@@ -77,6 +77,14 @@ export class FilesService {
   }
 
   /**
+   * The delete of file rows, not run yet. The caller puts it in a batch transaction with its own writes, then
+   * removes the bytes with removeBytes.
+   */
+  deleteRows(ids: string[]) {
+    return this.prisma.file.deleteMany({ where: { id: { in: ids } } });
+  }
+
+  /**
    * Removes the bytes after the rows are gone. A storage error goes to the log and does not stop the
    * other removals, because the rows are already deleted.
    */

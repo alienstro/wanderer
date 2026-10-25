@@ -116,7 +116,7 @@ export class UserEnergyAdminService {
   async setDaily(admin: User, id: string, body: unknown): Promise<AdminUserEnergy> {
     const current = await this.find(id);
     const { dailyEnergy } = parse(userDailyEnergySchema, body);
-    await this.prisma.user.update({ where: { id }, data: { dailyEnergy } });
+    await this.energy.setDailyEnergy(id, dailyEnergy);
     await this.audit(
       admin,
       id,

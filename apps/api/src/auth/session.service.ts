@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { Injectable } from "@nestjs/common";
-import type { User } from "../generated/prisma/client.js";
+import type { Prisma, User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -16,6 +16,15 @@ export interface ValidSession {
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
+}
+
+/**
+ * Bans a user inside the transaction of the caller: it sets the ban time and ends all sessions at once. A second
+ * ban keeps the time of the first ban. The auth module owns the sign-in columns of users (docs/architecture.md).
+ */
+export async function banUser(tx: Prisma.TransactionClient, userId: string): Promise<void> {
+  await tx.user.updateMany({ where: { id: userId, bannedAt: null }, data: { bannedAt: new Date() } });
+  await tx.session.deleteMany({ where: { userId } });
 }
 
 @Injectable()

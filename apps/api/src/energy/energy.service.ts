@@ -85,6 +85,11 @@ export class EnergyService {
     });
   }
 
+  /** Sets the own daily amount of a user, in hundredths. Null uses the daily energy of the settings again. */
+  async setDailyEnergy(userId: string, dailyEnergy: number | null): Promise<void> {
+    await this.prisma.user.update({ where: { id: userId }, data: { dailyEnergy } });
+  }
+
   /**
    * Takes the price before the model call. A balance below the price gives 429 `energy_low` with the balance, the
    * price and the next refill time, and records an `energy_too_low` event. A price of 0 also saves a row, so the

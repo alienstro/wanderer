@@ -2,6 +2,7 @@ import js from "@eslint/js";
 import boundaries from "eslint-plugin-boundaries";
 import globals from "globals";
 import tseslint from "typescript-eslint";
+import { tableOwnerConfigs } from "./apps/api/table-owners.mjs";
 
 // The import rules of the web app. docs/architecture.md explains them: app → features → components/ui, lib.
 const webBoundaries = {
@@ -63,6 +64,8 @@ export default tseslint.config(
     rules: { "max-lines": ["error", { max: 400, skipBlankLines: true, skipComments: true }] },
   },
   webBoundaries,
+  // Only the owner module of a table writes to it.
+  ...tableOwnerConfigs("apps/api/src"),
   // Plain .mjs scripts run in Node.
   { files: ["**/*.mjs"], languageOptions: { globals: globals.node } },
   // The .cjs config files (dependency-cruiser) are CommonJS in Node.

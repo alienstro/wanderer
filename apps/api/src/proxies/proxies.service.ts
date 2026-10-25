@@ -26,7 +26,7 @@ import { ENV, type Env } from "../config/env.js";
 import { OPENROUTER_CHAT_URL } from "../free-models/free-models.js";
 import { FreeModelsService } from "../free-models/free-models.service.js";
 import type { ApiKey, FreeModel, Proxy, User } from "../generated/prisma/client.js";
-import { MeService } from "../me/me.service.js";
+import { activateFirstProxy, MeService } from "../me/me.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 const NOT_FOUND = { error: "not_found" };
@@ -120,7 +120,7 @@ export class ProxiesService {
     }
     const row = await this.prisma.$transaction(async (tx) => {
       const created = await tx.proxy.create({ data: { userId: user.id, ...input }, include: WITH_KEY });
-      await tx.user.updateMany({ where: { id: user.id, activeProxyId: null }, data: { activeProxyId: created.id } });
+      await activateFirstProxy(tx, user.id, created.id);
       return created;
     });
     return toProxyView(row, user.activeProxyId ?? row.id);
@@ -146,7 +146,7 @@ export class ProxiesService {
 
   async activate(user: User, id: string): Promise<MeResponse> {
     await this.findOwn(user, id);
-    const updated = await this.prisma.user.update({ where: { id: user.id }, data: { activeProxyId: id } });
+    const updated = await this.me.setActiveProxy(user.id, id);
     return this.me.toResponse(updated);
   }
 

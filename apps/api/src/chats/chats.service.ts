@@ -229,7 +229,7 @@ export class ChatsService {
     await this.findOwn(user, id);
     const scenes = await this.prisma.file.findMany({ where: { sceneImage: { chatId: id } }, select: { id: true, path: true } });
     await this.prisma.$transaction([
-      this.prisma.file.deleteMany({ where: { id: { in: scenes.map((file) => file.id) } } }),
+      this.files.deleteRows(scenes.map((file) => file.id)),
       this.prisma.chat.delete({ where: { id } }),
     ]);
     await this.files.removeBytes(scenes.map((file) => file.path));

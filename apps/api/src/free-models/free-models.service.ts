@@ -4,6 +4,7 @@ import { isUuid } from "../common/uuid.js";
 import { ENV, type Env } from "../config/env.js";
 import { EnergyService } from "../energy/energy.service.js";
 import type { FreeModel, User } from "../generated/prisma/client.js";
+import { MeService } from "../me/me.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { sceneEnergyPrice } from "../scenes/scene-models.js";
 import { chooseFreeModel, isUsable, textEnergyPrice } from "./free-models.js";
@@ -16,6 +17,7 @@ export class FreeModelsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly energy: EnergyService,
+    private readonly me: MeService,
     @Inject(ENV) private readonly env: Env,
   ) {}
 
@@ -63,7 +65,7 @@ export class FreeModelsService {
     if (!model || !isUsable(model, await this.energy.settings())) {
       throw new NotFoundException(NOT_FOUND);
     }
-    const updated = await this.prisma.user.update({ where: { id: user.id }, data: { freeModelId: id, activeProxyId: null } });
+    const updated = await this.me.setFreeModel(user.id, id);
     return this.list(updated);
   }
 

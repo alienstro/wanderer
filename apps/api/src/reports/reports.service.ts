@@ -16,6 +16,34 @@ import { PrismaService } from "../prisma/prisma.service.js";
 export const REPORTS_EACH_DAY = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Closes one open report. It gives false when the report was closed already, for example by another admin. */
+export async function closeReport(
+  tx: Prisma.TransactionClient,
+  reportId: string,
+  closed: Prisma.ReportUpdateManyMutationInput,
+): Promise<boolean> {
+  const { count } = await tx.report.updateMany({ where: { id: reportId, status: "open" }, data: closed });
+  return count > 0;
+}
+
+/** Closes the other open reports about a character, inside the transaction of the caller. */
+export async function closeCharacterReports(
+  tx: Prisma.TransactionClient,
+  characterId: string,
+  closed: Prisma.ReportUpdateManyMutationInput,
+): Promise<void> {
+  await tx.report.updateMany({ where: { characterId, target: "character", status: "open" }, data: closed });
+}
+
+/** Closes the other open reports about a comment, inside the transaction of the caller. */
+export async function closeCommentReports(
+  tx: Prisma.TransactionClient,
+  commentId: string,
+  closed: Prisma.ReportUpdateManyMutationInput,
+): Promise<void> {
+  await tx.report.updateMany({ where: { commentId, status: "open" }, data: closed });
+}
+
 @Injectable()
 export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}

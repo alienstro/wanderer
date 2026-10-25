@@ -98,6 +98,7 @@ app  →  features  →  components/ui, lib  →  @wanderer/shared
 | Source code imports no test code | `dependency-cruiser` | `.dependency-cruiser.cjs` |
 | No circular imports | `dependency-cruiser` | `.dependency-cruiser.cjs` |
 | 400 lines for each source file | ESLint `max-lines` | `eslint.config.mjs` |
+| Only the owner module writes to a table (API) | ESLint `no-restricted-syntax` | `apps/api/table-owners.mjs` |
 
 `pnpm depcruise` runs dependency-cruiser in each package, one at a time. Each package has its own config,
 because dependency-cruiser reads the `paths` of a tsconfig relative to the folder that it runs in.
@@ -109,13 +110,24 @@ CI runs `pnpm verify` and `pnpm depcruise` on each pull request to `main`.
 Each table has **one owner module**. Only the owner writes to it. Another module that must change the
 table calls a method of the owner service. Any module can read a table.
 
+When the write must be in the transaction of the caller, the owner exports a function that takes the
+transaction client, for example `banUser(tx, userId)` in `auth/session.service.ts` or
+`deleteCommentsOf(tx, authorId)` in `comments/comments.service.ts`. Otherwise the caller calls a method of
+the owner service, for example `MeService.setActiveProxy()`.
+
+ESLint checks the rule: `apps/api/table-owners.mjs` holds the owner map, and a Prisma write such as
+`tx.user.update()` in a module that does not own the table fails the lint. Keep that map and this table the same.
+The check does not see raw SQL (`$executeRaw`).
+
 | Table | Owner | Notes |
 |---|---|---|
 | `users`: `email`, `google_sub`, `name`, `picture_url`, `role`, `banned_at` | `auth` | The sign-in columns. A ban goes through `auth`. |
 | `users`: `handle`, `show_adult`, `adult_confirmed_at`, `reply_choices_*`, `active_proxy_id`, `free_model_id` | `me` | The profile columns. `me` also deletes the account. |
 | `users`: `energy`, `energy_refilled_at`, `daily_energy` | `energy` | The spend transactions change the balance. |
 | `sessions`, `terms_acceptances` | `auth` | |
-| `characters`, `character_openings`, `character_tags`, `character_likes`, `tags` | `characters` | |
+| `characters` (all columns but the two counts below), `character_openings`, `character_tags`, `character_likes`, `tags` | `characters` | |
+| `characters.chat_count` | `chats` | A count of the chats. It changes in the transaction that saves a chat. |
+| `characters.comment_count` | `comments` | A count of the comments. One SQL statement changes the comments and the count, so a race cannot make the count wrong. |
 | `character_comments` | `comments` | |
 | `chats`, `messages` | `chats` | |
 | `files` | `files` | |
