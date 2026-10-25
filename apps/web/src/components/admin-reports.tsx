@@ -1,10 +1,11 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type AdminReport, type AdminReportList, REPORT_REASON_LABELS, type ReportAction } from "@wanderer/shared";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
+import { Pager, usePager } from "./pager";
 
 const QUERY_KEY = ["admin-reports"];
 const dateFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" });
@@ -14,7 +15,22 @@ const CONFIRM_LABEL: Partial<Record<ReportAction, string>> = { deleted: "Yes, de
 
 /** The open reports for the admin. Reports about minors come first, because the API sorts them. */
 export function AdminReports() {
-  const list = useQuery({ queryKey: QUERY_KEY, queryFn: () => apiFetch<AdminReportList>("/admin/reports") });
+  const pager = usePager();
+  const { cursor } = pager;
+  const list = useQuery({
+    queryKey: [...QUERY_KEY, cursor],
+    queryFn: () => apiFetch<AdminReportList>(cursor === undefined ? "/admin/reports" : `/admin/reports?${new URLSearchParams({ cursor })}`),
+    placeholderData: keepPreviousData,
+  });
+  const empty = list.data?.reports.length === 0;
+  const { page, previous } = pager;
+
+  // When the admin resolves the last report of a page, the page is empty, so go back one page.
+  useEffect(() => {
+    if (empty && page > 1 && !list.isPlaceholderData) {
+      previous();
+    }
+  }, [empty, page, previous, list.isPlaceholderData]);
 
   if (list.isPending) {
     return null;
@@ -31,6 +47,7 @@ export function AdminReports() {
       {list.data.reports.map((report) => (
         <ReportRow key={report.id} report={report} />
       ))}
+      <Pager label="Reports pages" pager={pager} nextCursor={list.data.nextCursor} />
     </div>
   );
 }

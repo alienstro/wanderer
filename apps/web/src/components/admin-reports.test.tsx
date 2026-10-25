@@ -41,12 +41,22 @@ const rude: AdminReport = {
   comment: { id: "m1", body: "You are all fools.", authorId: "u3", authorHandle: "troll", deleted: false },
 };
 
-/** Answers the list with the reports, and each resolve with 200. */
-function stubApi(reports: AdminReport[] = [minors, gone], listStatus = 200) {
+/**
+ * Answers the list with the reports, and each resolve with 200. With `pageSize`, the list has pages, and the
+ * cursor is the number of the page, such as "2".
+ */
+function stubApi(reports: AdminReport[] = [minors, gone], listStatus = 200, pageSize = Number.POSITIVE_INFINITY) {
   let current = reports;
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-    if (url.endsWith("/admin/reports")) {
-      return listStatus === 200 ? Response.json({ reports: current }) : Response.json({ error: "forbidden" }, { status: listStatus });
+    const { pathname, searchParams } = new URL(url, "http://test");
+    if (pathname.endsWith("/admin/reports")) {
+      if (listStatus !== 200) {
+        return Response.json({ error: "forbidden" }, { status: listStatus });
+      }
+      const page = Number(searchParams.get("cursor") ?? "1");
+      const start = page === 1 ? 0 : (page - 1) * pageSize;
+      const nextCursor = start + pageSize < current.length ? String(page + 1) : null;
+      return Response.json({ reports: current.slice(start, start + pageSize), nextCursor });
     }
     const id = /\/admin\/reports\/(\w+)\/resolve$/.exec(url)?.[1];
     current = current.filter((report) => report.id !== id);
@@ -193,5 +203,26 @@ describe("AdminReports for a comment", () => {
     for (const name of ["Hide", "Delete", "Ban creator", "Delete comment", "Ban author"]) {
       expect(within(card).queryByRole("button", { name })).toBeNull();
     }
+  });
+
+  it("Next shows page 2 of the reports", async () => {
+    stubApi([minors, gone], 200, 1);
+    renderView();
+    await screen.findByRole("article", { name: "Report about Mira" });
+    const pager = screen.getByRole("navigation", { name: "Reports pages" });
+    await userEvent.click(within(pager).getByRole("button", { name: "Next" }));
+    expect(await screen.findByRole("article", { name: "Report about Old one" })).toBeTruthy();
+    expect(screen.queryByRole("article", { name: "Report about Mira" })).toBeNull();
+    expect(within(pager).getByText("Page 2")).toBeTruthy();
+  });
+
+  it("resolving the last report of page 2 goes back to page 1", async () => {
+    stubApi([minors, gone], 200, 1);
+    renderView();
+    await userEvent.click(within(await screen.findByRole("navigation", { name: "Reports pages" })).getByRole("button", { name: "Next" }));
+    const row = await screen.findByRole("article", { name: "Report about Old one" });
+    await userEvent.click(within(row).getByRole("button", { name: "Close" }));
+    expect(await screen.findByRole("article", { name: "Report about Mira" })).toBeTruthy();
+    expect(screen.queryByText("No open reports.")).toBeNull();
   });
 });

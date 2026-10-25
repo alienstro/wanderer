@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 /**
  * The page of a list with a cursor. It keeps the cursors of the pages before, so Previous needs no request of its own.
@@ -8,13 +8,11 @@ import { useState } from "react";
  */
 export function usePager() {
   const [cursors, setCursors] = useState<string[]>([]);
-  return {
-    cursor: cursors.at(-1),
-    page: cursors.length + 1,
-    next: (cursor: string) => setCursors((current) => [...current, cursor]),
-    previous: () => setCursors((current) => current.slice(0, -1)),
-    reset: () => setCursors([]),
-  };
+  // The functions stay the same between renders, so an effect can depend on them.
+  const next = useCallback((cursor: string) => setCursors((current) => [...current, cursor]), []);
+  const previous = useCallback(() => setCursors((current) => current.slice(0, -1)), []);
+  const reset = useCallback(() => setCursors([]), []);
+  return { cursor: cursors.at(-1), page: cursors.length + 1, next, previous, reset };
 }
 
 export type Pager = ReturnType<typeof usePager>;
