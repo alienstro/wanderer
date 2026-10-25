@@ -55,6 +55,40 @@ describe("admin reports", () => {
     await app.close();
   });
 
+  it("pages the open reports 20 at a time, minors first, then the oldest first", async () => {
+    // No reporter, as after a deleted account, so the rows do not hit the one-report-per-reporter rule.
+    const minutesAgo = [...Array.from({ length: 22 }, (_, index) => 100 - index), 300, 200, 50];
+    await prisma.report.createMany({
+      data: minutesAgo.map((minutes, index) => ({
+        characterId,
+        characterTitle: "Mira",
+        reporterId: null,
+        reason: index < 22 ? ("minors" as const) : ("hate" as const),
+        createdAt: new Date(Date.now() - minutes * 60_000),
+      })),
+    });
+    const expected = await prisma.report.findMany({ orderBy: { createdAt: "asc" }, select: { id: true, reason: true } });
+    const order = [...expected.filter((row) => row.reason === "minors"), ...expected.filter((row) => row.reason !== "minors")];
+
+    const first = (await list(admin.cookie).expect(200)).body as AdminReportList;
+    expect(first.reports).toHaveLength(20);
+    expect(first.nextCursor).toEqual(expect.any(String));
+    const second = (
+      await http()
+        .get(`/admin/reports?cursor=${encodeURIComponent(first.nextCursor ?? "")}`)
+        .set("Cookie", admin.cookie)
+        .expect(200)
+    ).body as AdminReportList;
+    expect(second.reports.map((report) => report.reason)).toEqual(["minors", "minors", "hate", "hate", "hate"]);
+    expect(second.nextCursor).toBeNull();
+    expect([...first.reports, ...second.reports].map((report) => report.id)).toEqual(order.map((row) => row.id));
+  });
+
+  it("gives 400 invalid_cursor for a bad report cursor", async () => {
+    const res = await http().get("/admin/reports?cursor=abc").set("Cookie", admin.cookie).expect(400);
+    expect(res.body).toEqual({ error: "invalid_cursor" });
+  });
+
   it("gives 403 forbidden to a normal user and 401 to a visitor", async () => {
     const res = await list(reporter.cookie).expect(403);
     expect(res.body).toEqual({ error: "forbidden" });

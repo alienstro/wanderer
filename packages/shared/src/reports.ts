@@ -55,6 +55,14 @@ export interface AdminReportComment {
   deleted: boolean;
 }
 
+/** GET /admin/reports: one page of the open reports. Reports about minors come first, then the oldest first. */
 export interface AdminReportList {
   reports: AdminReport[];
+  /** Null when no more open reports exist. */
+  nextCursor: string | null;
 }
+
+/** The query of GET /admin/reports. The cursor comes from the `nextCursor` of the page before. */
+export const adminReportListQuerySchema = z.object({
+  cursor: z.string().max(200).optional(),
+});

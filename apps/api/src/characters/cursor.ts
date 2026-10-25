@@ -20,6 +20,13 @@ export interface CountCursorKey {
   id: string;
 }
 
+/** The sort key of the last open report of a page. Reports about minors come first, then by time, then by ID. */
+export interface ReportCursorKey {
+  minors: boolean;
+  createdAt: string;
+  id: string;
+}
+
 const cursorKeySchema = z.object({
   chatCount: z.number().int().nonnegative(),
   likeCount: z.number().int().nonnegative(),
@@ -34,6 +41,12 @@ const timeCursorKeySchema = z.object({
 
 const countCursorKeySchema = z.object({
   count: z.number().int().nonnegative(),
+  id: z.uuid(),
+});
+
+const reportCursorKeySchema = z.object({
+  minors: z.boolean(),
+  createdAt: z.iso.datetime(),
   id: z.uuid(),
 });
 
@@ -74,4 +87,12 @@ export function encodeCountCursor(key: CountCursorKey): string {
 
 export function decodeCountCursor(cursor: string): CountCursorKey | null {
   return decode(cursor, countCursorKeySchema);
+}
+
+export function encodeReportCursor(key: ReportCursorKey): string {
+  return encode(key);
+}
+
+export function decodeReportCursor(cursor: string): ReportCursorKey | null {
+  return decode(cursor, reportCursorKeySchema);
 }
