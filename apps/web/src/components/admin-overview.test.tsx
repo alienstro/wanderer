@@ -10,6 +10,7 @@ import {
   type OverviewStats,
   type TopCharacterList,
 } from "@wanderer/shared";
+import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminOverview } from "./admin-overview";
 
@@ -30,17 +31,33 @@ const timeout: OverviewProblem = {
   character: { id: "c1", title: "Mira" },
 };
 
-const top: TopCharacterList = { byChats: [{ id: "c1", title: "Mira", count: 4 }], byLikes: [] };
+const top: TopCharacterList = {
+  byChats: [
+    { id: "c1", title: "Mira", count: 4 },
+    { id: "c2", title: "Onnit", count: 1 },
+  ],
+  byLikes: [],
+};
 
 interface StubOptions {
   status?: number;
   healthStatus?: number;
   health?: OverviewHealth;
+  metrics?: Partial<Record<OverviewMetric, OverviewSeries>>;
 }
 
 /** Answers each overview endpoint. `status` applies to all, `healthStatus` only to the health endpoint. */
-function stubApi({ status = 200, healthStatus = status, health = { status: "ok", replies: 10, failedReplies: 0 } }: StubOptions = {}) {
-  const stats = makeStats({ newUsers: { total: 12, series: [2, 4, 6] }, failedReplies: { total: 3, series: [0, 1, 2] } });
+function stubApi({
+  status = 200,
+  healthStatus = status,
+  health = { status: "ok", replies: 10, failedReplies: 0 },
+  metrics = {},
+}: StubOptions = {}) {
+  const stats = makeStats({
+    newUsers: { total: 12, series: [2, 4, 6] },
+    failedReplies: { total: 3, series: [0, 1, 2] },
+    ...metrics,
+  });
   const fetchMock = vi.fn(async (url: string) => {
     const path = new URL(url, "http://test").pathname;
     const code = path.endsWith("/health") ? healthStatus : status;
@@ -71,6 +88,7 @@ function renderView() {
 describe("AdminOverview", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it('shows "This page is for the admin." on 403', async () => {
@@ -130,5 +148,43 @@ describe("AdminOverview", () => {
     stubApi({ health: { status: "some_problems", replies: 9, failedReplies: 1 } });
     renderView();
     expect(await screen.findByText("Some problems")).toBeTruthy();
+  });
+
+  it("shows totals below 10,000 in full and larger totals in short form", async () => {
+    stubApi({ metrics: { newMessages: { total: 2614, series: [0, 0, 2614] }, logins: { total: 12_400, series: [0, 0, 12_400] } } });
+    renderView();
+    expect(within(await screen.findByRole("group", { name: "Messages sent" })).getByText("2,614")).toBeTruthy();
+    expect(within(screen.getByRole("group", { name: "Logins" })).getByText("12.4K")).toBeTruthy();
+  });
+
+  it("names each day of the trend line, and shows the day under the keyboard focus", async () => {
+    stubApi();
+    renderView();
+    const card = await screen.findByRole("group", { name: "New users" });
+    const trend = within(card).getByRole("img", { name: "New users each day: Oct 23: 2, Oct 24: 4, Oct 25: 6" });
+    act(() => trend.focus());
+    expect(within(card).getByText("Oct 25: 6")).toBeTruthy();
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(within(card).getByText("Oct 24: 4")).toBeTruthy();
+  });
+
+  it("shows the time of a problem relative to now, with the full date on hover", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-25T10:12:00.000Z"));
+    stubApi();
+    renderView();
+    const list = await screen.findByRole("list", { name: "Recent problems" });
+    const time = within(list).getByText("12 minutes ago");
+    expect(time.getAttribute("dateTime")).toBe("2026-10-25T10:00:00.000Z");
+    expect(time.getAttribute("title")).toBeTruthy();
+  });
+
+  it("draws the bar of each top character against the first one", async () => {
+    stubApi();
+    renderView();
+    const list = await screen.findByRole("list", { name: "Most new chats" });
+    const [first, second] = within(list).getAllByRole("listitem");
+    expect(first?.querySelector<HTMLElement>("[data-bar]")?.style.width).toBe("100%");
+    expect(second?.querySelector<HTMLElement>("[data-bar]")?.style.width).toBe("25%");
   });
 });
