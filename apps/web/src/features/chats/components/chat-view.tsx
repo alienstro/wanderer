@@ -81,6 +81,9 @@ export function ChatView({ chatId }: { chatId: string }) {
   const queryKey = ["chat", chatId];
   const energy = useEnergy();
   const refreshEnergy = useRefreshEnergy();
+  // A user with no own key chats on a free model, and GET /energy names that model. The notice waits for the energy load.
+  const hasModel = Boolean(me?.activeProxy) || Boolean(energy.data?.model);
+  const noModel = !me?.activeProxy && energy.data?.model === null;
   const chat = useQuery({
     queryKey,
     queryFn: () => apiFetch<ChatDetail>(`/chats/${chatId}`),
@@ -108,7 +111,7 @@ export function ChatView({ chatId }: { chatId: string }) {
   const choices = useReplyChoices(
     chatId,
     replyRound,
-    Boolean(me?.replyChoicesOn && me.activeProxy && chat.data?.canSend) &&
+    Boolean(me?.replyChoicesOn && hasModel && chat.data?.canSend) &&
       live === null &&
       lastMessage?.role === "assistant" &&
       lastMessage.position > 0,
@@ -355,7 +358,7 @@ export function ChatView({ chatId }: { chatId: string }) {
         <div className={`${CHAT_COLUMN} flex flex-col gap-2`}>
           {canSend ? (
             <>
-              {!me.activeProxy && (
+              {noModel && (
                 <p className="m-0 text-muted">
                   You have no model yet.{" "}
                   <Link href="/settings/models" className="text-link">
@@ -368,7 +371,7 @@ export function ChatView({ chatId }: { chatId: string }) {
               <Composer
                 value={text}
                 onChange={setText}
-                disabled={!me.activeProxy || Boolean(live?.stopped)}
+                disabled={!hasModel || Boolean(live?.stopped)}
                 streaming={live !== null && !live.stopped}
                 onSend={(content) => send(content, true)}
                 onStop={() => abortRef.current?.abort()}
@@ -378,7 +381,7 @@ export function ChatView({ chatId }: { chatId: string }) {
                     <NewChoicesButton state={choices} />
                     <GenerateSceneButton
                       busy={sceneJob.isPending}
-                      disabled={!me.activeProxy}
+                      disabled={!hasModel}
                       price={energy.data?.prices.scene}
                       onClick={() => {
                         clearErrorToast();

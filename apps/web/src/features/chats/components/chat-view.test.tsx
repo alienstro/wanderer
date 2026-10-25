@@ -557,14 +557,23 @@ describe("chat page", () => {
       vi.unstubAllEnvs();
     });
 
-    /** The chat API, plus GET /energy, plus POST /chats/chat1/scenes with the given answer. */
-    function stubEnergy(sceneAnswer: () => Response = () => Response.json({ error: "not_found" }, { status: 404 })) {
+    /** A user with no own API key. The model comes from GET /energy. */
+    const freeUser = { ...me, activeProxy: null };
+
+    /** The chat API, plus GET /me, GET /energy and POST /chats/chat1/choices, plus POST /chats/chat1/scenes with the given answer. */
+    function stubEnergy(
+      sceneAnswer: () => Response = () => Response.json({ error: "not_found" }, { status: 404 }),
+      { user = me, view = energy }: { user?: typeof freeUser | typeof me; view?: EnergyView } = {},
+    ) {
       const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
         if (url.endsWith("/me")) {
-          return Response.json(me);
+          return Response.json(user);
         }
         if (url.endsWith("/energy")) {
-          return Response.json(energy);
+          return Response.json(view);
+        }
+        if (url.endsWith("/chats/chat1/choices") && init?.method === "POST") {
+          return Response.json({ choices: ["*nods* Yes.", "No.", "Maybe.", "Tell me more."] });
         }
         if (url.endsWith("/chats/chat1/scenes") && init?.method === "POST") {
           return sceneAnswer();
@@ -649,6 +658,55 @@ describe("chat page", () => {
       await userEvent.click(await screen.findByRole("button", { name: "Generate scene, 5 energy" }));
       await screen.findByRole("img", { name: "Scene image" });
       await waitFor(() => expect(energyCalls(fetchMock)).toBe(2));
+    });
+
+    describe("a user with no own key", () => {
+      it("on a free model can type, send and get a reply, with no notice about a model", async () => {
+        stubEnergy(undefined, { user: freeUser });
+        streamMock.mockImplementation(async (_path, _body, { onEvent }) => {
+          onEvent({ type: "start", userMessage: message("m2", "user", "How are you?", 2) });
+          onEvent({ type: "done", message: message("m3", "assistant", "Fine, thanks.", 3) });
+        });
+        withClient(<ChatView chatId="chat1" />);
+        await waitFor(() => expect(screen.getByRole("button", { name: "Generate scene, 5 energy" })).toBeEnabled());
+        await typeAndSend("How are you?");
+        expect(await screen.findByText("Fine, thanks.")).toBeInTheDocument();
+        expect(screen.queryByText(/You have no model yet/)).not.toBeInTheDocument();
+      });
+
+      it("on a free model sees reply choices after a reply when Reply choices is on", async () => {
+        stubEnergy(undefined, { user: { ...freeUser, replyChoicesOn: true } });
+        streamMock.mockImplementation(async (_path, _body, { onEvent }) => {
+          onEvent({ type: "start", userMessage: message("m2", "user", "How are you?", 2) });
+          onEvent({ type: "done", message: message("m3", "assistant", "Fine, thanks.", 3) });
+        });
+        withClient(<ChatView chatId="chat1" />);
+        await waitFor(() => expect(screen.getByRole("button", { name: "Generate scene, 5 energy" })).toBeEnabled());
+        await typeAndSend("How are you?");
+        expect(await screen.findByRole("button", { name: "Tell me more." })).toBeInTheDocument();
+      });
+
+      it("on a free model can click Generate scene", async () => {
+        stubEnergy(undefined, { user: freeUser });
+        withClient(<ChatView chatId="chat1" />);
+        expect(await screen.findByRole("button", { name: "Generate scene, 5 energy" })).toBeEnabled();
+      });
+
+      it("and no free model sees You have no model yet, and Send and Generate scene are disabled", async () => {
+        stubEnergy(undefined, { user: freeUser, view: { ...energy, model: null, freeModelName: null } });
+        withClient(<ChatView chatId="chat1" />);
+        expect(await screen.findByText(/You have no model yet/)).toBeInTheDocument();
+        await userEvent.type(screen.getByRole("textbox", { name: "Message" }), "Hello");
+        expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Generate scene, 5 energy" })).toBeDisabled();
+      });
+
+      it("shows no notice about a model while the energy loads", async () => {
+        stubEnergy(undefined, { user: freeUser });
+        withClient(<ChatView chatId="chat1" />);
+        await screen.findByRole("textbox", { name: "Message" });
+        expect(screen.queryByText(/You have no model yet/)).not.toBeInTheDocument();
+      });
     });
   });
 });
