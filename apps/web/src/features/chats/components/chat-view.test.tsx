@@ -45,6 +45,7 @@ const detail: ChatDetail = {
   canSend: true,
   opening: { index: 0, count: 1 },
   scenes: [],
+  personaName: null,
 };
 
 function stubApi(chat: ChatDetail = detail) {

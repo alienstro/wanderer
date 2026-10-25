@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
 import { Field, Switch } from "@/components/ui/form-field";
+import { PersonasSection } from "@/features/personas";
 
 const DELETE_WORD = "DELETE";
 
@@ -136,6 +137,8 @@ export function SettingsView({ me }: { me: MeResponse }) {
           </div>
         </form>
       </Section>
+
+      <PersonasSection />
 
       <Section title="Content">
         <Switch
