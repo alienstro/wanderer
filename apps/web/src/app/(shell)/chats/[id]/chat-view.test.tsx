@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ChatDetail, ChatStreamEvent, MessageView } from "@wanderer/shared";
+import type { ChatDetail, ChatStreamEvent, MessageView, SceneView } from "@wanderer/shared";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -44,6 +44,7 @@ const detail: ChatDetail = {
   memory: { text: "", throughPosition: null },
   canSend: true,
   opening: { index: 0, count: 1 },
+  scenes: [],
 };
 
 function stubApi(chat: ChatDetail = detail) {
@@ -447,6 +448,73 @@ describe("chat page", () => {
       withClient(<ChatView chatId="chat1" />);
       expect(await screen.findByText("Hi!", { exact: false })).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Next opening" })).not.toBeInTheDocument();
+    });
+  });
+
+  describe("scene images", () => {
+    const scene: SceneView = { id: "s1", url: "/files/f1", afterPosition: 0, createdAt: "2026-10-21T00:00:00.000Z" };
+
+    /** The chat API, plus POST /chats/chat1/scenes. Each POST takes the next answer. */
+    function stubScenes(answers: Array<() => Promise<Response> | Response>) {
+      const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.endsWith("/me")) {
+          return Response.json(me);
+        }
+        if (url.endsWith("/chats/chat1/scenes") && init?.method === "POST") {
+          return answers.shift()!();
+        }
+        return url.endsWith("/chats/chat1") ? Response.json(detail) : Response.json({ error: "not_found" }, { status: 404 });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      return fetchMock;
+    }
+
+    const scenePosts = (fetchMock: ReturnType<typeof stubScenes>) =>
+      fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/scenes")).length;
+
+    it("a saved scene shows as an image after the message at its position", async () => {
+      stubApi({ ...detail, scenes: [scene] });
+      withClient(<ChatView chatId="chat1" />);
+      const image = await screen.findByRole("img", { name: "Scene image" });
+      expect(image.getAttribute("src")).toMatch(/\/files\/f1$/);
+      const log = screen.getByRole("log");
+      const order = Array.from(log.children).map((node) => (node.querySelector("img[alt='Scene image']") ? "scene" : node.textContent));
+      expect(order[1]).toBe("scene");
+      expect(order[2]).toContain("Hello");
+    });
+
+    it("a click makes one scene: the button waits and is disabled, then the image shows", async () => {
+      let finish!: (res: Response) => void;
+      const fetchMock = stubScenes([() => new Promise((resolve) => (finish = resolve))]);
+      withClient(<ChatView chatId="chat1" />);
+      await userEvent.click(await screen.findByRole("button", { name: "Generate scene" }));
+      const busy = await screen.findByRole("button", { name: "Making the scene…" });
+      expect(busy).toBeDisabled();
+      await userEvent.click(busy);
+      expect(scenePosts(fetchMock)).toBe(1);
+      finish(Response.json({ ...scene, afterPosition: 1 }));
+      expect(await screen.findByRole("img", { name: "Scene image" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Generate scene" })).toBeEnabled();
+    });
+
+    it("a failed job shows a clear error, and the user can try again", async () => {
+      const fetchMock = stubScenes([
+        () => Response.json({ error: "scene_failed" }, { status: 502 }),
+        () => Response.json(scene, { status: 201 }),
+      ]);
+      withClient(<ChatView chatId="chat1" />);
+      await userEvent.click(await screen.findByRole("button", { name: "Generate scene" }));
+      expect(await screen.findByText("The scene image did not generate. Try again.")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Generate scene" }));
+      expect(await screen.findByRole("img", { name: "Scene image" })).toBeInTheDocument();
+      expect(scenePosts(fetchMock)).toBe(2);
+    });
+
+    it("the daily limit shows its own message", async () => {
+      stubScenes([() => Response.json({ error: "scene_limit" }, { status: 429 })]);
+      withClient(<ChatView chatId="chat1" />);
+      await userEvent.click(await screen.findByRole("button", { name: "Generate scene" }));
+      expect(await screen.findByText("You made the most scene images for today. Try again tomorrow.")).toBeInTheDocument();
     });
   });
 });

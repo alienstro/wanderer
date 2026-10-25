@@ -37,7 +37,7 @@ export default function MyCharactersPage() {
         <ul className="card-grid">
           {list.data.map((card) => (
             <li key={card.id} className="flex">
-              <CharacterCard card={card} extraBadge={statusLabel(card)} />
+              <CharacterCard card={card} statusBadge={statusLabel(card)} />
             </li>
           ))}
         </ul>

@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module.js";
+import { FilesModule } from "../files/files.module.js";
 import { ProxiesModule } from "../proxies/proxies.module.js";
 import { ChatLocks } from "./chat-locks.js";
 import { ChatsController, MessagesController } from "./chats.controller.js";
@@ -9,8 +10,9 @@ import { MemoryService } from "./memory.service.js";
 import { DEFAULT_REPLY_TIMING, REPLY_TIMING, ReplyService } from "./reply.service.js";
 
 @Module({
-  imports: [AuthModule, ProxiesModule],
+  imports: [AuthModule, FilesModule, ProxiesModule],
   controllers: [ChatsController, MessagesController],
   providers: [ChatLocks, ChatsService, ReplyService, ChoicesService, MemoryService, { provide: REPLY_TIMING, useValue: DEFAULT_REPLY_TIMING }],
+  exports: [ChatsService],
 })
 export class ChatsModule {}

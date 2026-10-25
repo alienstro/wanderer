@@ -3,6 +3,7 @@ import { type AiErrorCode, messageInputSchema } from "@wanderer/shared";
 import type { Response } from "express";
 import { AI_CLIENT_FACTORY, type AiClientFactory, type AiTarget } from "../ai/ai-client.js";
 import { aiErrorLogFields, toAiError } from "../ai/ai-errors.js";
+import { EventsService } from "../events/events.service.js";
 import type { Message, User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { ProxiesService } from "../proxies/proxies.service.js";
@@ -53,6 +54,7 @@ export class ReplyService {
     private readonly prisma: PrismaService,
     private readonly chats: ChatsService,
     private readonly proxies: ProxiesService,
+    private readonly events: EventsService,
     @Inject(AI_CLIENT_FACTORY) private readonly clients: AiClientFactory,
     @Inject(REPLY_TIMING) private readonly timing: ReplyTiming,
   ) {}
@@ -98,6 +100,10 @@ export class ReplyService {
           ? await this.replaceMessage(chat.id, replaced.id, result.text)
           : await this.saveMessage(chat.id, "assistant", result.text, nextPosition(history))
         : null;
+      // A Stop of the user is not a failure, so it gives no error and no event.
+      if (result.error) {
+        await this.events.record("ai_reply_failed", { userId: user.id, characterId: chat.characterId, reason: result.error });
+      }
       if (result.clientGone) {
         return;
       }
@@ -108,6 +114,7 @@ export class ReplyService {
       }
     } catch (error) {
       this.logger.error({ msg: "Reply stream failed", name: error instanceof Error ? error.name : "unknown" });
+      await this.events.record("ai_reply_failed", { userId: user.id, characterId: chat.characterId, reason: "internal_error" });
       if (!sse) {
         throw error;
       }

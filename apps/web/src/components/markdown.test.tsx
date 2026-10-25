@@ -91,6 +91,47 @@ describe("Markdown", () => {
     expect(container.querySelector("p code")).toHaveTextContent("roll");
     expect(container.querySelector("pre code")?.textContent).toBe("d20\n");
   });
+
+  it("a pipe table renders as a table, with one row for each line", () => {
+    const text = "| Item | Cost |\n|------|------|\n| **Starter Pack** | FREE |\n| Map | 50G |";
+    const { container } = render(<Markdown text={text} />);
+    expect(container.querySelectorAll("table thead th")).toHaveLength(2);
+    expect(container.querySelectorAll("table tbody tr")).toHaveLength(2);
+    expect(container.querySelector("tbody td strong")).toHaveTextContent("Starter Pack");
+    expect(container.textContent).not.toContain("|");
+  });
+
+  it("a single ~ in roleplay text, such as Hello~ and ~sigh~, stays as text", () => {
+    const { container } = render(<Markdown text={"Hello~ ~sigh~ and ~~gone~~"} />);
+    expect(container.querySelectorAll("del")).toHaveLength(1);
+    expect(container.querySelector("del")).toHaveTextContent("gone");
+    expect(container.textContent).toContain("Hello~ ~sigh~");
+  });
+
+  it("a task list renders a checked and an empty box that the reader cannot change", () => {
+    const { container } = render(<Markdown text={"- [x] Find the sword\n- [ ] Pay the inn"} />);
+    const boxes = container.querySelectorAll<HTMLInputElement>('li input[type="checkbox"]');
+    expect(boxes).toHaveLength(2);
+    expect(boxes[0]).toBeChecked();
+    expect(boxes[1]).not.toBeChecked();
+    expect(boxes[0]).toBeDisabled();
+  });
+
+  it("a bare https URL renders as a link that opens in a new tab", () => {
+    const { container } = render(<Markdown text={"See https://example.com now."} />);
+    const link = container.querySelector("a");
+    expect(link).toHaveAttribute("href", "https://example.com");
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it("a footnote link points to the note id and stays in the same tab", () => {
+    const { container } = render(<Markdown text={"A rumor.[^1]\n\n[^1]: From the inn."} />);
+    const ref = container.querySelector("sup a");
+    const href = ref?.getAttribute("href") ?? "";
+    expect(href.startsWith("#")).toBe(true);
+    expect(ref).not.toHaveAttribute("target");
+    expect(container.querySelector(`[id="${href.slice(1)}"]`)).toHaveTextContent("From the inn.");
+  });
 });
 
 describe("InlineMarkdown", () => {

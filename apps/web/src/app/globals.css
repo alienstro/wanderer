@@ -23,6 +23,15 @@
   --font-display: var(--font-cinzel), Georgia, serif;
 }
 
+/* Styles for the sidebar rail on a computer: the aside with data-rail="true" and each element in it. */
+@custom-variant rail {
+  @media (min-width: 761px) {
+    &:where([data-rail="true"], [data-rail="true"] *) {
+      @slot;
+    }
+  }
+}
+
 @layer base {
   body {
     margin: 0;
@@ -138,6 +147,30 @@
     font-size: 13px;
   }
 
+  /* A pill of normal size on a computer and of small size on a phone. Use tap-target with it. */
+  @media (max-width: 760px) {
+    .pill-sm-phone {
+      min-height: 34px;
+      padding: 0 14px;
+      font-size: 13px;
+    }
+  }
+
+  /* An area that the user cannot see makes the tap area of a small control at least 44 × 44 px. */
+  .tap-target {
+    position: relative;
+  }
+
+  .tap-target::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    translate: -50% -50%;
+  }
+
   .side-nav {
     display: flex;
     flex-direction: column;
@@ -169,6 +202,48 @@
     text-align: left;
     text-decoration: none;
     cursor: pointer;
+  }
+
+  /*
+   * In the rail, each label becomes a tooltip on hover and on keyboard focus.
+   * The label stays in the DOM, so a screen reader reads the name of each icon.
+   */
+  @media (min-width: 761px) {
+    [data-rail="true"] .nav {
+      position: relative;
+      justify-content: center;
+      width: 40px;
+      padding: 0;
+    }
+
+    [data-rail="true"] .side-label {
+      position: absolute;
+      top: 50%;
+      left: calc(100% + 14px);
+      z-index: 30;
+      translate: 0 -50%;
+      padding: 4px 10px;
+      border: 1px solid var(--color-field-line);
+      border-radius: 8px;
+      background: var(--color-surface);
+      color: var(--color-text);
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 120ms;
+    }
+
+    [data-rail="true"] :is(a, button):is(:hover, :focus-visible) > .side-label {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .side-label {
+      transition: none;
+    }
   }
 
   .nav:hover {
@@ -428,10 +503,86 @@
     white-space: pre-wrap;
   }
 
+  /* On a phone a smaller font puts more characters on one line, so fewer lines of a status block wrap. */
+  @media (max-width: 760px) {
+    .markdown pre {
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+  }
+
   .markdown pre code {
     padding: 0;
     border-radius: 0;
     background: none;
+    font-size: inherit;
+  }
+
+  /*
+   * A table is a block that scrolls on its own, so a wide shop list does not make the page scroll.
+   * Words do not break inside a cell, so a narrow screen scrolls the table and does not crush the columns.
+   */
+  .markdown table {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    margin: 8px 0;
+    overflow-x: auto;
+    border-collapse: collapse;
+    font-size: 14px;
+    overflow-wrap: normal;
+  }
+
+  .markdown :is(th, td) {
+    padding: 6px 10px;
+    border: 1px solid var(--color-field-line);
+    text-align: start;
+    vertical-align: top;
+  }
+
+  .markdown th {
+    background: var(--color-current);
+    font-weight: 600;
+  }
+
+  @media (max-width: 760px) {
+    .markdown table {
+      font-size: 13px;
+    }
+
+    .markdown :is(th, td) {
+      padding: 5px 8px;
+    }
+  }
+
+  /* A task list item shows its box and no bullet. */
+  .markdown li:has(> input[type="checkbox"]) {
+    margin-left: -1.4em;
+    list-style: none;
+  }
+
+  .markdown li > input[type="checkbox"] {
+    margin: 0 6px 0 0;
+    vertical-align: middle;
+  }
+
+  /* The footnotes of a message, under a line, in smaller text. Screen readers still read the label. */
+  .markdown section[data-footnotes] {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid var(--color-field-line);
+    color: var(--color-muted);
+    font-size: 13px;
+  }
+
+  .markdown section[data-footnotes] > h2 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .field {
@@ -474,7 +625,12 @@
     cursor: pointer;
   }
 
-  .msg-action:hover {
+  .msg-action:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  .msg-action:hover:not(:disabled) {
     background: var(--color-hover);
     color: var(--color-text);
   }

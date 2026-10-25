@@ -25,10 +25,11 @@ function CountBadge({ icon, label }: { icon: ReactNode; label: string }) {
 
 /**
  * A Discover card in the StoryEngine style: a tall 3:4 image, the chat and like counts, the title, the tags, and the creator.
- * The whole card links to the character page. `extraBadge` puts one more badge at the top right, such as "Draft".
+ * The whole card links to the character page. `statusBadge` shows a label next to the title, such as "Draft".
+ * The label is not on the image, so it does not push the image badges to a second line.
  * `linked={false}` shows the card with no link, for the form preview.
  */
-export function CharacterCard({ card, extraBadge, linked = true }: { card: Card; extraBadge?: ReactNode; linked?: boolean }) {
+export function CharacterCard({ card, statusBadge, linked = true }: { card: Card; statusBadge?: ReactNode; linked?: boolean }) {
   const body = (
     <>
       <span className="shot">
@@ -39,7 +40,7 @@ export function CharacterCard({ card, extraBadge, linked = true }: { card: Card;
             {card.title.charAt(0).toUpperCase()}
           </span>
         )}
-        {/* One row that wraps: on a narrow card the right badges go to a second line, so they do not cover the counts. */}
+        {/* One row that wraps: on a narrow card the 18+ badge goes to a second line, so it does not cover the counts. */}
         <span className="absolute inset-x-2.5 top-2.5 flex flex-wrap gap-1.5">
           <span className="flex gap-1.5">
             <CountBadge
@@ -52,14 +53,16 @@ export function CharacterCard({ card, extraBadge, linked = true }: { card: Card;
             />
             <CountBadge label={likesLabel(card.likeCount)} icon={<HeartIcon size={12} />} />
           </span>
-          <span className="ml-auto flex gap-1.5">
-            {card.isAdult && <span className={`${BADGE} bg-[rgba(194,65,75,0.9)]`}>18+</span>}
-            {extraBadge && <span className={BADGE}>{extraBadge}</span>}
-          </span>
+          {card.isAdult && <span className={`ml-auto ${BADGE} bg-[rgba(194,65,75,0.9)]`}>18+</span>}
         </span>
       </span>
       <span className="flex flex-col gap-1.5 px-0.5">
-        <span className="text-[15px] leading-[1.3] font-bold">{card.title}</span>
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-[15px] leading-[1.3] font-bold">{card.title}</span>
+          {statusBadge && (
+            <span className="rounded-full border border-field-line px-2 py-px text-[11px] font-semibold whitespace-nowrap text-muted">{statusBadge}</span>
+          )}
+        </span>
         {card.tags.length > 0 && (
           <span className="flex flex-wrap gap-1">
             {card.tags.slice(0, 3).map((tag) => (

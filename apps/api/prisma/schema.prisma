@@ -47,6 +47,8 @@ model User {
   resolvedReports  Report[]           @relation("ResolvedBy")
   characterLikes   CharacterLike[]
   comments         CharacterComment[]
+  appEvents        AppEvent[]
+  sceneImages      SceneImage[]
 
   @@map("users")
 }
@@ -107,14 +109,15 @@ model Character {
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
 
-  creator  User               @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  avatar   File?              @relation(fields: [avatarFileId], references: [id], onDelete: SetNull)
-  openings CharacterOpening[]
-  tags     CharacterTag[]
-  chats    Chat[]
-  reports  Report[]
-  likes    CharacterLike[]
-  comments CharacterComment[]
+  creator   User               @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  avatar    File?              @relation(fields: [avatarFileId], references: [id], onDelete: SetNull)
+  openings  CharacterOpening[]
+  tags      CharacterTag[]
+  chats     Chat[]
+  reports   Report[]
+  likes     CharacterLike[]
+  comments  CharacterComment[]
+  appEvents AppEvent[]
 
   @@unique([creatorId, title])
   @@index([status, isPublic, isAdult, chatCount, createdAt])
@@ -180,8 +183,9 @@ model File {
   height    Int
   createdAt DateTime @default(now()) @map("created_at")
 
-  owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  character Character?
+  owner      User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  character  Character?
+  sceneImage SceneImage?
 
   @@index([ownerId])
   @@map("files")
@@ -246,9 +250,10 @@ model Chat {
   lastMessageAt         DateTime @default(now()) @map("last_message_at")
   createdAt             DateTime @default(now()) @map("created_at")
 
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  messages  Message[]
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  character   Character    @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  messages    Message[]
+  sceneImages SceneImage[]
 
   @@index([userId, lastMessageAt])
   @@index([userId, characterId])
@@ -273,6 +278,8 @@ model Message {
   chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
 
   @@unique([chatId, position])
+  /// The admin overview counts the messages of a period.
+  @@index([createdAt])
   @@map("messages")
 }
 
@@ -348,4 +355,53 @@ model Report {
   @@index([status, createdAt])
   @@index([reporterId, createdAt])
   @@map("reports")
+}
+
+/// The kinds of app events. Most are failures that only the log showed before.
+enum AppEventType {
+  login
+  ai_reply_failed
+  choices_failed
+  summary_failed
+  proxy_test_failed
+  model_list_failed
+}
+
+/// One action or failure that no other table records. The admin overview counts these rows.
+/// The row holds no prompt text, message text, API key or proxy URL.
+model AppEvent {
+  id          String       @id @default(uuid()) @db.Uuid
+  type        AppEventType
+  userId      String?      @map("user_id") @db.Uuid
+  characterId String?      @map("character_id") @db.Uuid
+  /// A short code, such as an AI error code. Empty when the type tells all.
+  reason      String       @default("")
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  character Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
+
+  @@index([type, createdAt])
+  @@index([createdAt])
+  @@map("app_events")
+}
+
+/// One scene image that a user made with the "Generate scene" button. A row stays after its chat or its file
+/// is deleted, so the daily limit of the user still counts it.
+model SceneImage {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  chatId        String?  @map("chat_id") @db.Uuid
+  fileId        String?  @unique @map("file_id") @db.Uuid
+  /// The position of the last message when the image was made. The chat shows the image after this message.
+  afterPosition Int      @map("after_position")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chat Chat? @relation(fields: [chatId], references: [id], onDelete: SetNull)
+  file File? @relation(fields: [fileId], references: [id], onDelete: SetNull)
+
+  @@index([chatId, createdAt])
+  @@index([userId, createdAt])
+  @@map("scene_images")
 }

@@ -51,23 +51,23 @@ const NAV_ITEMS: { href: string; label: string; icon: ReactNode; userOnly?: bool
   },
 ];
 
-/** The Create pill and the main links of the sidebar. For you shows only for a logged-in user. */
+/** The Create pill and the main links of the sidebar. For you shows only for a logged-in user. The rail shows only the icons. */
 export function SidebarNav() {
   const pathname = usePathname();
   const { data: me } = useMe();
   return (
     <>
-      <Link href="/create" className="pill pill-soft justify-start px-3.5">
+      <Link href="/create" className="pill pill-soft relative justify-start px-3.5 rail:w-10 rail:justify-center rail:px-0">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
           <path d="M12 5v14M5 12h14" />
         </svg>
-        Create
+        <span className="side-label">Create</span>
       </Link>
       <nav className="side-nav" aria-label="Main">
         {NAV_ITEMS.filter((item) => !item.userOnly || me).map((item) => (
           <Link key={item.href} href={item.href} className="nav" aria-current={pathname === item.href ? "page" : undefined}>
             {item.icon}
-            {item.label}
+            <span className="side-label">{item.label}</span>
           </Link>
         ))}
       </nav>

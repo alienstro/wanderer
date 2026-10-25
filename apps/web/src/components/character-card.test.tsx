@@ -42,4 +42,12 @@ describe("CharacterCard", () => {
     expect(screen.getByText("18+")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Mira Vale" })).toHaveAttribute("src", "/files/f1");
   });
+
+  it("a status badge shows next to the title, not on the image, so it does not push the image badges to a second line", () => {
+    const { container } = render(<CharacterCard card={{ ...card, isAdult: true }} statusBadge="Private" />);
+    const status = screen.getByText("Private");
+    expect(status.parentElement).toBe(screen.getByText("Mira Vale").parentElement);
+    expect(container.querySelector(".shot")).not.toContainElement(status);
+    expect(container.querySelector(".shot")).toContainElement(screen.getByText("18+"));
+  });
 });

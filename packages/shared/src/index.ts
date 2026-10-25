@@ -1,3 +1,4 @@
+export * from "./admin.js";
 export * from "./api-keys.js";
 export * from "./auth.js";
 export * from "./characters.js";

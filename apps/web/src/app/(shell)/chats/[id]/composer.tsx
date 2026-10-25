@@ -27,10 +27,10 @@ export function Composer({ value, onChange, disabled, streaming, onSend, onStop,
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-[18px] border border-field-line bg-surface p-3">
+    <div className="flex flex-col gap-2 rounded-[18px] border border-field-line bg-surface p-3 max-[760px]:gap-1.5 max-[760px]:p-2.5">
       <textarea
         aria-label="Message"
-        className="min-h-[52px] w-full resize-y bg-transparent leading-[1.6] outline-none"
+        className="min-h-[52px] w-full resize-y bg-transparent leading-[1.6] outline-none max-[760px]:min-h-[44px] max-[760px]:text-base max-[760px]:leading-[1.4]"
         rows={2}
         value={value}
         placeholder="Write a message. Use *asterisks* for an action."
@@ -43,13 +43,13 @@ export function Composer({ value, onChange, disabled, streaming, onSend, onStop,
         }}
       />
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-3">{toolbar}</div>
+        <div className="flex flex-wrap items-center gap-3">{toolbar}</div>
         {streaming ? (
-          <button type="button" className="pill pill-soft" onClick={onStop}>
+          <button type="button" className="pill pill-soft pill-sm-phone tap-target" onClick={onStop}>
             Stop
           </button>
         ) : (
-          <button type="button" className="pill pill-accent" disabled={!canSend} onClick={send}>
+          <button type="button" className="pill pill-accent pill-sm-phone tap-target" disabled={!canSend} onClick={send}>
             Send
           </button>
         )}

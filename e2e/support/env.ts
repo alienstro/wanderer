@@ -22,6 +22,8 @@ export const apiServerEnv: Record<string, string> = {
   ADMIN_EMAILS: "admin@example.com",
   // A fixed test key: 32 bytes of 0x01. Never use it outside tests.
   KEY_ENCRYPTION_KEY: Buffer.alloc(32, 1).toString("base64"),
+  // A fake key. The browser tests do not click "Generate scene".
+  RUNPOD_API_KEY: "e2e-runpod-key",
   UPLOAD_DIR,
   PORT: "3201",
   LOG_LEVEL: "warn",

@@ -1,13 +1,18 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import { type AdminReport, type ReportAction, resolveReportRequestSchema } from "@wanderer/shared";
+import {
+  ADMIN_PAGE_SIZE,
+  type AdminReport,
+  type AdminReportList,
+  adminReportListQuerySchema,
+  type ReportAction,
+  resolveReportRequestSchema,
+} from "@wanderer/shared";
 import { CharactersService } from "../characters/characters.service.js";
+import { decodeReportCursor, encodeReportCursor } from "../characters/cursor.js";
 import { deleteCommentsOf } from "../comments/comments.service.js";
 import { isUuid } from "../common/uuid.js";
 import type { Prisma, User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-
-/** The admin page shows this number of open reports or less. */
-const LIST_MAX = 200;
 
 const reportInclude = {
   character: { select: { id: true, creatorId: true, status: true, creator: { select: { handle: true } } } },
@@ -49,22 +54,55 @@ export class AdminService {
     private readonly characters: CharactersService,
   ) {}
 
-  /** Gives the open reports. Reports about minors come first, then the oldest first. */
-  async listOpen(): Promise<AdminReport[]> {
-    const order = { createdAt: "asc" } as const;
-    const minors = await this.prisma.report.findMany({
-      where: { status: "open", reason: "minors" },
-      include: reportInclude,
-      orderBy: order,
-      take: LIST_MAX,
-    });
-    const others = await this.prisma.report.findMany({
-      where: { status: "open", reason: { not: "minors" } },
-      include: reportInclude,
-      orderBy: order,
-      take: LIST_MAX - minors.length,
-    });
-    return [...minors, ...others].map(toAdminReport);
+  /**
+   * Gives one page of the open reports. Reports about minors come first, then the oldest first. A page that ends in
+   * the minors continues with the rest of the minors, then with the other reports.
+   */
+  async listOpen(query: unknown): Promise<AdminReportList> {
+    const parsed = adminReportListQuerySchema.safeParse(query ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException({ error: "invalid_query" });
+    }
+    const { cursor } = parsed.data;
+    const after = cursor === undefined ? null : decodeReportCursor(cursor);
+    if (cursor !== undefined && after === null) {
+      throw new BadRequestException({ error: "invalid_cursor" });
+    }
+    const afterTime = after ? new Date(after.createdAt) : null;
+    const afterRow =
+      after && afterTime
+        ? { OR: [{ createdAt: { gt: afterTime } }, { createdAt: afterTime, id: { gt: after.id } }] }
+        : {};
+    const order = [{ createdAt: "asc" }, { id: "asc" }] as const;
+    const want = ADMIN_PAGE_SIZE + 1;
+    const minors =
+      after === null || after.minors
+        ? await this.prisma.report.findMany({
+            where: { status: "open", reason: "minors", ...afterRow },
+            include: reportInclude,
+            orderBy: [...order],
+            take: want,
+          })
+        : [];
+    const others =
+      minors.length < want
+        ? await this.prisma.report.findMany({
+            where: { status: "open", reason: { not: "minors" }, ...(after?.minors === false ? afterRow : {}) },
+            include: reportInclude,
+            orderBy: [...order],
+            take: want - minors.length,
+          })
+        : [];
+    const rows = [...minors, ...others];
+    const page = rows.slice(0, ADMIN_PAGE_SIZE);
+    const last = page.at(-1);
+    return {
+      reports: page.map(toAdminReport),
+      nextCursor:
+        rows.length > ADMIN_PAGE_SIZE && last
+          ? encodeReportCursor({ minors: last.reason === "minors", createdAt: last.createdAt.toISOString(), id: last.id })
+          : null,
+    };
   }
 
   /**
