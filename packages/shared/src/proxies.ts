@@ -24,6 +24,7 @@ export const AI_ERROR_CODES = [
   "blocked_url",
   "provider_unreachable",
   "provider_error",
+  "free_model_busy",
 ] as const;
 
 export type AiErrorCode = (typeof AI_ERROR_CODES)[number];
@@ -39,6 +40,7 @@ export const AI_ERROR_TEXT: Record<AiErrorCode, string> = {
   blocked_url: "This proxy URL is not allowed.",
   provider_unreachable: "Wanderer cannot reach the proxy.",
   provider_error: "The proxy gave an error.",
+  free_model_busy: "The free model is busy.",
 };
 
 export function isAiErrorCode(value: unknown): value is AiErrorCode {
