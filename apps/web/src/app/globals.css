@@ -23,6 +23,15 @@
   --font-display: var(--font-cinzel), Georgia, serif;
 }
 
+/* Styles for the sidebar rail on a computer: the aside with data-rail="true" and each element in it. */
+@custom-variant rail {
+  @media (min-width: 761px) {
+    &:where([data-rail="true"], [data-rail="true"] *) {
+      @slot;
+    }
+  }
+}
+
 @layer base {
   body {
     margin: 0;
@@ -193,6 +202,48 @@
     text-align: left;
     text-decoration: none;
     cursor: pointer;
+  }
+
+  /*
+   * In the rail, each label becomes a tooltip on hover and on keyboard focus.
+   * The label stays in the DOM, so a screen reader reads the name of each icon.
+   */
+  @media (min-width: 761px) {
+    [data-rail="true"] .nav {
+      position: relative;
+      justify-content: center;
+      width: 40px;
+      padding: 0;
+    }
+
+    [data-rail="true"] .side-label {
+      position: absolute;
+      top: 50%;
+      left: calc(100% + 14px);
+      z-index: 30;
+      translate: 0 -50%;
+      padding: 4px 10px;
+      border: 1px solid var(--color-field-line);
+      border-radius: 8px;
+      background: var(--color-surface);
+      color: var(--color-text);
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 120ms;
+    }
+
+    [data-rail="true"] :is(a, button):is(:hover, :focus-visible) > .side-label {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .side-label {
+      transition: none;
+    }
   }
 
   .nav:hover {

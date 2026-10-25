@@ -8,7 +8,7 @@ import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/query-provider";
 import { Avatar } from "./avatar";
 
-/** The foot of the sidebar: the user row with the account menu, or a "Log in" pill for a visitor. */
+/** The foot of the sidebar: the user row with the account menu, or a "Log in" pill for a visitor. The rail shows only the avatar. */
 export function UserRow() {
   const { data: me, isPending } = useMe();
   const queryClient = useQueryClient();
@@ -20,8 +20,11 @@ export function UserRow() {
   }
   if (!me) {
     return (
-      <Link href="/login" className="pill pill-accent">
-        Log in
+      <Link href="/login" className="pill pill-accent relative rail:w-10 rail:self-center rail:px-0">
+        <svg className="hidden rail:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3" />
+        </svg>
+        <span className="side-label">Log in</span>
       </Link>
     );
   }
@@ -49,10 +52,10 @@ export function UserRow() {
         aria-label="Account menu"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center gap-2.5 rounded-xl border-0 bg-transparent px-2 py-1.5 text-left text-text hover:bg-hover"
+        className="flex w-full items-center gap-2.5 rounded-xl border-0 bg-transparent px-2 py-1.5 text-left text-text hover:bg-hover rail:p-1"
       >
         <Avatar name={me.name} src={me.pictureUrl} size={32} />
-        <span className="flex min-w-0 flex-col">
+        <span className="flex min-w-0 flex-col rail:hidden">
           <span className="truncate text-sm font-semibold">{me.name}</span>
           {me.handle && <span className="truncate text-xs text-subtle">@{me.handle}</span>}
         </span>
