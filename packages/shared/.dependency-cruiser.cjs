@@ -13,7 +13,7 @@ module.exports = {
     {
       name: "shared-feature-public-only",
       comment: "A shared feature imports another shared feature only through its index.ts.",
-      severity: "warn",
+      severity: "error",
       from: { path: "^src/([^/]+)/" },
       to: {
         path: "^src/[^/]+/",

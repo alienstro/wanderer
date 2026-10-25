@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PROXY_MODELS_ERROR_TEXT } from "./proxies.js";
+import { PROXY_MODELS_ERROR_TEXT } from "../proxies/index.js";
 
 export const OVERVIEW_PERIODS = ["today", "7d", "30d"] as const;
 export type OverviewPeriod = (typeof OVERVIEW_PERIODS)[number];

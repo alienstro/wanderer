@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { API_KEY_MAX } from "./api-keys.js";
+import { API_KEY_MAX } from "../api-keys/index.js";
 
 export const PROXY_NAME_MAX = 60;
 export const PROXY_URL_MAX = 500;

@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { OPENINGS_MAX } from "./characters.js";
-import type { AiErrorCode } from "./proxies.js";
+import { OPENINGS_MAX } from "../characters/index.js";
+import type { AiErrorCode } from "../proxies/index.js";
 
 export const MESSAGE_MAX = 8000;
 /** The sidebar and the banner show this number of characters of the last message, or less. */

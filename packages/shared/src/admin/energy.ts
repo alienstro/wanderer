@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { SCENE_MODEL_KEYS, type SceneModelKey } from "./chats.js";
-import { energySchema, signedEnergySchema } from "./energy.js";
-import { PROXY_MODEL_MAX } from "./proxies.js";
+import { SCENE_MODEL_KEYS, type SceneModelKey } from "../chats/index.js";
+import { energySchema, signedEnergySchema } from "../energy/index.js";
+import { PROXY_MODEL_MAX } from "../proxies/index.js";
 
 /** The largest markup in percent. */
 export const MARKUP_MAX = 1000;

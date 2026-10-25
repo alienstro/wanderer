@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createChatSchema, messageInputSchema } from "./chats.js";
-import { AI_ERROR_CODES, AI_ERROR_TEXT, proxyCreateSchema, proxyUpdateSchema } from "./proxies.js";
+import { AI_ERROR_CODES, AI_ERROR_TEXT, proxyCreateSchema, proxyUpdateSchema } from "../proxies/index.js";
 
 const proxy = {
   name: "OpenRouter",

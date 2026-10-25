@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { REPORT_NOTE_MAX } from "./reports.js";
+import { REPORT_NOTE_MAX } from "../reports/index.js";
 
 /** The longest comment. The body is plain text. */
 export const COMMENT_MAX = 1_000;
