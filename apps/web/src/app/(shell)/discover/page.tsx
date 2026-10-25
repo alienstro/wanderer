@@ -1,6 +1,6 @@
 import { type CharacterListResponse, characterListQuerySchema } from "@wanderer/shared";
 import { serverApiFetch } from "@/lib/server-api";
-import { DiscoverView } from "./discover-view";
+import { DiscoverView } from "@/features/discover";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
