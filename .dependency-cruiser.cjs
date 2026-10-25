@@ -21,10 +21,10 @@ module.exports = {
     },
     {
       name: "no-circular",
-      comment: "A circular import makes the load order fragile.",
-      severity: "warn",
+      comment: "A circular import makes the load order fragile. An `import type` is erased at build time, so it does not count.",
+      severity: "error",
       from: {},
-      to: { circular: true },
+      to: { circular: true, viaOnly: { dependencyTypesNot: ["type-only"] } },
     },
   ],
   options: {
