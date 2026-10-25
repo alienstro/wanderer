@@ -35,8 +35,8 @@ const HEALTH_WINDOW_MS = 60 * 60 * 1000;
 /** With fewer tries, a few failures of one user do not make the status "down". */
 const DOWN_MIN_TRIES = 5;
 
-/** The metric of each app event type. */
-const EVENT_METRIC: Record<AppEventType, OverviewMetric> = {
+/** The metric of each app event type that the overview counts. */
+const EVENT_METRIC: Partial<Record<AppEventType, OverviewMetric>> = {
   login: "logins",
   ai_reply_failed: "failedReplies",
   choices_failed: "failedChoices",
@@ -153,7 +153,7 @@ export class OverviewService {
     ]);
     const metrics = new Map<OverviewMetric, OverviewSeries>();
     TABLE_METRICS.forEach((metric, index) => metrics.set(metric, toSeries(tables[index] ?? [], "", days)));
-    for (const [type, metric] of Object.entries(EVENT_METRIC)) {
+    for (const [type, metric] of Object.entries(EVENT_METRIC) as Array<[AppEventType, OverviewMetric]>) {
       metrics.set(metric, toSeries(events, type, days));
     }
     // The order of OVERVIEW_METRICS is the order of the page.
