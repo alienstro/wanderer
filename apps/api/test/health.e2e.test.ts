@@ -85,6 +85,13 @@ describe("health, CORS, and env", () => {
     ).toThrow(/COOKIE_SECRET/);
   });
 
+  it("loadEnv throws with the name RUNPOD_API_KEY when the key is missing", () => {
+    const { RUNPOD_API_KEY: _missing, ...valid } = testEnv();
+    expect(() =>
+      loadEnv({ ...valid, ADMIN_EMAILS: "", PORT: "3001", KEY_ENCRYPTION_KEY: valid.KEY_ENCRYPTION_KEY.toString("base64") }),
+    ).toThrow(/RUNPOD_API_KEY/);
+  });
+
   it("loadEnv keeps only the origin of WEB_ORIGIN, so a trailing slash does not break CORS", () => {
     expect(testEnv({ WEB_ORIGIN: "https://wanderer.alienstro.xyz/" }).WEB_ORIGIN).toBe(WEB_ORIGIN);
   });

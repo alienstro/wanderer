@@ -10,11 +10,12 @@ import {
   messageInputSchema,
   type MessageView,
   openingInputSchema,
+  type SceneView,
 } from "@wanderer/shared";
 import { characterAccess } from "../characters/visibility.js";
 import { isUuid } from "../common/uuid.js";
-import { fileUrl } from "../files/files.service.js";
-import type { Chat, Message, User } from "../generated/prisma/client.js";
+import { FilesService, fileUrl } from "../files/files.service.js";
+import type { Chat, Message, SceneImage, User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { ChatLocks } from "./chat-locks.js";
 import type { PromptCharacter } from "./prompt.js";
@@ -41,11 +42,14 @@ type ChatWithCharacter = Chat & {
 const detailInclude = {
   character: { select: { ...characterSelect, _count: { select: { openings: true } } } },
   messages: { orderBy: { position: "asc" } },
+  // A scene row with no file is only a count for the daily limit.
+  sceneImages: { where: { fileId: { not: null } }, orderBy: { createdAt: "asc" } },
 } as const;
 
 type DetailChat = ChatWithCharacter & {
   character: Parameters<typeof characterAccess>[0] & { _count: { openings: number } };
   messages: Message[];
+  sceneImages: SceneImage[];
 };
 
 /** The creator can delete openings after the chat starts, so the index stops at the last opening. */
@@ -57,6 +61,17 @@ function toChatDetail(chat: DetailChat, user: User): ChatDetail {
     memory: toChatMemory(chat),
     canSend: characterAccess(chat.character, user) === "ok",
     opening: { index: Math.max(0, Math.min(chat.openingIndex, count - 1)), count },
+    scenes: chat.sceneImages.map(toSceneView),
+  };
+}
+
+/** Give only a row with a file. */
+export function toSceneView(row: SceneImage): SceneView {
+  return {
+    id: row.id,
+    url: fileUrl(row.fileId ?? ""),
+    afterPosition: row.afterPosition,
+    createdAt: row.createdAt.toISOString(),
   };
 }
 
@@ -92,12 +107,20 @@ function toChatSummary(chat: ChatWithCharacter, last: Message | undefined, messa
   };
 }
 
+/** The chat, the character, and the history for a call to the proxy. */
+export interface ReplyContext {
+  chat: Chat;
+  character: PromptCharacter & { isAdult: boolean };
+  history: Message[];
+}
+
 /** The chats of a user. Each query filters by the user ID of the session, so another user gets 404. */
 @Injectable()
 export class ChatsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly locks: ChatLocks,
+    private readonly files: FilesService,
   ) {}
 
   /** Starts a chat from one opening of the character. The opening is message 0, with role assistant. */
@@ -201,9 +224,15 @@ export class ChatsService {
     return this.get(user, id);
   }
 
+  /** Deletes the chat and its scene images. The scene rows stay, so the daily limit still counts them. */
   async remove(user: User, id: string): Promise<void> {
     await this.findOwn(user, id);
-    await this.prisma.chat.delete({ where: { id } });
+    const scenes = await this.prisma.file.findMany({ where: { sceneImage: { chatId: id } }, select: { id: true, path: true } });
+    await this.prisma.$transaction([
+      this.prisma.file.deleteMany({ where: { id: { in: scenes.map((file) => file.id) } } }),
+      this.prisma.chat.delete({ where: { id } }),
+    ]);
+    await this.files.removeBytes(scenes.map((file) => file.path));
   }
 
   /** Saves the memory. A body without `throughPosition` keeps the saved marker. */
@@ -244,10 +273,7 @@ export class ChatsService {
    * The chat, the character definition, and the history for a call to the proxy. A character that the user
    * cannot see now gives 404, so the prompt never holds a hidden definition.
    */
-  async loadForReply(
-    chatId: string,
-    user: User,
-  ): Promise<{ chat: Chat; character: PromptCharacter; history: Message[] }> {
+  async loadForReply(chatId: string, user: User): Promise<ReplyContext> {
     const chat = isUuid(chatId)
       ? await this.prisma.chat.findFirst({
           where: { id: chatId, userId: user.id },

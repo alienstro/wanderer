@@ -60,6 +60,7 @@ this value. Keep a copy in a password manager.
 | `ADMIN_EMAILS` | The owner's Google email. Use commas between more than one address. |
 | `UPLOAD_DIR` | `/data/uploads` (the image sets this value too) |
 | `KEY_ENCRYPTION_KEY` | The base64 text of 32 random bytes, from `openssl rand -base64 32` |
+| `RUNPOD_API_KEY` | The RunPod API key for the scene images. The API does not start without it. |
 
 - Volume: in **Advanced → Volumes**, add a volume mount. Type: Volume. Name: `wanderer-uploads`.
   Mount path: `/data/uploads`. The avatar images live there.
