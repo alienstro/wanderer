@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   OVERVIEW_HEALTH_LABELS,
   OVERVIEW_METRICS,
@@ -14,12 +14,14 @@ import {
   type OverviewProblemList,
   type OverviewStats,
   problemReasonText,
-  type TopCharacter,
-  type TopCharacterList,
+  TOP_PAGE_SIZE,
+  type TopCharacterListName,
+  type TopCharacterPage,
 } from "@wanderer/shared";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
+import { Pager, usePager } from "./pager";
 import { TrendLine } from "./trend-line";
 
 const QUERY_KEY = "admin-overview";
@@ -63,20 +65,34 @@ function relativeTime(iso: string): string {
 export function AdminOverview() {
   const queryClient = useQueryClient();
   const [period, setPeriod] = useState<OverviewPeriod>("7d");
-  const search = `?${new URLSearchParams({ period, tz: timeZone() })}`;
-  const load = <T,>(panel: string) => ({
-    queryKey: [QUERY_KEY, panel, period],
-    queryFn: () => apiFetch<T>(`/admin/overview/${panel}${search}`),
+  const problemsPager = usePager();
+  const chatsPager = usePager();
+  const likesPager = usePager();
+  const tz = timeZone();
+  // A list with pages keeps the old page on the screen while the next one loads, so the list does not jump.
+  const load = <T,>(panel: string, params: Record<string, string> = {}) => ({
+    queryKey: [QUERY_KEY, panel, period, params],
+    queryFn: () => apiFetch<T>(`/admin/overview/${panel}?${new URLSearchParams({ period, tz, ...params })}`),
+    placeholderData: keepPreviousData,
   });
+  const page = (cursor: string | undefined): Record<string, string> => (cursor === undefined ? {} : { cursor });
   const stats = useQuery(load<OverviewStats>("stats"));
-  const problems = useQuery(load<OverviewProblemList>("problems"));
-  const top = useQuery(load<TopCharacterList>("top-characters"));
+  const problems = useQuery(load<OverviewProblemList>("problems", page(problemsPager.cursor)));
+  const topChats = useQuery(load<TopCharacterPage>("top-characters", { by: "chats", ...page(chatsPager.cursor) }));
+  const topLikes = useQuery(load<TopCharacterPage>("top-characters", { by: "likes", ...page(likesPager.cursor) }));
   const health = useQuery({ queryKey: [QUERY_KEY, "health"], queryFn: () => apiFetch<OverviewHealth>("/admin/overview/health") });
 
   if (stats.error instanceof ApiError && stats.error.status === 403) {
     return <p className="m-0 text-muted">This page is for the admin.</p>;
   }
-  const refreshing = stats.isFetching || problems.isFetching || top.isFetching || health.isFetching;
+  const refreshing = stats.isFetching || problems.isFetching || topChats.isFetching || topLikes.isFetching || health.isFetching;
+  const changePeriod = (value: OverviewPeriod) => {
+    setPeriod(value);
+    // A cursor belongs to one period, so each list starts again at page 1.
+    problemsPager.reset();
+    chatsPager.reset();
+    likesPager.reset();
+  };
   // A failed health request means that the API or its database does not answer, so the app is down.
   const status: OverviewHealthStatus | undefined = health.isError ? "down" : health.data?.status;
 
@@ -87,7 +103,7 @@ export function AdminOverview() {
       <div className="flex flex-wrap items-center gap-2">
         <div role="group" aria-label="Period" className="flex flex-wrap gap-2">
           {OVERVIEW_PERIODS.map((value) => (
-            <button key={value} type="button" className="chip" aria-pressed={value === period} onClick={() => setPeriod(value)}>
+            <button key={value} type="button" className="chip" aria-pressed={value === period} onClick={() => changePeriod(value)}>
               {OVERVIEW_PERIOD_LABELS[value]}
             </button>
           ))}
@@ -113,8 +129,8 @@ export function AdminOverview() {
 
       <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
         <section aria-labelledby="problems-title" className="flex flex-col gap-3">
-          <PanelHeading id="problems-title" title="Recent problems" count={problems.data?.problems.length}>
-            The newest 50 failures of the period. It shows no chat text, keys or URLs.
+          <PanelHeading id="problems-title" title="Recent problems">
+            The failures of the period, the newest first. It shows no chat text, keys or URLs.
           </PanelHeading>
           <div className="panel overflow-hidden">
             {problems.isError && <p className="m-0 px-5 py-4 text-muted">The problems did not load. Select Refresh to try again.</p>}
@@ -127,6 +143,7 @@ export function AdminOverview() {
               </ul>
             )}
           </div>
+          <Pager label="Recent problems pages" pager={problemsPager} nextCursor={problems.data?.nextCursor} />
         </section>
 
         <section aria-labelledby="top-title" className="flex flex-col gap-3">
@@ -134,13 +151,8 @@ export function AdminOverview() {
             The characters with the most new chats and the most new likes in the period.
           </PanelHeading>
           <div className="panel flex flex-col gap-6 p-5">
-            {top.isError && <p className="m-0 text-muted">The top characters did not load. Select Refresh to try again.</p>}
-            {top.data && (
-              <>
-                <TopList title="Most new chats" characters={top.data.byChats} />
-                <TopList title="Most new likes" characters={top.data.byLikes} />
-              </>
-            )}
+            <TopList list="chats" query={topChats} pager={chatsPager} />
+            <TopList list="likes" query={topLikes} pager={likesPager} />
           </div>
         </section>
       </div>
@@ -222,12 +234,11 @@ function StatusIcon({ status }: { status: OverviewHealthStatus | undefined }) {
   );
 }
 
-function PanelHeading({ id, title, count, children }: { id: string; title: string; count?: number; children: ReactNode }) {
+function PanelHeading({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <h2 id={id} className="m-0 flex items-center gap-2 text-base">
+      <h2 id={id} className="m-0 text-base">
         {title}
-        {count !== undefined && count > 0 && <span className="tag tabular-nums">{count}</span>}
       </h2>
       <p className="m-0 max-w-[64ch] text-[13px] text-muted">{children}</p>
     </div>
@@ -314,23 +325,34 @@ function ProblemRow({ problem }: { problem: OverviewProblem }) {
   );
 }
 
-function TopList({ title, characters }: { title: string; characters: TopCharacter[] }) {
-  const max = Math.max(...characters.map((character) => character.count), 1);
+const TOP_LIST_TITLES: Record<TopCharacterListName, string> = { chats: "Most new chats", likes: "Most new likes" };
+
+interface TopListProps {
+  list: TopCharacterListName;
+  query: { data?: TopCharacterPage; isError: boolean };
+  pager: Pager;
+}
+
+function TopList({ list, query, pager }: TopListProps) {
+  const title = TOP_LIST_TITLES[list];
+  const characters = query.data?.characters;
+  // The rank goes on from the page before, and each bar compares with the first character of the period.
+  const firstRank = (pager.page - 1) * TOP_PAGE_SIZE + 1;
+  const max = Math.max(query.data?.maxCount ?? 0, 1);
   return (
     <div className="flex flex-col gap-3">
       <h3 className="m-0 text-[14px] font-medium text-muted">{title}</h3>
-      {characters.length === 0 ? (
-        <p className="m-0 text-[13px] text-subtle">None in this period.</p>
-      ) : (
+      {query.isError && <p className="m-0 text-[13px] text-muted">The list did not load. Select Refresh to try again.</p>}
+      {characters?.length === 0 && <p className="m-0 text-[13px] text-subtle">None in this period.</p>}
+      {characters && characters.length > 0 && (
         <ol aria-label={title} className="m-0 flex list-none flex-col gap-3 p-0">
           {characters.map((character, index) => (
-            <li key={character.id} className="grid grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5">
-              <span className="text-[13px] text-subtle tabular-nums">{index + 1}</span>
+            <li key={character.id} className="grid grid-cols-[24px_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5">
+              <span className="text-[13px] text-subtle tabular-nums">{firstRank + index}</span>
               <Link href={`/characters/${character.id}`} className="truncate text-link">
                 {character.title}
               </Link>
               <span className="font-semibold tabular-nums">{character.count}</span>
-              {/* The bar shows the count against the first character, so the gaps between the places show. */}
               <span aria-hidden="true" className="col-start-2 col-end-4 h-1 rounded-full bg-surface-2">
                 <span
                   data-bar
@@ -342,6 +364,7 @@ function TopList({ title, characters }: { title: string; characters: TopCharacte
           ))}
         </ol>
       )}
+      <Pager label={`${title} pages`} pager={pager} nextCursor={query.data?.nextCursor} />
     </div>
   );
 }

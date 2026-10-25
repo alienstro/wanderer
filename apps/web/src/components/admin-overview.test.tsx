@@ -8,7 +8,7 @@ import {
   type OverviewProblem,
   type OverviewSeries,
   type OverviewStats,
-  type TopCharacterList,
+  type TopCharacterPage,
 } from "@wanderer/shared";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -31,12 +31,29 @@ const timeout: OverviewProblem = {
   character: { id: "c1", title: "Mira" },
 };
 
-const top: TopCharacterList = {
-  byChats: [
-    { id: "c1", title: "Mira", count: 4 },
-    { id: "c2", title: "Onnit", count: 1 },
-  ],
-  byLikes: [],
+const secondProblem: OverviewProblem = {
+  id: "e2",
+  type: "proxy_test_failed",
+  reason: "invalid_key",
+  createdAt: "2026-10-24T10:00:00.000Z",
+  user: { id: "u2", handle: "night_owl" },
+  character: null,
+};
+
+/** The pages of each list. The key is the list and the cursor, such as "chats:" for page 1 or "problems:p2". */
+const pages: Record<string, unknown> = {
+  "problems:": { problems: [timeout], nextCursor: "p2" },
+  "problems:p2": { problems: [secondProblem], nextCursor: null },
+  "chats:": {
+    characters: [
+      { id: "c1", title: "Mira", count: 4 },
+      { id: "c2", title: "Onnit", count: 1 },
+    ],
+    nextCursor: "t2",
+    maxCount: 4,
+  } satisfies TopCharacterPage,
+  "chats:t2": { characters: [{ id: "c11", title: "Vale", count: 1 }], nextCursor: null, maxCount: 4 } satisfies TopCharacterPage,
+  "likes:": { characters: [], nextCursor: null, maxCount: 0 } satisfies TopCharacterPage,
 };
 
 interface StubOptions {
@@ -64,10 +81,12 @@ function stubApi({
     if (code !== 200) {
       return Response.json({ error: code === 403 ? "forbidden" : "internal" }, { status: code });
     }
+    const { searchParams } = new URL(url, "http://test");
+    const cursor = searchParams.get("cursor") ?? "";
     const bodies: Record<string, unknown> = {
       "/admin/overview/stats": stats,
-      "/admin/overview/problems": { problems: [timeout] },
-      "/admin/overview/top-characters": top,
+      "/admin/overview/problems": pages[`problems:${cursor}`],
+      "/admin/overview/top-characters": pages[`${searchParams.get("by")}:${cursor}`],
       "/admin/overview/health": health,
     };
     return Response.json(bodies[path.replace(/^.*(\/admin\/)/, "$1")]);
@@ -186,5 +205,45 @@ describe("AdminOverview", () => {
     const [first, second] = within(list).getAllByRole("listitem");
     expect(first?.querySelector<HTMLElement>("[data-bar]")?.style.width).toBe("100%");
     expect(second?.querySelector<HTMLElement>("[data-bar]")?.style.width).toBe("25%");
+  });
+
+  it("Next shows page 2 of the problems, and Previous goes back", async () => {
+    const fetchMock = stubApi();
+    renderView();
+    const pager = await screen.findByRole("navigation", { name: "Recent problems pages" });
+    await userEvent.click(within(pager).getByRole("button", { name: "Next" }));
+    const list = await screen.findByRole("list", { name: "Recent problems" });
+    expect(await within(list).findByText("@night_owl")).toBeTruthy();
+    expect(within(pager).getByText("Page 2")).toBeTruthy();
+    expect(fetchMock.mock.calls.map(([url]) => url).some((url) => url.includes("/problems") && url.includes("cursor=p2"))).toBe(true);
+    await userEvent.click(within(pager).getByRole("button", { name: "Previous" }));
+    expect(await within(list).findByText("Deleted account")).toBeTruthy();
+    expect(within(pager).getByText("Page 1")).toBeTruthy();
+  });
+
+  it("the top characters rank continues on page 2, and the bar compares with the first one of the period", async () => {
+    stubApi();
+    renderView();
+    const pager = await screen.findByRole("navigation", { name: "Most new chats pages" });
+    await userEvent.click(within(pager).getByRole("button", { name: "Next" }));
+    const list = screen.getByRole("list", { name: "Most new chats" });
+    const row = await within(list).findByRole("listitem");
+    await within(row).findByText("Vale");
+    expect(within(row).getByText("11")).toBeTruthy();
+    expect(row.querySelector<HTMLElement>("[data-bar]")?.style.width).toBe("25%");
+  });
+
+  it("a new period goes back to page 1", async () => {
+    const fetchMock = stubApi();
+    renderView();
+    const pager = await screen.findByRole("navigation", { name: "Recent problems pages" });
+    await userEvent.click(within(pager).getByRole("button", { name: "Next" }));
+    expect(await within(pager).findByText("Page 2")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "30 days" }));
+    // The pager shows again when page 1 of the new period has loaded.
+    expect(await within(await screen.findByRole("navigation", { name: "Recent problems pages" })).findByText("Page 1")).toBeTruthy();
+    const problemUrls = fetchMock.mock.calls.map(([url]) => url).filter((url) => url.includes("/problems"));
+    expect(problemUrls.at(-1)).toContain("period=30d");
+    expect(problemUrls.at(-1)).not.toContain("cursor=");
   });
 });
