@@ -1,0 +1,55 @@
+name: Bug
+description: Something in the app does not work as it should.
+title: "fix: "
+labels: [bug]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences. What is wrong, and who sees it?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps from a clean start.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: The site (production, staging, local), the browser, the device, the release version.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Screenshots, the console log, the API response, or the request ID. Remove each key and token.
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: How many users, how often, and is there a workaround?
+  - type: textarea
+    id: related
+    attributes:
+      label: Related
+      description: Other issues or PRs, for example "#58".

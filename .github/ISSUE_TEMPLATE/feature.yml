@@ -1,0 +1,65 @@
+name: Feature
+description: A new feature, or a change to how a feature works.
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences. What do users get?
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is wrong or missing now? Name the files or the screens.
+    validations:
+      required: true
+  - type: textarea
+    id: background
+    attributes:
+      label: Background
+      description: The facts a reader needs, with links to the code and to other issues.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: One sentence. What is true when this is done?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      value: |
+        **In scope**
+        -
+
+        **Out of scope**
+        -
+    validations:
+      required: true
+  - type: textarea
+    id: approach
+    attributes:
+      label: Proposed approach
+      description: The steps, and the other options with the reason that each one is not used.
+  - type: textarea
+    id: questions
+    attributes:
+      label: Open questions
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: Checks that a tester can do.
+      value: |
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: related
+    attributes:
+      label: Related

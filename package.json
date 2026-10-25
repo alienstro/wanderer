@@ -10,6 +10,8 @@
     "dev": "pnpm --parallel --filter \"./apps/*\" dev",
     "typecheck": "pnpm -r --workspace-concurrency=1 typecheck",
     "lint": "pnpm -r --workspace-concurrency=1 lint",
+    "test": "pnpm -r --workspace-concurrency=1 test",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test",
     "e2e": "pnpm --filter @wanderer/e2e build && pnpm --filter @wanderer/e2e e2e",
     "smoke": "node scripts/smoke.mjs"
   },
