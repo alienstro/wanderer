@@ -26,8 +26,9 @@ const SETTINGS = {
   choicesPrice: 0,
   memoryPrice: 1,
   sceneModelKey: "flux-schnell",
-  textMarkupPercent: 0,
-  imageMarkupPercent: 0,
+  globalMarkupPercent: 0,
+  textMarkupPercent: null,
+  imageMarkupPercent: null,
   freeDailyCap: 950,
 };
 
@@ -99,6 +100,25 @@ describe("admin energy and models", () => {
     const res = await send("get", "").expect(200);
 
     expect(res.body.sceneModels[0]).toMatchObject({ key: "flux-schnell", energyPrice: 0.45 });
+  });
+
+  it("a global markup prices each model with no own markup and no group default, and a group default wins over it", async () => {
+    const { id } = (await addGemma().expect(201)).body as { id: string };
+    await send("put", "/settings", { ...SETTINGS, globalMarkupPercent: 20 }).expect(200);
+
+    let body = (await send("get", "").expect(200)).body;
+    expect(body.settings).toMatchObject({ globalMarkupPercent: 20, textMarkupPercent: null, imageMarkupPercent: null });
+    expect(body.freeModels[0]).toMatchObject({ markupPercent: 20, markupSource: "global", energyPrice: 0.41 });
+    expect(body.sceneModels[0]).toMatchObject({ key: "flux-schnell", markupPercent: 20, markupSource: "global", energyPrice: 0.36 });
+
+    await send("put", "/settings", { ...SETTINGS, globalMarkupPercent: 20, textMarkupPercent: 0 }).expect(200);
+    body = (await send("get", "").expect(200)).body;
+    expect(body.freeModels[0]).toMatchObject({ markupPercent: 0, markupSource: "text", energyPrice: 0.34 });
+    expect(body.sceneModels[0]).toMatchObject({ markupSource: "global", energyPrice: 0.36 });
+
+    await send("patch", `/free-models/${id}`, { markupPercent: 100 }).expect(200);
+    body = (await send("get", "").expect(200)).body;
+    expect(body.freeModels[0]).toMatchObject({ markupPercent: 100, markupSource: "model", energyPrice: 0.68 });
   });
 
   it("adding gemma reads the prices of its paid version and the time of the read", async () => {

@@ -19,8 +19,11 @@ export const energySettingsInputSchema = z.object({
   choicesPrice: energySchema,
   memoryPrice: energySchema,
   sceneModelKey: z.enum(SCENE_MODEL_KEYS),
-  textMarkupPercent: markupSchema,
-  imageMarkupPercent: markupSchema,
+  /** The markup of each model with no markup of its own and no group default. */
+  globalMarkupPercent: markupSchema,
+  /** The group defaults. Null means the global markup. */
+  textMarkupPercent: markupSchema.nullable(),
+  imageMarkupPercent: markupSchema.nullable(),
   freeDailyCap: z.number().int().min(0).max(FREE_DAILY_CAP_MAX),
 });
 
@@ -64,14 +67,21 @@ export const sceneModelInputSchema = z.object({
   enabled: z.boolean(),
 });
 
+/**
+ * Where the markup in use comes from: the model itself, the default of its group (text or image), or the global
+ * markup. A model markup wins over the group default, and the group default wins over the global markup.
+ */
+export type MarkupSource = "model" | "text" | "image" | "global";
+
 /** The energy values of the admin views are in energy, such as 0.3. The USD values are numbers, such as 0.003. */
 export interface AdminEnergySettings {
   dailyEnergy: number;
   choicesPrice: number;
   memoryPrice: number;
   sceneModelKey: SceneModelKey;
-  textMarkupPercent: number;
-  imageMarkupPercent: number;
+  globalMarkupPercent: number;
+  textMarkupPercent: number | null;
+  imageMarkupPercent: number | null;
   freeDailyCap: number;
   updatedAt: string;
 }
@@ -90,8 +100,9 @@ export interface AdminFreeModel {
   pricesFetchedAt: string | null;
   /** The markup of the model. Null means the text default. */
   ownMarkupPercent: number | null;
-  /** The markup in use: the markup of the model or the text default. */
+  /** The markup in use: the markup of the model, the text default or the global markup. */
   markupPercent: number;
+  markupSource: Extract<MarkupSource, "model" | "text" | "global">;
   manualEnergyPrice: number | null;
   /** The USD cost of one reply. Null with no paid version. */
   costUsd: number | null;
@@ -108,6 +119,7 @@ export interface AdminSceneModel {
   costUsd: number;
   ownMarkupPercent: number | null;
   markupPercent: number;
+  markupSource: Extract<MarkupSource, "model" | "image" | "global">;
   enabled: boolean;
   /** True for the model of the settings. */
   active: boolean;

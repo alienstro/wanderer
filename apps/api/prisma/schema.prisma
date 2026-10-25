@@ -503,18 +503,21 @@ model SceneModel {
 
 /// The admin values for energy and models. The table has exactly one row, with id 1.
 model EnergySettings {
-  id                 Int      @id @default(1)
+  id                  Int      @id @default(1)
   /// Each value in hundredths of energy.
-  dailyEnergy        Int      @default(2000) @map("daily_energy")
-  choicesPrice       Int      @default(0) @map("choices_price")
-  memoryPrice        Int      @default(100) @map("memory_price")
-  sceneModelKey      String   @default("flux-schnell") @map("scene_model_key")
-  textMarkupPercent  Int      @default(0) @map("text_markup_percent")
-  imageMarkupPercent Int      @default(0) @map("image_markup_percent")
+  dailyEnergy         Int      @default(2000) @map("daily_energy")
+  choicesPrice        Int      @default(0) @map("choices_price")
+  memoryPrice         Int      @default(100) @map("memory_price")
+  sceneModelKey       String   @default("flux-schnell") @map("scene_model_key")
+  /// The markup of each model that has no markup of its own and no group default.
+  globalMarkupPercent Int      @default(0) @map("global_markup_percent")
+  /// The group defaults. Null means the global markup.
+  textMarkupPercent   Int?     @map("text_markup_percent")
+  imageMarkupPercent  Int?     @map("image_markup_percent")
   /// The number of free model requests of all users in one UTC day. Keep it below the OpenRouter limit.
-  freeDailyCap       Int      @default(950) @map("free_daily_cap")
-  updatedById        String?  @map("updated_by") @db.Uuid
-  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
+  freeDailyCap        Int      @default(950) @map("free_daily_cap")
+  updatedById         String?  @map("updated_by") @db.Uuid
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
 
   sceneModel SceneModel @relation(fields: [sceneModelKey], references: [key], onDelete: Restrict)
   updatedBy  User?      @relation(fields: [updatedById], references: [id], onDelete: SetNull)

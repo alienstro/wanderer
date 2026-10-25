@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const ADMIN_PAGES = [
   { href: "/admin", label: "Reports" },
   { href: "/admin/overview", label: "Overview" },
+  { href: "/admin/models", label: "Energy and models" },
 ];
 
 /** The links between the admin pages. */

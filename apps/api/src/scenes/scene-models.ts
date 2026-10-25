@@ -1,4 +1,4 @@
-import { energyPrice, type SceneModelKey } from "@wanderer/shared";
+import { energyPrice, type MarkupSource, type SceneModelKey } from "@wanderer/shared";
 import type { EnergySettings, SceneModel } from "../generated/prisma/client.js";
 import type { SceneImageRequest } from "./runpod-client.js";
 
@@ -37,7 +37,21 @@ export const SCENE_MODELS: Record<SceneModelKey, SceneModelAdapter> = {
   },
 };
 
-/** The energy price of one scene image in hundredths: the RunPod cost with the markup of the model or the default. */
+/** The markup of an image model: its own markup, else the image default, else the global markup. */
+export function imageMarkup(
+  model: SceneModel,
+  settings: EnergySettings,
+): { percent: number; source: Extract<MarkupSource, "model" | "image" | "global"> } {
+  if (model.markupPercent !== null) {
+    return { percent: model.markupPercent, source: "model" };
+  }
+  if (settings.imageMarkupPercent !== null) {
+    return { percent: settings.imageMarkupPercent, source: "image" };
+  }
+  return { percent: settings.globalMarkupPercent, source: "global" };
+}
+
+/** The energy price of one scene image in hundredths: the RunPod cost with the markup of imageMarkup. */
 export function sceneEnergyPrice(model: SceneModel, settings: EnergySettings): number {
-  return energyPrice(model.costUsd.toNumber(), model.markupPercent ?? settings.imageMarkupPercent);
+  return energyPrice(model.costUsd.toNumber(), imageMarkup(model, settings).percent);
 }

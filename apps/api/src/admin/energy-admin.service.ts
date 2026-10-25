@@ -37,10 +37,10 @@ import { isUuid } from "../common/uuid.js";
 import { ENV, type Env } from "../config/env.js";
 import { EnergyService } from "../energy/energy.service.js";
 import { EventsService } from "../events/events.service.js";
-import { OPENROUTER_CHAT_URL, textEnergyPrice } from "../free-models/free-models.js";
+import { OPENROUTER_CHAT_URL, textEnergyPrice, textMarkup } from "../free-models/free-models.js";
 import { type EnergySettings, type FreeModel, Prisma, type SceneModel, type User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-import { sceneEnergyPrice } from "../scenes/scene-models.js";
+import { imageMarkup, sceneEnergyPrice } from "../scenes/scene-models.js";
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -63,6 +63,7 @@ function toSettingsView(row: EnergySettings): AdminEnergySettings {
     choicesPrice: toEnergy(row.choicesPrice),
     memoryPrice: toEnergy(row.memoryPrice),
     sceneModelKey: row.sceneModelKey as SceneModelKey,
+    globalMarkupPercent: row.globalMarkupPercent,
     textMarkupPercent: row.textMarkupPercent,
     imageMarkupPercent: row.imageMarkupPercent,
     freeDailyCap: row.freeDailyCap,
@@ -74,6 +75,7 @@ function toFreeModelView(row: FreeModel, settings: EnergySettings): AdminFreeMod
   const prompt = row.promptPriceUsd?.toNumber() ?? null;
   const completion = row.completionPriceUsd?.toNumber() ?? null;
   const price = textEnergyPrice(row, settings);
+  const markup = textMarkup(row, settings);
   return {
     id: row.id,
     openrouterId: row.openrouterId,
@@ -85,7 +87,8 @@ function toFreeModelView(row: FreeModel, settings: EnergySettings): AdminFreeMod
     completionPriceUsd: completion,
     pricesFetchedAt: row.pricesFetchedAt?.toISOString() ?? null,
     ownMarkupPercent: row.markupPercent,
-    markupPercent: row.markupPercent ?? settings.textMarkupPercent,
+    markupPercent: markup.percent,
+    markupSource: markup.source,
     manualEnergyPrice: row.manualEnergyPrice === null ? null : toEnergy(row.manualEnergyPrice),
     costUsd: prompt === null || completion === null ? null : Number(textReplyCostUsd(prompt, completion).toFixed(10)),
     energyPrice: price === null ? null : toEnergy(price),
@@ -95,13 +98,15 @@ function toFreeModelView(row: FreeModel, settings: EnergySettings): AdminFreeMod
 
 function toSceneModelView(row: SceneModel, settings: EnergySettings): AdminSceneModel {
   const price = sceneEnergyPrice(row, settings);
+  const markup = imageMarkup(row, settings);
   const key = row.key as SceneModelKey;
   return {
     key,
     label: SCENE_MODEL_LABELS[key] ?? row.key,
     costUsd: row.costUsd.toNumber(),
     ownMarkupPercent: row.markupPercent,
-    markupPercent: row.markupPercent ?? settings.imageMarkupPercent,
+    markupPercent: markup.percent,
+    markupSource: markup.source,
     enabled: row.enabled,
     active: row.key === settings.sceneModelKey,
     energyPrice: toEnergy(price),

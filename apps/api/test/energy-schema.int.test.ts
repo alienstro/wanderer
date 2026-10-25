@@ -23,8 +23,9 @@ describe("schema for energy and free models", () => {
       choicesPrice: 0,
       memoryPrice: 100,
       sceneModelKey: "flux-schnell",
-      textMarkupPercent: 0,
-      imageMarkupPercent: 0,
+      globalMarkupPercent: 0,
+      textMarkupPercent: null,
+      imageMarkupPercent: null,
       freeDailyCap: 950,
     });
   });
