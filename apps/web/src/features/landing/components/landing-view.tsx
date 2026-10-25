@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { CharacterCard } from "@/features/characters";
 import { Logo } from "@/components/ui/logo";
-import { CONTACT_EMAIL, OPERATOR_NAME } from "@/lib/legal";
+import { CONTACT_EMAIL, OPERATOR_NAME } from "@/features/legal";
 import { CharacterPreview, ModelPreview, ReplyChoicesPreview } from "./feature-previews";
 import { SessionRedirect } from "./session-redirect";
 

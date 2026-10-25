@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/app-shell";
-import { HandleRedirect } from "@/components/handle-redirect";
+import { HandleRedirect } from "@/features/auth";
 import { SIDEBAR_COOKIE } from "@/lib/sidebar-rail";
 
 /** The server reads the saved sidebar state, so the first paint shows the correct width with no jump. */

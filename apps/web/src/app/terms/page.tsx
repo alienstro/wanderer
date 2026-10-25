@@ -1,7 +1,6 @@
 import { TERMS_VERSION } from "@wanderer/shared";
 import type { Metadata } from "next";
-import { LegalList, LegalPage, type LegalSection } from "@/components/legal-page";
-import { CONTACT_EMAIL, OPERATOR_NAME } from "@/lib/legal";
+import { CONTACT_EMAIL, LegalList, LegalPage, type LegalSection, OPERATOR_NAME } from "@/features/legal";
 
 export const metadata: Metadata = { title: "Terms of Service · Wanderer" };
 

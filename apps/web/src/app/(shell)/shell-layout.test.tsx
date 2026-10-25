@@ -15,7 +15,7 @@ vi.mock("@/components/app-shell", () => ({
     </div>
   ),
 }));
-vi.mock("@/components/handle-redirect", () => ({ HandleRedirect: () => null }));
+vi.mock("@/features/auth/components/handle-redirect", () => ({ HandleRedirect: () => null }));
 
 async function renderLayout() {
   render((await ShellLayout({ children: <p>Page</p> })) as ReactElement);
