@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from "@nestjs/common";
+import { BadRequestException, HttpException, Injectable } from "@nestjs/common";
 import { toEnergy } from "@wanderer/shared";
 import { EventsService } from "../events/events.service.js";
 import type { EnergyReason, EnergySettings, Prisma } from "../generated/prisma/client.js";
@@ -24,9 +24,13 @@ export interface EnergySpend {
 export interface EnergyBalance {
   /** In hundredths. */
   balance: number;
+  /** The daily amount of this user: an own daily amount, or the daily energy of the settings. */
   dailyEnergy: number;
   nextRefillAt: Date;
 }
+
+/** An admin change of a balance in hundredths: add an amount (below 0 takes energy away), or set an exact balance. */
+export type EnergyAdjustment = { mode: "add" | "set"; amount: number };
 
 /** 00:00 UTC of the day of `now`. The balance refills at this time each day. */
 export function dayStart(now: Date): Date {
@@ -58,8 +62,27 @@ export class EnergyService {
   async balance(userId: string): Promise<EnergyBalance> {
     const now = new Date();
     const { dailyEnergy } = await this.settings();
-    const balance = await this.prisma.$transaction((tx) => this.lockAndRefill(tx, userId, dailyEnergy, now));
-    return { balance, dailyEnergy, nextRefillAt: nextRefill(now) };
+    const result = await this.prisma.$transaction((tx) => this.lockAndRefill(tx, userId, dailyEnergy, now));
+    return { ...result, nextRefillAt: nextRefill(now) };
+  }
+
+  /**
+   * An admin change of the balance of a user. A due refill comes first, so the next action of the user does not
+   * replace the change. The change lasts until the next refill. A result below 0 gives 400 energy_below_zero.
+   */
+  async adjust(userId: string, change: EnergyAdjustment): Promise<{ before: number; after: number }> {
+    const now = new Date();
+    const { dailyEnergy } = await this.settings();
+    return this.prisma.$transaction(async (tx) => {
+      const { balance: before } = await this.lockAndRefill(tx, userId, dailyEnergy, now);
+      const after = change.mode === "add" ? before + change.amount : change.amount;
+      if (after < 0) {
+        throw new BadRequestException({ error: "energy_below_zero" });
+      }
+      await tx.user.update({ where: { id: userId }, data: { energy: after } });
+      await tx.energyEntry.create({ data: { userId, amount: after - before, reason: "admin", createdAt: now } });
+      return { before, after };
+    });
   }
 
   /**
@@ -76,7 +99,7 @@ export class EnergyService {
     const now = new Date();
     const { dailyEnergy } = await this.settings();
     const result = await this.prisma.$transaction(async (tx) => {
-      const balance = await this.lockAndRefill(tx, userId, dailyEnergy, now);
+      const { balance } = await this.lockAndRefill(tx, userId, dailyEnergy, now);
       if (balance < price) {
         return { ok: false as const, balance };
       }
@@ -134,22 +157,31 @@ export class EnergyService {
   }
 
   private async lock(tx: Prisma.TransactionClient, userId: string) {
-    const [row] = await tx.$queryRaw<Array<{ energy: number; energy_refilled_at: Date | null }>>`
-      SELECT energy, energy_refilled_at FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
+    const [row] = await tx.$queryRaw<Array<{ energy: number; energy_refilled_at: Date | null; daily_energy: number | null }>>`
+      SELECT energy, energy_refilled_at, daily_energy FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
     return row ?? null;
   }
 
-  /** Locks the user row, refills the balance when the last refill was before 00:00 UTC, and gives the balance. */
-  private async lockAndRefill(tx: Prisma.TransactionClient, userId: string, dailyEnergy: number, now: Date): Promise<number> {
+  /**
+   * Locks the user row, refills the balance when the last refill was before 00:00 UTC, and gives the balance with the
+   * daily amount of the user. An own daily amount of the user wins over the daily energy of the settings.
+   */
+  private async lockAndRefill(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    globalDaily: number,
+    now: Date,
+  ): Promise<{ balance: number; dailyEnergy: number }> {
     const user = await this.lock(tx, userId);
     if (!user) {
       throw new HttpException({ error: "unauthorized" }, 401);
     }
+    const dailyEnergy = user.daily_energy ?? globalDaily;
     if (user.energy_refilled_at !== null && user.energy_refilled_at >= dayStart(now)) {
-      return user.energy;
+      return { balance: user.energy, dailyEnergy };
     }
     await tx.user.update({ where: { id: userId }, data: { energy: dailyEnergy, energyRefilledAt: now } });
     await tx.energyEntry.create({ data: { userId, amount: dailyEnergy - user.energy, reason: "refill", createdAt: now } });
-    return dailyEnergy;
+    return { balance: dailyEnergy, dailyEnergy };
   }
 }

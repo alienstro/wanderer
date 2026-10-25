@@ -91,7 +91,7 @@ describe("EnergyService", () => {
     await prisma.user.update({ where: { id: userId }, data: { energyRefilledAt: new Date(Date.now() - DAY_MS) } });
 
     expect((await energy.balance(userId)).balance).toBe(2000);
-    const refills = await prisma.energyEntry.findMany({ where: { userId, reason: "refill" }, orderBy: { createdAt: "asc" } });
+    const refills = await prisma.energyEntry.findMany({ where: { userId, reason: "refill" }, orderBy: { seq: "asc" } });
     expect(refills.map((row) => row.amount)).toEqual([2000, 500]);
   });
 
@@ -122,5 +122,39 @@ describe("EnergyService", () => {
     await energy.spend(userId, 30, "scene");
 
     expect(await energy.freeRequestsToday()).toBe(2);
+  });
+
+  it("a user with an own daily amount refills to it, not to the global amount", async () => {
+    await prisma.user.update({ where: { id: userId }, data: { dailyEnergy: 5000 } });
+
+    expect(await energy.balance(userId)).toMatchObject({ balance: 5000, dailyEnergy: 5000 });
+  });
+
+  it("an admin add refills first when a refill is due, then saves one admin row", async () => {
+    const result = await energy.adjust(userId, { mode: "add", amount: 1000 });
+
+    expect(result).toEqual({ before: 2000, after: 3000 });
+    expect(await balanceOf(userId)).toBe(3000);
+    const rows = await prisma.energyEntry.findMany({ where: { userId }, orderBy: { seq: "asc" } });
+    expect(rows.map((row) => [row.reason, row.amount])).toEqual([
+      ["refill", 2000],
+      ["admin", 1000],
+    ]);
+  });
+
+  it("an admin add lasts until the next refill, which sets the daily amount again", async () => {
+    await energy.adjust(userId, { mode: "add", amount: 1000 });
+    await prisma.user.update({ where: { id: userId }, data: { energyRefilledAt: new Date(Date.now() - DAY_MS) } });
+
+    expect((await energy.balance(userId)).balance).toBe(2000);
+  });
+
+  it("an admin set gives an exact balance, and a take-away below 0 is refused", async () => {
+    expect(await energy.adjust(userId, { mode: "set", amount: 50 })).toEqual({ before: 2000, after: 50 });
+    expect(await refusal(energy.adjust(userId, { mode: "add", amount: -51 }))).toMatchObject({
+      status: 400,
+      body: { error: "energy_below_zero" },
+    });
+    expect(await energy.adjust(userId, { mode: "add", amount: -50 })).toEqual({ before: 50, after: 0 });
   });
 });

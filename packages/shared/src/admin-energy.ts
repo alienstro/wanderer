@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { SCENE_MODEL_KEYS, type SceneModelKey } from "./chats.js";
-import { energySchema } from "./energy.js";
+import { energySchema, signedEnergySchema } from "./energy.js";
 import { PROXY_MODEL_MAX } from "./proxies.js";
 
 /** The largest markup in percent. */
@@ -132,4 +132,63 @@ export interface AdminEnergyView {
   settings: AdminEnergySettings;
   freeModels: AdminFreeModel[];
   sceneModels: AdminSceneModel[];
+}
+
+/** POST /admin/energy/users/:id/adjust: add an amount (below 0 takes energy away), or set an exact balance. */
+export const userEnergyAdjustSchema = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("add"), amount: signedEnergySchema }),
+  z.object({ mode: z.literal("set"), amount: energySchema }),
+]);
+
+export type UserEnergyAdjustInput = z.input<typeof userEnergyAdjustSchema>;
+
+/** PUT /admin/energy/users/:id/daily. Null means the daily energy of the settings. */
+export const userDailyEnergySchema = z.object({ dailyEnergy: energySchema.nullable() });
+
+/** The query of GET /admin/energy/users: a search on the name, the handle or the email, and the page cursor. */
+export const userEnergyQuerySchema = z.object({
+  q: z.string().trim().max(100).default(""),
+  cursor: z.string().max(200).optional(),
+});
+
+/** One user on the "User energy" page. The energy values are in energy. */
+export interface AdminUserEnergy {
+  id: string;
+  name: string;
+  handle: string | null;
+  email: string;
+  role: "user" | "admin";
+  /** The balance that the user has now. When a refill is due, it is the daily amount. */
+  balance: number;
+  /** The daily amount in use: the own daily amount of the user, or the daily energy of the settings. */
+  dailyEnergy: number;
+  /** The own daily amount. Null means the daily energy of the settings. */
+  ownDailyEnergy: number | null;
+}
+
+/** GET /admin/energy/users: one page of users, the newest first. */
+export interface AdminUserEnergyPage {
+  users: AdminUserEnergy[];
+  /** Null when no more users exist. */
+  nextCursor: string | null;
+}
+
+export const ENERGY_REASON_LABELS = {
+  reply: "Reply",
+  choices: "Reply choices",
+  memory: "Memory draft",
+  scene: "Scene image",
+  refund: "Refund",
+  refill: "Daily refill",
+  admin: "Admin change",
+} as const;
+
+export type EnergyReasonName = keyof typeof ENERGY_REASON_LABELS;
+
+/** GET /admin/energy/users/:id/history: one change of the balance. A spend is below 0. */
+export interface AdminEnergyEntry {
+  id: string;
+  amount: number;
+  reason: EnergyReasonName;
+  createdAt: string;
 }

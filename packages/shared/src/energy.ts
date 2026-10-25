@@ -31,6 +31,14 @@ export const energySchema = z
   .refine(hasTwoDecimals, "Use 2 decimal places or less")
   .transform((value) => Math.round(value * 100));
 
+/** A change of energy that can be below 0, such as -5.5 to take energy away. The output is in hundredths. */
+export const signedEnergySchema = z
+  .number()
+  .min(-ENERGY_MAX)
+  .max(ENERGY_MAX)
+  .refine(hasTwoDecimals, "Use 2 decimal places or less")
+  .transform((value) => Math.round(value * 100));
+
 /** Hundredths as energy, such as 9950 → 99.5. JSON shows it with no trailing zeros. */
 export function toEnergy(hundredths: number): number {
   return hundredths / 100;

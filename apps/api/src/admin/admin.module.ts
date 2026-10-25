@@ -9,14 +9,17 @@ import { EnergyAdminController } from "./energy-admin.controller.js";
 import { EnergyAdminService } from "./energy-admin.service.js";
 import { OverviewController } from "./overview.controller.js";
 import { OverviewService } from "./overview.service.js";
+import { UserEnergyAdminController } from "./user-energy-admin.controller.js";
+import { UserEnergyAdminService } from "./user-energy-admin.service.js";
 
 @Module({
   imports: [AuthModule, CharactersModule, ProxiesModule],
-  controllers: [AdminController, OverviewController, EnergyAdminController],
+  controllers: [AdminController, OverviewController, EnergyAdminController, UserEnergyAdminController],
   providers: [
     AdminService,
     OverviewService,
     EnergyAdminService,
+    UserEnergyAdminService,
     { provide: OPENROUTER_PRICES_CLIENT, useFactory: () => new FetchOpenRouterPricesClient() },
   ],
 })

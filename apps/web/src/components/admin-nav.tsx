@@ -7,6 +7,7 @@ const ADMIN_PAGES = [
   { href: "/admin", label: "Reports" },
   { href: "/admin/overview", label: "Overview" },
   { href: "/admin/models", label: "Energy and models" },
+  { href: "/admin/users", label: "User energy" },
 ];
 
 /** The links between the admin pages. */

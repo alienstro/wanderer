@@ -37,6 +37,8 @@ model User {
   energy             Int       @default(0)
   /// The time of the last refill. Null before the first action that uses energy.
   energyRefilledAt   DateTime? @map("energy_refilled_at")
+  /// The own daily amount of the user in hundredths, set by an admin. Null means the daily energy of the settings.
+  dailyEnergy        Int?      @map("daily_energy")
   /// The free model that the user picked. Null means the default free model.
   freeModelId        String?   @map("free_model_id") @db.Uuid
   createdAt          DateTime  @default(now()) @map("created_at")
@@ -431,6 +433,8 @@ enum EnergyReason {
   scene
   refund
   refill
+  /// An admin added, took away or set energy on the balance of a user.
+  admin
 }
 
 /// One change of the energy balance of a user: a spend (minus), a refund or a refill (plus). The sum of the rows
@@ -446,6 +450,8 @@ model EnergyEntry {
   freeModelId String?      @map("free_model_id") @db.Uuid
   /// The spend that a refund gives back. One spend has one refund or none.
   refundOfId  String?      @unique @map("refund_of_id") @db.Uuid
+  /// The save order. Two rows of one transaction, such as a refill and a spend, have the same time.
+  seq         Int          @default(autoincrement())
   createdAt   DateTime     @default(now()) @map("created_at")
 
   user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)

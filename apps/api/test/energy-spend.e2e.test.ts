@@ -28,7 +28,7 @@ describe("energy spend on text actions", () => {
     request(app.getHttpServer()).post(`/chats/${chatId}${path}`).set("Origin", WEB_ORIGIN).set("Cookie", user.cookie).send({});
   const balance = async () => (await prisma.user.findUniqueOrThrow({ where: { id: user.user.id } })).energy;
   const entries = () =>
-    prisma.energyEntry.findMany({ where: { userId: user.user.id }, orderBy: { createdAt: "asc" }, select: { amount: true, reason: true } });
+    prisma.energyEntry.findMany({ where: { userId: user.user.id }, orderBy: { seq: "asc" }, select: { amount: true, reason: true } });
 
   beforeAll(async () => {
     fake = await startFakeAiServer();
