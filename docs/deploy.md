@@ -61,6 +61,7 @@ this value. Keep a copy in a password manager.
 | `UPLOAD_DIR` | `/data/uploads` (the image sets this value too) |
 | `KEY_ENCRYPTION_KEY` | The base64 text of 32 random bytes, from `openssl rand -base64 32` |
 | `RUNPOD_API_KEY` | The RunPod API key for the scene images. The API does not start without it. |
+| `OPENROUTER_API_KEY` | The OpenRouter API key for the free models. Optional. With no key, the free models are off, and each user must add an own model. Buy 10 credits one time on this account to raise the free limit from 50 to 1000 requests each day. |
 
 - Volume: in **Advanced → Volumes**, add a volume mount. Type: Volume. Name: `wanderer-uploads`.
   Mount path: `/data/uploads`. The avatar images live there.
