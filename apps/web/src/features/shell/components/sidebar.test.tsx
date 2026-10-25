@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { EnergyView } from "@wanderer/shared";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ModelCard } from "./model-card";
@@ -39,17 +40,39 @@ const chats = {
   ],
 };
 
-/** Answers /me with the user and /chats with the chat list. */
-function stubApi(user: typeof me | null = me) {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string) => {
-      if (url.endsWith("/me")) {
-        return user ? Response.json(user) : Response.json({ error: "unauthorized" }, { status: 401 });
-      }
-      return url.includes("/chats") ? Response.json(chats) : Response.json({ error: "not_found" }, { status: 404 });
-    }),
-  );
+/** 00:00 UTC is 8:00 AM in Manila. The tests set TZ to Asia/Manila. */
+const REFILL = "2026-10-26T00:00:00.000Z";
+
+const ownEnergy: EnergyView = {
+  balance: 40,
+  dailyEnergy: 50,
+  nextRefillAt: REFILL,
+  model: "own",
+  freeModelName: null,
+  prices: { reply: 0, choices: 0, memory: 0, scene: 5 },
+};
+
+const freeEnergy: EnergyView = {
+  ...ownEnergy,
+  balance: 12,
+  model: "free",
+  freeModelName: "Gemma",
+  prices: { reply: 2, choices: 0.5, memory: 1, scene: 5 },
+};
+
+/** Answers /me with the user, /energy with the energy (or a 500 for null), and /chats with the chat list. */
+function stubApi(user: typeof me | null = me, energy: EnergyView | null = ownEnergy) {
+  const fetchMock = vi.fn(async (url: string) => {
+    if (url.endsWith("/me")) {
+      return user ? Response.json(user) : Response.json({ error: "unauthorized" }, { status: 401 });
+    }
+    if (url.endsWith("/energy")) {
+      return energy ? Response.json(energy) : Response.json({ error: "internal" }, { status: 500 });
+    }
+    return url.includes("/chats") ? Response.json(chats) : Response.json({ error: "not_found" }, { status: 404 });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
 }
 
 function renderWithClient(ui: ReactNode) {
@@ -61,10 +84,12 @@ describe("sidebar", () => {
   beforeEach(() => {
     replace.mockReset();
     pathname = "/";
+    vi.stubEnv("TZ", "Asia/Manila");
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it("the sidebar shows Create, Discover, and My characters, and marks the current page", () => {
@@ -155,6 +180,49 @@ describe("sidebar", () => {
     stubApi({ ...me, activeProxy: null });
     renderWithClient(<ModelCard />);
     expect(await screen.findByRole("link", { name: /Add a model/ })).toHaveAttribute("href", "/settings/models");
+  });
+
+  it("a user on a free model sees the model name, the energy, a bar, and the refill time in local time", async () => {
+    stubApi({ ...me, activeProxy: null }, freeEnergy);
+    renderWithClient(<ModelCard />);
+    const card = await screen.findByRole("link", { name: /Free · Gemma/ });
+    expect(card).toHaveAttribute("href", "/settings/models");
+    expect(card).toHaveTextContent("Energy12 / 50");
+    expect(card).toHaveTextContent("Refills at 8:00 AM");
+    expect(card).not.toHaveTextContent("Add a model");
+    expect(screen.getByRole("meter", { name: "Energy" }).style.width).toBe("24%");
+  });
+
+  it('a user with an own API key sees the proxy and "Energy for scenes"', async () => {
+    stubApi(me, ownEnergy);
+    renderWithClient(<ModelCard />);
+    const card = await screen.findByRole("link", { name: /OpenRouter.*Energy for scenes/ });
+    expect(card).toHaveTextContent("40 / 50");
+  });
+
+  it("a balance above the daily amount fills the bar to 100%", async () => {
+    stubApi(me, { ...ownEnergy, balance: 80 });
+    renderWithClient(<ModelCard />);
+    expect((await screen.findByRole("meter", { name: "Energy" })).style.width).toBe("100%");
+  });
+
+  it("the rail shows the energy with the full text on hover and on focus", async () => {
+    stubApi({ ...me, activeProxy: null }, freeEnergy);
+    renderWithClient(<ModelCard />);
+    expect(await screen.findByRole("link", { name: "Energy 12 / 50. Refills at 8:00 AM." })).toHaveAttribute(
+      "href",
+      "/settings/models",
+    );
+  });
+
+  it("when GET /energy fails, the card shows the model and no energy", async () => {
+    const fetchMock = stubApi(me, null);
+    renderWithClient(<ModelCard />);
+    const card = await screen.findByRole("link", { name: /OpenRouter/ });
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/energy"))).toBe(true));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(card).not.toHaveTextContent("Energy");
+    expect(screen.queryByRole("meter")).not.toBeInTheDocument();
   });
 
   it("a visitor sees no For you, no Recent, and no model card", async () => {
