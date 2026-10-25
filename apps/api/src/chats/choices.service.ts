@@ -2,6 +2,7 @@ import { HttpException, Inject, Injectable, Logger } from "@nestjs/common";
 import type { ChoicesResponse } from "@wanderer/shared";
 import { AI_CLIENT_FACTORY, type AiClientFactory } from "../ai/ai-client.js";
 import { aiErrorLogFields, toAiError } from "../ai/ai-errors.js";
+import { EventsService } from "../events/events.service.js";
 import type { User } from "../generated/prisma/client.js";
 import { ProxiesService } from "../proxies/proxies.service.js";
 import { ChatsService } from "./chats.service.js";
@@ -19,6 +20,7 @@ export class ChoicesService {
   constructor(
     private readonly chats: ChatsService,
     private readonly proxies: ProxiesService,
+    private readonly events: EventsService,
     @Inject(AI_CLIENT_FACTORY) private readonly clients: AiClientFactory,
   ) {}
 
@@ -48,13 +50,16 @@ export class ChoicesService {
         text = completion.choices[0]?.message.content ?? "";
       } catch (error) {
         this.logger.warn({ msg: "Proxy choices failed", ...aiErrorLogFields(error) });
-        throw new HttpException({ error: toAiError(error) }, 502);
+        const code = toAiError(error);
+        await this.events.record("choices_failed", { userId: user.id, characterId: chat.characterId, reason: code });
+        throw new HttpException({ error: code }, 502);
       }
       const choices = parseChoices(text);
       if (choices) {
         return { choices };
       }
     }
+    await this.events.record("choices_failed", { userId: user.id, characterId: chat.characterId, reason: "bad_choices" });
     throw new HttpException({ error: "choices_failed" }, 502);
   }
 }

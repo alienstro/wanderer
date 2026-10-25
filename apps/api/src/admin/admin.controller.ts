@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Param, Post, Query, UseGuards } from "@nestjs/common";
 import type { AdminReport, AdminReportList } from "@wanderer/shared";
 import { AdminGuard } from "../auth/admin.guard.js";
 import { CurrentUser } from "../auth/current-user.decorator.js";
@@ -12,8 +12,8 @@ export class AdminController {
   constructor(private readonly admin: AdminService) {}
 
   @Get("reports")
-  async reports(): Promise<AdminReportList> {
-    return { reports: await this.admin.listOpen() };
+  reports(@Query() query: unknown): Promise<AdminReportList> {
+    return this.admin.listOpen(query);
   }
 
   @Post("reports/:id/resolve")

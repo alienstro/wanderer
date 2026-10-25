@@ -8,8 +8,21 @@ export interface CursorKey {
   id: string;
 }
 
-/** The sort key of the last comment of a page. Comments sort by time, then by ID. */
-export interface CommentCursorKey {
+/** The sort key of the last row of a page that sorts by time, then by ID, such as a comment or an app event. */
+export interface TimeCursorKey {
+  createdAt: string;
+  id: string;
+}
+
+/** The sort key of the last row of a ranked list, such as the top characters. Rows sort by count, then by ID. */
+export interface CountCursorKey {
+  count: number;
+  id: string;
+}
+
+/** The sort key of the last open report of a page. Reports about minors come first, then by time, then by ID. */
+export interface ReportCursorKey {
+  minors: boolean;
   createdAt: string;
   id: string;
 }
@@ -21,7 +34,18 @@ const cursorKeySchema = z.object({
   id: z.uuid(),
 });
 
-const commentCursorKeySchema = z.object({
+const timeCursorKeySchema = z.object({
+  createdAt: z.iso.datetime(),
+  id: z.uuid(),
+});
+
+const countCursorKeySchema = z.object({
+  count: z.number().int().nonnegative(),
+  id: z.uuid(),
+});
+
+const reportCursorKeySchema = z.object({
+  minors: z.boolean(),
   createdAt: z.iso.datetime(),
   id: z.uuid(),
 });
@@ -49,10 +73,26 @@ export function decodeCursor(cursor: string): CursorKey | null {
   return decode(cursor, cursorKeySchema);
 }
 
-export function encodeCommentCursor(key: CommentCursorKey): string {
+export function encodeTimeCursor(key: TimeCursorKey): string {
   return encode(key);
 }
 
-export function decodeCommentCursor(cursor: string): CommentCursorKey | null {
-  return decode(cursor, commentCursorKeySchema);
+export function decodeTimeCursor(cursor: string): TimeCursorKey | null {
+  return decode(cursor, timeCursorKeySchema);
+}
+
+export function encodeCountCursor(key: CountCursorKey): string {
+  return encode(key);
+}
+
+export function decodeCountCursor(cursor: string): CountCursorKey | null {
+  return decode(cursor, countCursorKeySchema);
+}
+
+export function encodeReportCursor(key: ReportCursorKey): string {
+  return encode(key);
+}
+
+export function decodeReportCursor(cursor: string): ReportCursorKey | null {
+  return decode(cursor, reportCursorKeySchema);
 }

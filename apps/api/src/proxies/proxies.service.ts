@@ -18,6 +18,7 @@ import { aiErrorLogFields, toAiError } from "../ai/ai-errors.js";
 import { MODEL_LIST_CLIENT, type ModelListClient, ModelListError, modelsUrl } from "../ai/model-list.js";
 import { assertProxyUrl, BlockedUrlError } from "../ai/url-guard.js";
 import { ApiKeysService } from "../api-keys/api-keys.service.js";
+import { EventsService } from "../events/events.service.js";
 import { KeyDecryptError } from "../api-keys/key-cipher.js";
 import { isUuid } from "../common/uuid.js";
 import type { ApiKey, Proxy, User } from "../generated/prisma/client.js";
@@ -81,6 +82,7 @@ export class ProxiesService {
     private readonly prisma: PrismaService,
     private readonly me: MeService,
     private readonly apiKeys: ApiKeysService,
+    private readonly events: EventsService,
     @Inject(AI_CLIENT_FACTORY) private readonly clients: AiClientFactory,
     @Inject(MODEL_LIST_CLIENT) private readonly modelLists: ModelListClient,
   ) {}
@@ -142,6 +144,7 @@ export class ProxiesService {
       target = this.target(row);
     } catch (error) {
       if (error instanceof KeyDecryptError) {
+        await this.events.record("proxy_test_failed", { userId: user.id, reason: "invalid_key" });
         return { ok: false, error: "invalid_key", message: AI_ERROR_TEXT.invalid_key };
       }
       throw error;
@@ -159,6 +162,7 @@ export class ProxiesService {
     } catch (error) {
       this.logger.warn({ msg: "Proxy test failed", ...aiErrorLogFields(error) });
       const code = toAiError(error);
+      await this.events.record("proxy_test_failed", { userId: user.id, reason: code });
       return { ok: false, error: code, message: AI_ERROR_TEXT[code] };
     }
   }
@@ -194,6 +198,7 @@ export class ProxiesService {
       }
       if (error instanceof ModelListError) {
         this.logger.warn({ msg: "Proxy model list failed", code: error.code });
+        await this.events.record("model_list_failed", { userId: user.id, reason: error.code });
         return modelsFailure(error.code);
       }
       throw error;
