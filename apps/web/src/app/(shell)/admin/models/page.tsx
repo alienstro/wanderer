@@ -1,7 +1,6 @@
 "use client";
 
-import { AdminModels } from "@/components/admin-models";
-import { AdminNav } from "@/components/admin-nav";
+import { AdminModels, AdminNav } from "@/features/admin";
 import { useRequireLogin } from "@/lib/use-require-login";
 
 /** The admin page for the free models, the scene models and the energy settings. A normal user sees a short message. */

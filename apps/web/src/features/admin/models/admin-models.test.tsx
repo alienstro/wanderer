@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AdminEnergyView, AdminFreeModel, AdminSceneModel } from "@wanderer/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AdminModels } from "./admin-models";
+import { AdminModels } from "@/features/admin/models/admin-models";
 
 const gemma: AdminFreeModel = {
   id: "m1",

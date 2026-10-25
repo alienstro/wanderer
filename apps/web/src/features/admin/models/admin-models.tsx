@@ -2,11 +2,11 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AdminEnergyView } from "@wanderer/shared";
-import { ADMIN_ENERGY_KEY } from "@/lib/admin-energy";
+import { ADMIN_ENERGY_KEY } from "@/features/admin/admin-energy";
 import { ApiError, apiFetch } from "@/lib/api";
-import { LimitsForm, MarkupPanel } from "./admin-energy-settings";
-import { FreeModelsSection } from "./admin-free-models";
-import { SceneModelsSection } from "./admin-scene-models";
+import { LimitsForm, MarkupPanel } from "@/features/admin/models/admin-energy-settings";
+import { FreeModelsSection } from "@/features/admin/models/admin-free-models";
+import { SceneModelsSection } from "@/features/admin/models/admin-scene-models";
 
 /**
  * The admin page "Energy and models". The markup comes first, because it moves every price below it. Then the free

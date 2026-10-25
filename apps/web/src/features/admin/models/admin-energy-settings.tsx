@@ -2,7 +2,7 @@
 
 import type { AdminEnergySettings, AdminFreeModel, AdminSceneModel, EnergySettingsInput } from "@wanderer/shared";
 import { type FormEvent, useId, useState } from "react";
-import { adminErrorText, optionalNumber, putSettings } from "@/lib/admin-energy";
+import { adminErrorText, optionalNumber, putSettings } from "@/features/admin/admin-energy";
 import { Field } from "@/components/ui/form-field";
 
 type Message = { error: boolean; text: string } | null;

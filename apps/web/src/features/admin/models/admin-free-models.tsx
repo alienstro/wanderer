@@ -2,9 +2,9 @@
 
 import type { AdminFreeModel, ProxyTestResult } from "@wanderer/shared";
 import { type FormEvent, useState } from "react";
-import { adminErrorText, formatUsd, MARKUP_SOURCE_TEXT, optionalNumber } from "@/lib/admin-energy";
+import { adminErrorText, formatUsd, MARKUP_SOURCE_TEXT, optionalNumber } from "@/features/admin/admin-energy";
 import { apiFetch } from "@/lib/api";
-import { AdminSection, PhoneLabel, PRICE_BODY, PRICE_CELL, PRICE_EDIT_CELL, PRICE_EDIT_ROW, PRICE_HEAD, PRICE_ROW, PRICE_TABLE } from "./admin-section";
+import { AdminSection, PhoneLabel, PRICE_BODY, PRICE_CELL, PRICE_EDIT_CELL, PRICE_EDIT_ROW, PRICE_HEAD, PRICE_ROW, PRICE_TABLE } from "@/features/admin/components/admin-section";
 import { Field } from "@/components/ui/form-field";
 
 const dateFormat = new Intl.DateTimeFormat("en", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });

@@ -12,7 +12,7 @@ import {
 } from "@wanderer/shared";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AdminOverview } from "./admin-overview";
+import { AdminOverview } from "@/features/admin/overview/admin-overview";
 
 const days = ["2026-10-23", "2026-10-24", "2026-10-25"];
 

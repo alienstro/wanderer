@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AdminReport } from "@wanderer/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AdminReports } from "./admin-reports";
+import { AdminReports } from "@/features/admin/reports/admin-reports";
 
 const minors: AdminReport = {
   id: "r1",

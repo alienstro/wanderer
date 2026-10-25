@@ -9,9 +9,9 @@ import {
   type UserEnergyAdjustInput,
 } from "@wanderer/shared";
 import { type FormEvent, useState } from "react";
-import { adminErrorText, optionalNumber } from "@/lib/admin-energy";
+import { adminErrorText, optionalNumber } from "@/features/admin/admin-energy";
 import { ApiError, apiFetch } from "@/lib/api";
-import { AdminSection } from "./admin-section";
+import { AdminSection } from "@/features/admin/components/admin-section";
 import { Field } from "@/components/ui/form-field";
 import { NumberedPager } from "@/components/ui/pager";
 

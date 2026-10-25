@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { AdminNav } from "./admin-nav";
+import { AdminNav } from "@/features/admin/components/admin-nav";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/admin/models" }));
 

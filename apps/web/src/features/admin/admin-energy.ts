@@ -1,5 +1,5 @@
 import type { AdminEnergySettings, EnergySettingsInput, MarkupSource } from "@wanderer/shared";
-import { ApiError, apiFetch } from "./api";
+import { ApiError, apiFetch } from "@/lib/api";
 
 /** The query key of GET /admin/energy. Each change on the page loads it again. */
 export const ADMIN_ENERGY_KEY = ["admin-energy"];

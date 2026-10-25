@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AdminEnergyEntry, AdminUserEnergy } from "@wanderer/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AdminUserEnergyList } from "./admin-user-energy";
+import { AdminUserEnergyList } from "@/features/admin/users/admin-user-energy";
 
 const mira: AdminUserEnergy = {
   id: "u2",
