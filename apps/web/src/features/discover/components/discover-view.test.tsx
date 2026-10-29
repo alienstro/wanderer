@@ -19,6 +19,7 @@ function card(n: number): CharacterCard {
     chatCount: 0,
     likeCount: 0,
     creatorHandle: "tian",
+    bioPreview: "",
   };
 }
 

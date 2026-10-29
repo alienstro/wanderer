@@ -78,11 +78,12 @@ export function ChatPanel({ chatId, characterId, personaName, memory, scenes, on
                 ))}
               </div>
             )}
-            <div className="grid grid-cols-2 py-1.5">
+            <div className="grid grid-cols-3 py-1.5">
               <Stat value={character.likeCount} label="Likes" />
-              <div className="border-l border-white/10">
+              <div className="border-x border-white/10">
                 <Stat value={character.chatCount} label="Chats" />
               </div>
+              <Stat value={character.commentCount} label="Comments" />
             </div>
           </div>
         )}

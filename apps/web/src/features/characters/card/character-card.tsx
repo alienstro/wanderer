@@ -25,7 +25,7 @@ function Count({ icon, label }: { icon: ReactNode; label: string }) {
 
 /**
  * A Discover card in the v2 style: a tall 3:4 image, with the counts, the title, @creator and the tags on a dark fade at the
- * bottom of the image. The whole card links to the character page. `statusBadge` shows a label next to the title, such as
+ * bottom of the image, with two lines of the bio preview. The whole card links to the character page. `statusBadge` shows a label next to the title, such as
  * "Draft". The text sits on its own layer above the image, so the 18+ badge on the image cannot push it.
  * `linked={false}` shows the card with no link, for the form preview.
  */
@@ -61,7 +61,8 @@ export function CharacterCard({ card, statusBadge, linked = true }: { card: Card
             <span className="rounded-full bg-[rgba(10,10,12,0.72)] px-2 py-px text-[11px] font-semibold whitespace-nowrap text-muted">{statusBadge}</span>
           )}
         </span>
-        <span className="truncate text-[12.5px] text-[#d4d4d8]">@{card.creatorHandle}</span>
+        {card.bioPreview && <span className="line-clamp-2 text-[12.5px] leading-[1.45] text-[#d4d4d8]">{card.bioPreview}</span>}
+        <span className="truncate text-[11.5px] text-[#a1a1aa]">@{card.creatorHandle}</span>
         {card.tags.length > 0 && (
           <span className="mt-[5px] flex flex-wrap gap-[5px]">
             {card.tags.slice(0, 3).map((tag) => (

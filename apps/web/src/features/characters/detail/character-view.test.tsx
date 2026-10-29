@@ -20,7 +20,9 @@ const detail: CharacterDetail = {
   chatCount: 3,
   likeCount: 0,
   creatorHandle: "tian",
+  bioPreview: "A ship mechanic.",
   bio: "A **ship** mechanic.",
+  commentCount: 7,
   status: "published",
   isPublic: true,
   definitionVisible: true,
@@ -81,6 +83,12 @@ describe("character page", () => {
     expect(screen.getByRole("tab", { name: "Definition" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tabpanel", { name: "Definition" })).toHaveTextContent(/Calm and dry\./);
     expect(screen.queryByRole("tabpanel", { name: "Comments" })).not.toBeInTheDocument();
+  });
+
+  it("the counts show the chats, the likes and the comments of the character", () => {
+    stubFetch(() => undefined);
+    withClient(<CharacterView detail={detail} />);
+    expect(screen.getByText("Comments", { selector: "span.text-subtle" }).previousSibling).toHaveTextContent("7");
   });
 
   it('definition null shows "The creator keeps the definition of this character hidden."', () => {

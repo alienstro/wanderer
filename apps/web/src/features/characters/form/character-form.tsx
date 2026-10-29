@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  bioPreview,
   type CharacterDetail,
   type CharacterInput,
   characterInputSchema,
@@ -110,6 +111,7 @@ function PreviewCard({ state, creatorHandle }: { state: FormState; creatorHandle
             chatCount: 0,
             likeCount: 0,
             creatorHandle,
+            bioPreview: bioPreview(state.bio),
           }}
         />
       </div>

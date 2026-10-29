@@ -15,7 +15,9 @@ const character: CharacterDetail = {
   chatCount: 412,
   likeCount: 3,
   creatorHandle: "tian",
+  bioPreview: "The captain of a salvage ship.",
   bio: "The captain of a **salvage ship**.",
+  commentCount: 9,
   status: "published",
   isPublic: true,
   definitionVisible: true,
@@ -66,11 +68,12 @@ afterEach(() => {
 });
 
 describe("ChatPanel", () => {
-  it("shows the character name as a link to the character page, the counts, the tags, and the bio in the Profile tab", async () => {
+  it("shows the character name as a link to the character page, the chat, like and comment counts, the tags, and the bio in the Profile tab", async () => {
     stubApi();
     renderPanel();
     expect(await screen.findByRole("link", { name: /Captain Ilse Varga/ })).toHaveAttribute("href", "/characters/c1");
     expect(screen.getByText("412")).toBeInTheDocument();
+    expect(screen.getByText("9")).toBeInTheDocument();
     expect(screen.getByText("SciFi")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Profile" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("salvage ship").tagName).toBe("STRONG");

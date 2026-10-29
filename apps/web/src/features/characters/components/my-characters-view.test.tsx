@@ -9,7 +9,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), push: 
 const me = { id: "u1", name: "Tian", email: "t@example.com", pictureUrl: null, handle: "tian", role: "user", showAdult: false, suggestedHandle: null };
 
 function card(title: string, status: MyCharacterCard["status"], isPublic = true): MyCharacterCard {
-  return { id: title, title, chatName: "", avatarUrl: null, isAdult: false, tags: [], chatCount: 0, likeCount: 0, creatorHandle: "tian", status, isPublic };
+  return { id: title, title, chatName: "", avatarUrl: null, isAdult: false, tags: [], chatCount: 0, likeCount: 0, creatorHandle: "tian", bioPreview: "", status, isPublic };
 }
 
 function renderWith(list: MyCharacterCard[]) {

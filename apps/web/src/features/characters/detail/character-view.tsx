@@ -114,6 +114,7 @@ export function CharacterView({ detail, actions, children }: { detail: Character
         <div className="mt-[18px] flex justify-center gap-7">
           <Stat value={compactCount(detail.chatCount)} label="Chats" />
           <Stat value={compactCount(detail.likeCount)} label="Likes" />
+          <Stat value={compactCount(detail.commentCount)} label="Comments" />
         </div>
 
         <div className="mt-[18px] flex flex-wrap items-start justify-center gap-2">
