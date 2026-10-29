@@ -44,7 +44,7 @@ const STOP_SETTLE_MS = 500;
 const ERROR_TOAST_PREFIX = "chat-error";
 
 /** The centred column of the messages and the text box, so the text box lines up with the messages. */
-const CHAT_COLUMN = "mx-auto w-full max-w-[832px]";
+const CHAT_COLUMN = "mx-auto w-full max-w-[712px]";
 
 /** The next step for each AI error. "settings" adds a button that opens the model page. */
 const AI_ERROR_STEP: Record<AiErrorCode, { text: string; settings?: boolean }> = {
@@ -291,70 +291,82 @@ export function ChatView({ chatId }: { chatId: string }) {
 
   return (
     // On a phone the chat fills the screen under the 56 px top bar of SidebarDrawer.
-    <div className="flex h-screen flex-col max-[760px]:h-[calc(100dvh-56px)]">
-      <header className="flex items-center gap-3 border-b border-line px-7 py-3.5 max-[760px]:gap-2.5 max-[760px]:px-3 max-[760px]:py-2">
-        <Avatar name={character.name} src={character.src} size={44} />
-        <div className="flex min-w-0 flex-col">
-          <h1 className="m-0 truncate text-lg font-bold max-[760px]:text-base">{summary.title}</h1>
-          <div className="truncate text-sm">
-            <Link href={`/characters/${summary.character.id}`} className="text-link">
-              Character page
-            </Link>
-            {chat.data.personaName && (
-              <span className="text-muted">
-                {" · You play as "}
-                <strong>{chat.data.personaName}</strong>
-              </span>
-            )}
-          </div>
-        </div>
+    // The blurred image of the character glows at the top, as in the v2 design.
+    <div className="relative isolate flex h-screen flex-col overflow-hidden bg-[#0b0b0d] max-[760px]:h-[calc(100dvh-56px)]">
+      {character.src && (
+        <img
+          src={character.src}
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-[20%] -left-[10%] -z-10 h-[70%] w-[120%] object-cover opacity-35 blur-[48px] saturate-[1.2]"
+        />
+      )}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(11,11,13,0.2)_0%,#0b0b0d_55%)]" />
+      <div className="absolute top-4 right-4 z-[1] max-[760px]:top-2 max-[760px]:right-2">
         <MemoryButton
           chatId={chatId}
           memory={chat.data.memory}
           onSaved={(memory) => patchChat((detail) => ({ ...detail, memory }))}
         />
-      </header>
+      </div>
 
       {/* column-reverse keeps the newest message in view without a scroll script. */}
-      <div className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto px-7 py-5 max-[760px]:px-3 max-[760px]:py-3">
-        <div role="log" aria-label="Messages" aria-live="polite" className={`${CHAT_COLUMN} flex flex-col gap-5 max-[760px]:gap-4`}>
-          {shown.map((message, index) => (
-            <Fragment key={message.id}>
-              <MessageItem
-                message={message}
-                speaker={message.role === "user" ? user : character}
-                editable={message.role === "user" && idle}
-                canRegenerate={canSend && idle && message.id === last?.id && message.role === "assistant" && message.position > 0}
-                onSave={(content) => saveEdit(message.id, content)}
-                onDelete={() => remove(message.id)}
-                onRegenerate={regenerate}
+      <div className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto px-6 pt-10 pb-3 max-[760px]:px-3 max-[760px]:pt-12">
+        <div className={`${CHAT_COLUMN} flex flex-col gap-3.5`}>
+          <header className="flex flex-col items-center gap-1.5 pb-2 text-center">
+            <Avatar name={character.name} src={character.src} size={64} />
+            <h1 className="m-0 mt-1 text-[19px] font-extrabold tracking-[-0.01em]">{summary.title}</h1>
+            <div className="text-xs text-muted">
+              <Link href={`/characters/${summary.character.id}`} className="text-link no-underline">
+                Character page
+              </Link>
+              {chat.data.personaName && (
+                <span>
+                  {" · You play as "}
+                  <strong className="text-text">{chat.data.personaName}</strong>
+                </span>
+              )}
+            </div>
+          </header>
+          <div role="log" aria-label="Messages" aria-live="polite" className="flex flex-col gap-3.5">
+            {shown.map((message, index) => (
+              <Fragment key={message.id}>
+                <MessageItem
+                  message={message}
+                  speaker={message.role === "user" ? user : character}
+                  editable={message.role === "user" && idle}
+                  canRegenerate={canSend && idle && message.id === last?.id && message.role === "assistant" && message.position > 0}
+                  onSave={(content) => saveEdit(message.id, content)}
+                  onDelete={() => remove(message.id)}
+                  onRegenerate={regenerate}
+                />
+                {scenesAfter(scenes, message.position, shown[index + 1]?.position).map((scene) => (
+                  <SceneImage key={scene.id} scene={scene} />
+                ))}
+              </Fragment>
+            ))}
+            {/* The user picks the opening until the first message. The server refuses a change after it. */}
+            {canSend && idle && messages.length === 1 && opening.count > 1 && (
+              <OpeningSwitcher
+                chatId={chatId}
+                index={opening.index}
+                count={opening.count}
+                onChanged={(next) => queryClient.setQueryData<ChatDetail>(queryKey, next)}
+                onLocked={() => void queryClient.invalidateQueries({ queryKey })}
               />
-              {scenesAfter(scenes, message.position, shown[index + 1]?.position).map((scene) => (
-                <SceneImage key={scene.id} scene={scene} />
-              ))}
-            </Fragment>
-          ))}
-          {/* The user picks the opening until the first message. The server refuses a change after it. */}
-          {canSend && idle && messages.length === 1 && opening.count > 1 && (
-            <OpeningSwitcher
-              chatId={chatId}
-              index={opening.index}
-              count={opening.count}
-              onChanged={(next) => queryClient.setQueryData<ChatDetail>(queryKey, next)}
-              onLocked={() => void queryClient.invalidateQueries({ queryKey })}
-            />
-          )}
-          {live?.sending && <MessageItem message={{ role: "user", content: live.sending }} speaker={user} />}
-          {live && <MessageItem message={{ role: "assistant", content: live.text }} speaker={character} typing={!live.text && !live.stopped} />}
-          {canSend && idle && last?.role === "user" && (
-            <button type="button" className="pill pill-soft pill-sm self-start" onClick={regenerate}>
-              Get a reply
-            </button>
-          )}
+            )}
+            {live?.sending && <MessageItem message={{ role: "user", content: live.sending }} speaker={user} />}
+            {live && <MessageItem message={{ role: "assistant", content: live.text }} speaker={character} typing={!live.text && !live.stopped} />}
+            {canSend && idle && last?.role === "user" && (
+              <button type="button" className="pill pill-soft pill-sm self-start" onClick={regenerate}>
+                Get a reply
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <footer className="px-7 pb-5 max-[760px]:px-3 max-[760px]:pb-3">
+      <footer className="px-6 pt-2 pb-5 max-[760px]:px-3 max-[760px]:pb-3">
         <div className={`${CHAT_COLUMN} flex flex-col gap-2`}>
           {canSend ? (
             <>
