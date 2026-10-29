@@ -658,6 +658,14 @@
     background: rgb(255 255 255 / 0.08);
   }
 
+  /* A tool with a short text after its icon, such as the price of a scene. */
+  .composer-tool-wide {
+    grid-auto-flow: column;
+    gap: 5px;
+    width: auto;
+    padding: 0 12px;
+  }
+
   .composer-tool[aria-checked="true"] {
     color: var(--color-accent);
   }
