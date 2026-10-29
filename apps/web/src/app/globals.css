@@ -361,7 +361,7 @@
   .card-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 28px 18px;
+    gap: 12px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -370,26 +370,27 @@
   @media (max-width: 760px) {
     .card-grid {
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 20px 12px;
+      gap: 10px;
     }
   }
 
   .se-card {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    position: relative;
+    display: block;
     width: 100%;
-    color: var(--color-text);
+    aspect-ratio: 3 / 4;
+    border-radius: 14px;
+    overflow: hidden;
+    color: #ffffff;
     text-decoration: none;
   }
 
   .se-card .shot {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 3 / 4;
-    border-radius: 18px;
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
     overflow: hidden;
-    background: #1c1c20;
+    background: #111114;
   }
 
   /* A thin line on top of the image, as the frames of the landing page. */

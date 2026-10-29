@@ -9,15 +9,10 @@ import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/query-provider";
 import { useCharacterChats } from "./your-chats";
 
-/**
- * "Continue latest chat" and "Start a new chat". A new chat starts with the first opening.
- * The user picks the opening in the chat, so this page shows no opening text.
- */
-export function StartChat({ characterId }: { characterId: string }) {
+/** Starts a new chat with the character and opens it. `error` is true when the start failed. */
+export function useStartChat(characterId: string) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { data: me, isPending } = useMe();
-  const latest = useCharacterChats(characterId).data?.items[0];
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState(false);
 
@@ -37,6 +32,18 @@ export function StartChat({ characterId }: { characterId: string }) {
     }
   }
 
+  return { start, starting, error };
+}
+
+/**
+ * "Continue latest chat" and "Start a new chat". A new chat starts with the first opening.
+ * The user picks the opening in the chat, so this page shows no opening text.
+ */
+export function StartChat({ characterId }: { characterId: string }) {
+  const { data: me, isPending } = useMe();
+  const latest = useCharacterChats(characterId).data?.items[0];
+  const { start, starting, error } = useStartChat(characterId);
+
   if (isPending) {
     return null;
   }
@@ -49,7 +56,7 @@ export function StartChat({ characterId }: { characterId: string }) {
               Continue latest chat
             </Link>
           )}
-          <button type="button" className={`pill ${latest ? "pill-soft" : "pill-accent"}`} disabled={starting} onClick={start}>
+          <button type="button" className={`pill ${latest ? "pill-soft" : "pill-accent"}`} disabled={starting} onClick={() => void start()}>
             Start a new chat
           </button>
         </div>

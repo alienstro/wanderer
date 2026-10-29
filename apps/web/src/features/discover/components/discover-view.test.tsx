@@ -175,10 +175,24 @@ describe("DiscoverView", () => {
 
     await userEvent.click(await screen.findByRole("button", { name: "Load more" }));
 
-    expect(await screen.findByText("Character 2")).toBeInTheDocument();
-    expect(screen.getByText("Character 1")).toBeInTheDocument();
+    const grid = screen.getByRole("region", { name: "Characters" });
+    expect(await within(grid).findByText("Character 2")).toBeInTheDocument();
+    expect(within(grid).getByText("Character 1")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("cursor=cursor-1"), expect.anything());
     expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
+  });
+
+  it("the featured banner shows the first character, and a dot under it shows the next character", async () => {
+    stubFetch();
+    renderView({ items: [card(1), card(2)], nextCursor: null });
+    const banner = screen.getByRole("region", { name: "Featured" });
+    expect(within(banner).getByRole("heading", { name: "Character 1" })).toBeInTheDocument();
+    expect(within(banner).getByRole("link", { name: "View character" })).toHaveAttribute("href", "/characters/c1");
+
+    await userEvent.click(within(banner).getByRole("button", { name: "Slide 2: Character 2" }));
+
+    expect(within(banner).getByRole("heading", { name: "Character 2" })).toBeInTheDocument();
+    expect(within(banner).getByRole("link", { name: "View character" })).toHaveAttribute("href", "/characters/c2");
   });
 
   it('an empty list shows "No characters match your search."', () => {
@@ -187,10 +201,9 @@ describe("DiscoverView", () => {
     expect(screen.getByText("No characters match your search.")).toBeInTheDocument();
   });
 
-  it("a user with chats sees Welcome back and a banner with the last line that links to the chat", async () => {
+  it("a user with chats sees a banner with the last line that links to the chat", async () => {
     stubUser({ chats });
     renderView({ items: [card(1)], nextCursor: null });
-    expect(await screen.findByText("Welcome back, Robin")).toBeInTheDocument();
     const banner = await screen.findByRole("link", { name: /Continue your chat/ });
     expect(banner).toHaveAttribute("href", "/chats/chat1");
     expect(banner).toHaveTextContent("See you soon!");
@@ -207,7 +220,6 @@ describe("DiscoverView", () => {
   it("a user with no chats sees no banner and no For you row", async () => {
     const fetchMock = stubUser();
     renderView({ items: [card(1)], nextCursor: null });
-    await screen.findByText("Welcome back, Robin");
     await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/chats?latestPerCharacter=true"))).toBe(true));
     expect(screen.queryByRole("link", { name: /Continue your chat/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "For you" })).not.toBeInTheDocument();
@@ -216,7 +228,7 @@ describe("DiscoverView", () => {
   it("a visitor sees no banner and no For you row", async () => {
     stubFetch();
     renderView({ items: [card(1)], nextCursor: null });
-    expect(await screen.findByText("Welcome to Wanderer")).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Log in to chat" })).toHaveAttribute("href", "/login");
     expect(screen.queryByRole("link", { name: /Continue your chat/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "For you" })).not.toBeInTheDocument();
   });
