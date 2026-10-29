@@ -8,6 +8,7 @@ import { type FormEvent, type ReactNode, useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
 import { Field, Switch } from "@/components/ui/form-field";
 import { PersonasSection } from "@/features/personas";
+import { ModelTiles } from "./model-tiles";
 
 const DELETE_WORD = "DELETE";
 
@@ -31,7 +32,7 @@ function Section({ title, className = "", children }: { title: string; className
   );
 }
 
-/** The account settings: the handle, Show 18+, Reply choices and their instructions, the models link, and Delete account. */
+/** The account settings: the model tiles, the handle, Show 18+, Reply choices and their instructions, the models link, and Delete account. */
 export function SettingsView({ me }: { me: MeResponse }) {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -117,6 +118,10 @@ export function SettingsView({ me }: { me: MeResponse }) {
 
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] items-start gap-3.5 max-[760px]:grid-cols-1">
+      <Section title="Model" className="col-span-full">
+        <ModelTiles />
+      </Section>
+
       <Section title="Profile">
         <form className="flex flex-col gap-3" onSubmit={(event) => void saveHandle(event)}>
           <Field name="handle" label="Handle" error={handleError ?? undefined}>

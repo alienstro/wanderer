@@ -3,8 +3,9 @@
 import { toast } from "sonner";
 
 /**
- * A round Share button. `small` is the size of the chat intro. It opens the share sheet of the device when the browser has one, as most phones do.
- * Other browsers copy the link and show "Link copied". A user who closes the share sheet sees nothing.
+ * A round Share button. `small` is the size of the chat intro. It opens the share sheet of the device when the browser
+ * has one, as most phones do. Other browsers copy the link and show "Link copied". A user who closes the share sheet
+ * sees nothing.
  */
 export function ShareButton({ title, path, small = false }: { title: string; path: string; small?: boolean }) {
   async function share() {
