@@ -33,6 +33,8 @@ describe("streamed replies", () => {
   });
 
   beforeEach(async () => {
+    // A send that got 409 leaves its behavior in the queue. Without the reset, that behavior answers the next test.
+    fake.reset();
     await prisma.user.deleteMany();
     user = await userWithSession(app, 1);
     const characterId = await createCharacter(app, user.cookie, { title: "Onnit", openings: ["*waves* Hi!"] });
