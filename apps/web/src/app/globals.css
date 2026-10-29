@@ -633,6 +633,54 @@
     box-shadow: 0 0 0 3px rgb(91 155 255 / 0.25);
   }
 
+  /* The round icon buttons of the message bar. 44 px, so each one is easy to tap. */
+  .composer-tool,
+  .composer-send {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .composer-tool {
+    position: relative;
+    background: transparent;
+    color: #e4e4e7;
+  }
+
+  .composer-tool:hover {
+    background: rgb(255 255 255 / 0.08);
+  }
+
+  .composer-tool[aria-checked="true"] {
+    color: var(--color-accent);
+  }
+
+  .composer-tool:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .composer-send {
+    background: var(--color-accent);
+    color: #000000;
+  }
+
+  .composer-send:not(:disabled):hover {
+    background: var(--color-accent-hover);
+  }
+
+  .composer-send:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
   /* With a mouse, the buttons under a message show on hover and on keyboard focus, as in the v2 design. A touch screen always shows them. */
   @media (hover: hover) {
     .msg .msg-actions {
