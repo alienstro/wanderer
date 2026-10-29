@@ -26,10 +26,7 @@ const sections: LegalSection[] = [
     body: (
       <>
         <p>You must be 18 or older to use Wanderer. If you are younger than 18, do not make an account.</p>
-        <p>
-          18+ characters stay hidden until you turn them on in Settings. When the admin finds an account of a person
-          younger than 18, the admin deletes it.
-        </p>
+        <p>When the admin finds an account of a person younger than 18, the admin deletes it.</p>
       </>
     ),
   },
@@ -64,8 +61,7 @@ const sections: LegalSection[] = [
       <LegalList
         marker="cross"
         items={[
-          "Sexual content with minors, or with a character that looks or acts like a minor. A character marked 18+ must be an adult.",
-          "Sexual content about a real person.",
+          "Sexual content of any kind. Wanderer is safe for work. This includes content with a character that looks or acts like a minor, and content about a real person.",
           "Content that is illegal.",
           "Content that encourages, praises, or gives instructions for suicide, self-harm, or eating disorders.",
           "Hate, harassment, and threats against real people.",

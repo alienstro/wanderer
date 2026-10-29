@@ -15,7 +15,6 @@ const detail: CharacterDetail = {
   title: "Mira Vale",
   chatName: "Mira",
   avatarUrl: null,
-  isAdult: false,
   tags: [{ slug: "sci-fi", label: "SciFi" }],
   chatCount: 3,
   likeCount: 0,
@@ -168,33 +167,5 @@ describe("character page", () => {
 
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/my-characters"));
     expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/characters\/c1$/), expect.objectContaining({ method: "DELETE" }));
-  });
-
-  it("the 18+ warning button calls POST /me/adult-confirm and then shows the character", async () => {
-    let confirmed = false;
-    const fetchMock = stubFetch((url, init) => {
-      if (url.endsWith("/me/adult-confirm") && init?.method === "POST") {
-        confirmed = true;
-        return Response.json({ ...me, showAdult: true }, { status: 201 });
-      }
-      if (url.endsWith("/me")) return Response.json({ ...me, showAdult: confirmed });
-      if (url.endsWith("/characters/c1")) {
-        return confirmed ? Response.json({ ...detail, isAdult: true }) : Response.json({ error: "adult_content" }, { status: 403 });
-      }
-      return undefined;
-    });
-    withClient(<CharacterPage id="c1" initial={null} initialError="adult_content" />);
-
-    expect(await screen.findByText("This character is 18+.")).toBeInTheDocument();
-    await userEvent.click(await screen.findByRole("button", { name: "I am 18 or older. Show 18+ content." }));
-
-    expect(await screen.findByRole("heading", { level: 1, name: "Mira Vale" })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/me\/adult-confirm$/), expect.objectContaining({ method: "POST" }));
-  });
-
-  it("a visitor on an 18+ character sees Log in to continue", async () => {
-    stubFetch((url) => (url.endsWith("/me") ? Response.json({ error: "unauthorized" }, { status: 401 }) : undefined));
-    withClient(<CharacterPage id="c1" initial={null} initialError="adult_content" />);
-    expect(await screen.findByRole("link", { name: "Log in to continue." })).toHaveAttribute("href", "/login");
   });
 });

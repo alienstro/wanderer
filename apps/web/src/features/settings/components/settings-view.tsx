@@ -32,7 +32,7 @@ function Section({ title, className = "", children }: { title: string; className
   );
 }
 
-/** The account settings: the model tiles, the handle, Show 18+, Reply choices and their instructions, the models link, and Delete account. */
+/** The account settings: the model tiles, the handle, Reply choices and their instructions, the models link, and Delete account. */
 export function SettingsView({ me }: { me: MeResponse }) {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -42,7 +42,6 @@ export function SettingsView({ me }: { me: MeResponse }) {
   const [choicesPrompt, setChoicesPrompt] = useState(me.replyChoicesPrompt);
   const [choicesPromptError, setChoicesPromptError] = useState(false);
   const [choicesPromptSaved, setChoicesPromptSaved] = useState(false);
-  const [askAge, setAskAge] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [deleteWord, setDeleteWord] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -82,25 +81,9 @@ export function SettingsView({ me }: { me: MeResponse }) {
     setSaveError(false);
     try {
       await save(path, method, body);
-      // Discover and For you obey "Show 18+", so they load again.
-      void queryClient.invalidateQueries({ queryKey: ["characters"] });
     } catch {
       setSaveError(true);
     }
-  }
-
-  function toggleAdult(on: boolean) {
-    if (on) {
-      // The first time, the user confirms the age. The API saves the time and turns the setting on.
-      setAskAge(true);
-      return;
-    }
-    void change("/me", "PATCH", { showAdult: false });
-  }
-
-  async function confirmAge() {
-    setAskAge(false);
-    await change("/me/adult-confirm", "POST");
   }
 
   async function deleteAccount() {
@@ -145,29 +128,6 @@ export function SettingsView({ me }: { me: MeResponse }) {
       </Section>
 
       <PersonasSection />
-
-      <Section title="Content">
-        <Switch
-          name="showAdult"
-          label="Show 18+"
-          hint="Show characters that their creators marked 18+."
-          checked={me.showAdult}
-          onChange={toggleAdult}
-        />
-        {askAge && (
-          <div className="flex flex-col items-start gap-2 rounded-xl border border-field-line p-3.5">
-            <p className="m-0 text-muted">18+ characters have adult content. You must be 18 or older to see them.</p>
-            <div className="flex gap-2">
-              <button type="button" className="pill pill-light" onClick={() => void confirmAge()}>
-                I am 18 or older. Show 18+ content.
-              </button>
-              <button type="button" className="pill pill-soft" onClick={() => setAskAge(false)}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-      </Section>
 
       <Section title="Chat">
         <Switch

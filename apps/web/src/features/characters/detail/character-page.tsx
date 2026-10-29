@@ -4,22 +4,17 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CharacterDetail } from "@wanderer/shared";
 import type { ReactNode } from "react";
 import { ReportButton } from "@/features/reports";
-import { ApiError, apiFetch } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/query-provider";
-import { AdultWarning } from "./adult-warning";
 import { CharacterView } from "./character-view";
 import { OwnerPanel } from "./owner-panel";
 import { characterQueryKey } from "./query-key";
 
-export type CharacterError = "not_found" | "adult_content";
-
-function errorOf(error: unknown): CharacterError {
-  return error instanceof ApiError && error.code === "adult_content" ? "adult_content" : "not_found";
-}
+export type CharacterError = "not_found";
 
 /**
  * The server gives the visitor version in `initial`, or the visitor error. A logged-in user gets the character
- * again with the session, because the owner sees a private character and a user can see an 18+ character.
+ * again with the session, because the owner sees a private character.
  */
 export function CharacterPage({
   id,
@@ -45,7 +40,7 @@ export function CharacterPage({
   }
 
   const detail = viewer ? (query.data ?? (query.isPending ? initial : null)) : initial;
-  const error = viewer ? (query.isError ? errorOf(query.error) : null) : initialError;
+  const error = viewer ? (query.isError ? "not_found" : null) : initialError;
 
   if (detail) {
     return (
@@ -55,13 +50,6 @@ export function CharacterPage({
       >
         {detail.isOwner && <OwnerPanel detail={detail} onSaved={(saved) => queryClient.setQueryData(queryKey, saved)} />}
       </Layout>
-    );
-  }
-  if (error === "adult_content") {
-    return (
-      <div className="px-7 pt-7 pb-20 max-[760px]:px-4">
-        <AdultWarning onConfirmed={() => void query.refetch()} />
-      </div>
     );
   }
   if (error === "not_found") {

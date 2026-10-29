@@ -5,9 +5,6 @@ import { fileSrc } from "@/lib/api";
 import { chatsLabel, likesLabel } from "@/lib/format";
 import { HeartIcon } from "@/components/ui/heart-icon";
 
-const BADGE =
-  "inline-flex items-center gap-[5px] rounded-full bg-[rgba(10,10,12,0.72)] px-[9px] py-1 text-xs font-semibold whitespace-nowrap text-text";
-
 /**
  * A count on the card, such as "1.2K chats". A narrow card, as in the two columns of a phone, shows only the number.
  * A screen reader still reads the word.
@@ -26,7 +23,7 @@ function Count({ icon, label }: { icon: ReactNode; label: string }) {
 /**
  * A Discover card in the v2 style: a tall 3:4 image, with the counts, the title, @creator and the tags on a dark fade at the
  * bottom of the image, with two lines of the bio preview. The whole card links to the character page. `statusBadge` shows a label next to the title, such as
- * "Draft". The text sits on its own layer above the image, so the 18+ badge on the image cannot push it.
+ * "Draft". The text sits on its own layer above the image.
  * `linked={false}` shows the card with no link, for the form preview.
  */
 export function CharacterCard({ card, statusBadge, linked = true }: { card: Card; statusBadge?: ReactNode; linked?: boolean }) {
@@ -40,7 +37,6 @@ export function CharacterCard({ card, statusBadge, linked = true }: { card: Card
             {card.title.charAt(0).toUpperCase()}
           </span>
         )}
-        {card.isAdult && <span className={`absolute top-2.5 right-2.5 ${BADGE} bg-[rgba(194,65,75,0.9)]`}>18+</span>}
       </span>
       <span className="pointer-events-none absolute inset-0 rounded-[14px] bg-[linear-gradient(0deg,rgba(0,0,0,0.92)_0%,rgba(0,0,0,0.6)_30%,rgba(0,0,0,0)_58%)]" aria-hidden="true" />
       <span className="absolute inset-x-3 bottom-3 flex flex-col gap-[3px]">

@@ -1,11 +1,11 @@
 import { z } from "zod";
 
-export const REPORT_REASONS = ["minors", "wrong_rating", "hate", "copied", "other"] as const;
+export const REPORT_REASONS = ["minors", "sexual_content", "hate", "copied", "other"] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
 export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
   minors: "Sexual content with minors",
-  wrong_rating: "Wrongly marked 18+",
+  sexual_content: "Sexual content",
   hate: "Hate or harassment",
   copied: "Copied character",
   other: "Other",

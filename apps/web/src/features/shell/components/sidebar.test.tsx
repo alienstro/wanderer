@@ -21,7 +21,6 @@ const me = {
   pictureUrl: null,
   handle: "tian",
   role: "user",
-  showAdult: false,
   replyChoicesOn: true,
   activeProxy: { id: "p1", name: "OpenRouter", model: "deepseek/deepseek-chat" } as { id: string; name: string; model: string } | null,
   suggestedHandle: null,

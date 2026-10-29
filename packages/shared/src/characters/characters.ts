@@ -46,7 +46,6 @@ export const characterInputSchema = z.object({
     .max(TAGS_MAX)
     .default([])
     .transform((tags) => [...new Set(tags)]),
-  isAdult: z.boolean().default(false),
   personality: z.string().trim().min(1).max(PERSONALITY_MAX),
   scenario: z.string().trim().max(SCENARIO_MAX).default(""),
   openings: z.array(z.string().trim().min(1).max(OPENING_MAX)).min(1).max(OPENINGS_MAX),
@@ -102,7 +101,6 @@ export type CharacterCard = {
   chatName: string;
   /** A path such as `/files/<id>`, or null when the character has no avatar. */
   avatarUrl: string | null;
-  isAdult: boolean;
   tags: Tag[];
   chatCount: number;
   likeCount: number;

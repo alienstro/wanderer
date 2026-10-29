@@ -10,7 +10,6 @@ const character: CharacterDetail = {
   title: "Captain Ilse Varga",
   chatName: "Ilse",
   avatarUrl: "/files/f1",
-  isAdult: false,
   tags: [{ slug: "sci-fi", label: "SciFi" }],
   chatCount: 412,
   likeCount: 3,

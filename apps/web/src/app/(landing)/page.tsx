@@ -30,11 +30,11 @@ function discoverHref(raw: Record<string, string | string[] | undefined>): strin
   return query ? `/discover?${query}` : "/discover";
 }
 
-/** The most popular public characters, with no 18+ character. */
+/** The most popular public characters. */
 async function heroCharacters(): Promise<CharacterCard[]> {
   try {
     const list = await serverApiFetch<CharacterListResponse>("/characters?sort=most_chats");
-    return list.items.filter((card) => !card.isAdult).slice(0, HERO_COUNT);
+    return list.items.slice(0, HERO_COUNT);
   } catch {
     // The page works without the row of characters.
     return [];

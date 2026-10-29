@@ -3,7 +3,7 @@ import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaService } from "../../src/prisma/prisma.service.js";
 import { createTestApp } from "../support/app.js";
-import { createCharacter } from "../support/characters.js";
+import { createCharacter, createOldAdultCharacter } from "../support/characters.js";
 import { startChat } from "../support/chat-stream.js";
 import { type TestUser, userWithSession } from "../support/users.js";
 
@@ -24,7 +24,7 @@ describe("For you", () => {
   beforeEach(async () => {
     await prisma.user.deleteMany();
     creator = await userWithSession(app, 1);
-    reader = await userWithSession(app, 2, { showAdult: false });
+    reader = await userWithSession(app, 2);
   });
 
   afterAll(async () => {
@@ -52,7 +52,7 @@ describe("For you", () => {
     await startChat(app, reader, seed);
     await createCharacter(app, creator.cookie, { title: "Private", tags: ["noir"], isPublic: false });
     await createCharacter(app, creator.cookie, { title: "Draft", tags: ["noir"], publish: false });
-    await createCharacter(app, creator.cookie, { title: "Adult", tags: ["noir"], isAdult: true });
+    await createOldAdultCharacter(app, creator.cookie, { title: "Adult", tags: ["noir"] });
     await createCharacter(app, reader.cookie, { title: "Own", tags: ["noir"] });
     await createCharacter(app, creator.cookie, { title: "Open", tags: ["noir"] });
     expect(titles((await forYou(reader).expect(200)).body)).toEqual(["Open"]);

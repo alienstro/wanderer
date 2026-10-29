@@ -46,7 +46,7 @@ function discoverHref(pathname: string, query: DiscoverQuery): string {
 
 /**
  * The Discover page. The server renders the visitor list into `initial`. In the browser, a logged-in user
- * gets the list again with the session, because the 18+ setting can change it.
+ * gets the list again with the session.
  */
 /** For you: characters with the tags of the user's chats. Nothing shows for a visitor or an empty list. */
 function ForYouRow() {

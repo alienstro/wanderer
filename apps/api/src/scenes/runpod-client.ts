@@ -27,8 +27,6 @@ export interface SceneImageRequest {
   model: SceneModelKey;
   prompt: string;
   negativePrompt: string;
-  /** True for an 18+ character. */
-  adult: boolean;
 }
 
 /** Makes one image from a text prompt. A test replaces it with a fake. */

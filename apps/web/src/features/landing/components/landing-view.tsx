@@ -137,7 +137,7 @@ export function LandingView({ characters }: { characters: Card[] }) {
           </div>
           <div className={`relative flex flex-col items-center gap-7 pt-16 pb-14 text-center sm:pt-24 ${GUTTER}`}>
             <span className="text-[14px] font-semibold text-muted">
-              Text roleplay for adults · <span className="text-text underline decoration-line underline-offset-4">18+ only</span>
+              Text roleplay · <span className="text-text underline decoration-line underline-offset-4">For users 18 or older</span>
             </span>
             <h1 id="hero-title" className="m-0 max-w-[15ch] text-balance text-[clamp(40px,7vw,92px)] leading-[0.98] font-bold tracking-[-0.045em]">
               {LANDING_HEADLINE}
@@ -241,7 +241,7 @@ export function LandingView({ characters }: { characters: Card[] }) {
 
         <section id="safety" aria-labelledby="trust-title" className={`flex scroll-mt-24 flex-col gap-10 py-16 sm:py-24 ${GUTTER}`}>
           <SectionTitle id="trust-title" centered>
-            Made for adults, with clear rules
+            Safe for work, with clear rules
           </SectionTitle>
           <div className="grid gap-5 md:grid-cols-3">
             {TRUST.map((item) => (

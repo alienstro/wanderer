@@ -101,9 +101,8 @@ export function CharacterView({ detail, actions, children }: { detail: Character
         <div className="mt-2.5 max-w-[56ch] text-[14px] leading-[1.6] text-pretty text-[#c4c4cc] [&_strong]:text-white">
           <Markdown text={detail.bio} />
         </div>
-        {(detail.tags.length > 0 || detail.isAdult || detail.isOwner) && (
+        {(detail.tags.length > 0 || detail.isOwner) && (
           <div className="mt-2.5 flex flex-wrap justify-center gap-[5px]">
-            {detail.isAdult && <span className="inline-flex h-[22px] items-center rounded-full bg-[rgba(194,65,75,0.9)] px-[9px] text-[11.5px] text-white">18+</span>}
             {detail.isOwner && <span className="inline-flex h-[22px] items-center rounded-full bg-surface-2 px-[9px] text-[11.5px] text-[#c4c4cc]">{statusLabel(detail)}</span>}
             {detail.tags.map((tag) => (
               <span key={tag.slug} className="inline-flex h-[22px] items-center rounded-full bg-surface-2 px-[9px] text-[11.5px] text-[#c4c4cc]">

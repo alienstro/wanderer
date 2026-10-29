@@ -15,7 +15,6 @@ const me: MeResponse = {
   pictureUrl: null,
   handle: "tian",
   role: "user",
-  showAdult: false,
   replyChoicesOn: true,
   replyChoicesPrompt: "",
   activeProxy: null,
@@ -73,20 +72,10 @@ describe("SettingsView", () => {
     expect(await screen.findByText("This handle is taken.")).toBeTruthy();
   });
 
-  it("asks for the age confirm before Show 18+ turns on, then sends POST /me/adult-confirm", async () => {
-    const fetchMock = stubFetch(200, { ...me, showAdult: true });
+  it("has no Show 18+ switch and no Content section", () => {
     renderView();
-    await userEvent.click(screen.getByRole("switch", { name: "Show 18+" }));
-    expect(meCalls(fetchMock)).toEqual([]);
-    await userEvent.click(screen.getByRole("button", { name: "I am 18 or older. Show 18+ content." }));
-    expect(lastCall(fetchMock)).toMatchObject({ url: "/me/adult-confirm", method: "POST" });
-  });
-
-  it("turns Show 18+ off with PATCH /me", async () => {
-    const fetchMock = stubFetch(200, { ...me, showAdult: false });
-    renderView({ ...me, showAdult: true });
-    await userEvent.click(screen.getByRole("switch", { name: "Show 18+" }));
-    expect(lastCall(fetchMock)).toMatchObject({ url: "/me", method: "PATCH", body: { showAdult: false } });
+    expect(screen.queryByRole("switch", { name: "Show 18+" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Content" })).not.toBeInTheDocument();
   });
 
   it("turns Reply choices off with PATCH /me", async () => {

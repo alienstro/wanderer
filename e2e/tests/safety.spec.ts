@@ -12,7 +12,7 @@ test.describe("reports and the admin page", () => {
     const page = await reader.newPage();
     await page.goto(`/characters/${id}`);
     await page.getByRole("button", { name: "Report" }).click();
-    await page.getByRole("radio", { name: "Wrongly marked 18+" }).check();
+    await page.getByRole("radio", { name: "Sexual content", exact: true }).check();
     await page.getByRole("button", { name: "Send report" }).click();
     await expect(page.getByText("Thanks. The admin will look at it.")).toBeVisible();
     await reader.close();

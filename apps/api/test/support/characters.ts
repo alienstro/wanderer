@@ -1,6 +1,7 @@
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import type { CharacterInput } from "@wanderer/shared";
 import request from "supertest";
+import { PrismaService } from "../../src/prisma/prisma.service.js";
 import { WEB_ORIGIN } from "./env.js";
 
 /** The fields of a valid character. A test can replace single values. */
@@ -30,4 +31,15 @@ export async function createCharacter(
 ): Promise<string> {
   const res = await postCharacter(app, cookie, characterInput(overrides)).expect(201);
   return (res.body as { id: string }).id;
+}
+
+/** Makes a character that is marked 18+ in the database, as an old row from before the app dropped the 18+ category. */
+export async function createOldAdultCharacter(
+  app: NestExpressApplication,
+  cookie: string,
+  overrides: Partial<CharacterInput> = {},
+): Promise<string> {
+  const id = await createCharacter(app, cookie, overrides);
+  await app.get(PrismaService).character.update({ where: { id }, data: { isAdult: true } });
+  return id;
 }

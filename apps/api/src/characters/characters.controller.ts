@@ -45,13 +45,12 @@ export class CharactersController {
   ) {}
 
   @Get()
-  @UseGuards(OptionalSessionGuard)
-  list(@OptionalUser() viewer: User | null, @Query() query: unknown): Promise<CharacterListResponse> {
+  list(@Query() query: unknown): Promise<CharacterListResponse> {
     const parsed = characterListQuerySchema.safeParse(query);
     if (!parsed.success) {
       throw new BadRequestException({ error: "invalid_query" });
     }
-    return this.lists.discover(parsed.data, viewer);
+    return this.lists.discover(parsed.data);
   }
 
   /** This route comes before ":id", so "for-you" is not read as a character ID. */

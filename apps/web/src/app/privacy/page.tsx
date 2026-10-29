@@ -24,7 +24,7 @@ const sections: LegalSection[] = [
       <LegalList
         items={[
           "From your Google account: your name, your email address, the link to your profile picture, and the ID that Google gives your account.",
-          "Your handle and your settings, such as 18+ content on or off, and the date when you confirmed that you are 18 or older.",
+          "Your handle and your settings, such as Reply choices on or off.",
           "Your characters, the avatar images that you upload, your chats, and your reports.",
           "Your proxies: the URL, the model, and your custom prompt. Your API keys stay encrypted (AES-256-GCM), and Wanderer shows only the last 4 characters.",
           "The version of these terms that you accepted, and the time.",

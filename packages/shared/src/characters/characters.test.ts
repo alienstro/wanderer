@@ -16,7 +16,6 @@ describe("characterInputSchema", () => {
       title: "Mira",
       chatName: "",
       tags: [],
-      isAdult: false,
       scenario: "",
       exampleDialogs: "",
       avatarFileId: null,
@@ -36,6 +35,10 @@ describe("characterInputSchema", () => {
 
   it('rejects the tag "romance"', () => {
     expect(characterInputSchema.safeParse({ ...minimal, tags: ["romance"] }).success).toBe(false);
+  });
+
+  it("drops an isAdult field, because the app has no 18+ characters", () => {
+    expect(characterInputSchema.parse({ ...minimal, isAdult: true })).not.toHaveProperty("isAdult");
   });
 
   it("drops a duplicate tag", () => {
