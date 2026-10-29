@@ -79,13 +79,29 @@ const sections: LegalSection[] = [
       <>
         <LegalList
           items={[
-            "Your AI provider: for each reply, Wanderer sends the character, the chat history, your custom prompt, and your Google name to the proxy that you pick. The privacy policy of that provider then applies.",
+            "Your AI provider: when you use your own proxy, Wanderer sends the character, the chat history, your custom prompt, and your Google name to that proxy for each reply. The privacy policy of that provider then applies.",
+            "OpenRouter: when you use a free model, Wanderer sends the same data to OpenRouter, and OpenRouter sends it to the company of that model. The privacy policies of OpenRouter and of that company then apply.",
+            "RunPod: when you make a scene image, Wanderer sends the text prompt of the scene to RunPod.",
             "Google: Google handles your login.",
             "Cloudflare: all traffic to Wanderer goes through Cloudflare, and Cloudflare R2 keeps the daily backups.",
           ]}
         />
-        <p>Wanderer gives data to the authorities only when the law requires it.</p>
+        <p>
+          Wanderer gives data to the authorities only when the law requires it, or when it is necessary to protect the
+          life of a person.
+        </p>
       </>
+    ),
+  },
+  {
+    id: "safety",
+    title: "Safety and emergencies",
+    body: (
+      <p>
+        Nobody watches your chats, so Wanderer cannot know when you are in danger, and does not call emergency services
+        for you. If you think about suicide or self-harm, call your local emergency number or a crisis line now. The
+        Terms of Service list some numbers.
+      </p>
     ),
   },
   {
