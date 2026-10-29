@@ -136,6 +136,7 @@ function Box({ id, title, hint, children }: { id: string; title: string; hint: s
 export function CharacterForm({ initial, onSaved, creatorHandle = "you", header }: CharacterFormProps) {
   const [state, setState] = useState<FormState>(() => initialFormState(initial));
   const bioRef = useRef<HTMLTextAreaElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -160,6 +161,11 @@ export function CharacterForm({ initial, onSaved, creatorHandle = "you", header 
     setErrors(found);
     setFormError(null);
     if (Object.keys(found).length > 0) {
+      // The buttons are at the top, so the focus goes to the first field with an error, in the order of the page.
+      const selector = Object.keys(found).map((name) => `[data-field="${name}"]`).join(",");
+      const first = formRef.current?.querySelector<HTMLElement>(selector);
+      first?.scrollIntoView?.({ block: "center" });
+      first?.querySelector<HTMLElement>("input, textarea, button")?.focus({ preventScroll: true });
       return;
     }
     setSaving(true);
@@ -184,7 +190,25 @@ export function CharacterForm({ initial, onSaved, creatorHandle = "you", header 
     <div className="mx-auto flex w-full max-w-[1080px] flex-col items-center gap-3.5">
       <PreviewCard state={state} creatorHandle={creatorHandle} />
       {header && <div className="flex flex-col items-center gap-0.5 text-center">{header}</div>}
-      <form className="mt-3.5 flex w-full flex-col gap-3.5" onSubmit={(event) => event.preventDefault()} noValidate>
+      <form ref={formRef} className="mt-3.5 flex w-full flex-col gap-3.5" onSubmit={(event) => event.preventDefault()} noValidate>
+        {formError && (
+          <p role="alert" className="m-0 text-center text-[13px] text-error">
+            {formError}
+          </p>
+        )}
+
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <span className="hint basis-full text-center text-[13px]">
+            Total: {counts.total} tokens. Permanent: {counts.permanent} tokens.
+          </span>
+          {/* A saved character that is not a draft keeps its status on "Save". Only "Move to drafts" takes it off Discover. */}
+          <button type="button" className="pill pill-soft" disabled={saving} onClick={() => void save(false)}>
+            {isLive ? "Move to drafts" : "Save draft"}
+          </button>
+          <button type="button" className="pill pill-light" disabled={saving} onClick={() => void save(true)}>
+            {isLive ? "Save" : "Publish"}
+          </button>
+        </div>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] items-start gap-3.5 max-[760px]:grid-cols-1">
           <Box id="basics-h" title="Basics" hint="The picture, the name, the bio and the tags on the card.">
             <div data-field="avatar" className="flex flex-col gap-3">
@@ -337,24 +361,6 @@ export function CharacterForm({ initial, onSaved, creatorHandle = "you", header 
           </Box>
         </div>
 
-        {formError && (
-          <p role="alert" className="m-0 text-[13px] text-error">
-            {formError}
-          </p>
-        )}
-
-        <div className="sticky bottom-0 flex flex-wrap items-center gap-3 rounded-[20px] bg-[#0d0d0f] px-5 py-3">
-          <span className="hint flex-auto text-[13px]">
-            Total: {counts.total} tokens. Permanent: {counts.permanent} tokens.
-          </span>
-          {/* A saved character that is not a draft keeps its status on "Save". Only "Move to drafts" takes it off Discover. */}
-          <button type="button" className="pill pill-soft" disabled={saving} onClick={() => void save(false)}>
-            {isLive ? "Move to drafts" : "Save draft"}
-          </button>
-          <button type="button" className="pill pill-light" disabled={saving} onClick={() => void save(true)}>
-            {isLive ? "Save" : "Publish"}
-          </button>
-        </div>
       </form>
     </div>
   );

@@ -21,9 +21,10 @@ function handleErrorText(error: unknown): string {
   return "The handle was not saved. Try again.";
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+/** One box of Settings. `className` changes the box, such as the full width and the red ground of Delete account. */
+function Section({ title, className = "", children }: { title: string; className?: string; children: ReactNode }) {
   return (
-    <section className="flex flex-col gap-3 panel p-5">
+    <section className={`flex flex-col gap-3 panel p-5 ${className}`}>
       <h2 className="m-0 text-center text-[15px] font-bold">{title}</h2>
       {children}
     </section>
@@ -209,7 +210,7 @@ export function SettingsView({ me }: { me: MeResponse }) {
         </p>
       )}
 
-      <Section title="Delete account">
+      <Section title="Delete account" className="col-span-full bg-[#120a0c]">
         <p className="m-0 text-muted">
           This removes your account, your characters, your chats, your models, and your uploads. You cannot undo it.
           Your reports stay for the admin, without your name.

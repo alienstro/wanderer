@@ -45,8 +45,8 @@ export function Composer({ characterName, value, onChange, disabled, streaming, 
             }
           }}
         />
-        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-          <div className="flex flex-wrap items-center gap-3">{toolbar}</div>
+        <div className="flex items-center justify-between gap-2 px-1">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">{toolbar}</div>
           {streaming ? (
             <button type="button" className="pill pill-soft pill-sm-phone tap-target" onClick={onStop}>
               Stop

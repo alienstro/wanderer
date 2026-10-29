@@ -54,7 +54,7 @@ export function MessageItem({ message, speaker, editable, canRegenerate, onSave,
   }
 
   return (
-    <article className={`flex ${mine ? "justify-end" : ""}`}>
+    <article className={`msg flex ${mine ? "justify-end" : ""}`}>
       {/* Each box fits its text: the user's box up to 78% of the column, an AI reply up to 92%. The edit box takes that width. */}
       <div
         className={`flex min-w-0 flex-col gap-1 ${mine ? "max-w-[78%] items-end max-[760px]:max-w-[88%]" : "max-w-[92%] items-start"} ${editing ? "w-full" : ""}`}
@@ -106,7 +106,7 @@ export function MessageItem({ message, speaker, editable, canRegenerate, onSave,
         )}
         {!editing && (editable || canRegenerate) && (
           // The negative margin lines the first icon up with the edge of the bubble.
-          <div className={`flex gap-0.5 ${mine ? "-mr-2.5" : "-ml-2.5"}`}>
+          <div className={`msg-actions flex gap-0.5 ${mine ? "-mr-2.5" : "-ml-2.5"}`}>
             {editable && (
               <>
                 <button type="button" className="msg-action" onClick={() => setEditing(true)}>

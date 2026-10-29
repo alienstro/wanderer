@@ -49,9 +49,20 @@ const NAV_ITEMS: { href: string; label: string; icon: ReactNode; userOnly?: bool
       </svg>
     ),
   },
+  {
+    href: "/settings",
+    label: "Settings",
+    userOnly: true,
+    icon: (
+      <svg {...iconProps}>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M12 2.5v3M12 18.5v3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M2.5 12h3M18.5 12h3M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1" />
+      </svg>
+    ),
+  },
 ];
 
-/** The Create pill and the main links of the sidebar. For you shows only for a logged-in user. The rail shows only the icons. */
+/** The Create pill and the main links of the sidebar. For you and Settings show only for a logged-in user. The rail shows only the icons. */
 export function SidebarNav() {
   const pathname = usePathname();
   const { data: me } = useMe();
@@ -61,7 +72,7 @@ export function SidebarNav() {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
           <path d="M12 5v14M5 12h14" />
         </svg>
-        <span className="side-label">Create</span>
+        <span className="side-label">Create a character</span>
       </Link>
       <nav className="side-nav" aria-label="Main">
         {NAV_ITEMS.filter((item) => !item.userOnly || me).map((item) => (

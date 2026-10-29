@@ -633,6 +633,19 @@
     box-shadow: 0 0 0 3px rgb(91 155 255 / 0.25);
   }
 
+  /* With a mouse, the buttons under a message show on hover and on keyboard focus, as in the v2 design. A touch screen always shows them. */
+  @media (hover: hover) {
+    .msg .msg-actions {
+      opacity: 0;
+      transition: opacity var(--duration-fast);
+    }
+
+    .msg:hover .msg-actions,
+    .msg:focus-within .msg-actions {
+      opacity: 1;
+    }
+  }
+
   /* A quiet button under a message or in the bar of the text box: icon, then a short word. */
   .msg-action {
     display: inline-flex;

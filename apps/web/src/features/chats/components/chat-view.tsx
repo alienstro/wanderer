@@ -302,7 +302,7 @@ export function ChatView({ chatId }: { chatId: string }) {
         />
       )}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(11,11,13,0.2)_0%,#0b0b0d_55%)]" />
-      <div className="absolute top-4 right-4 z-[1] max-[760px]:top-2 max-[760px]:right-2">
+      <div className="absolute top-4 right-4 z-[1] max-[760px]:static max-[760px]:flex max-[760px]:justify-end max-[760px]:px-3 max-[760px]:pt-2">
         <MemoryButton
           chatId={chatId}
           memory={chat.data.memory}
@@ -311,7 +311,7 @@ export function ChatView({ chatId }: { chatId: string }) {
       </div>
 
       {/* column-reverse keeps the newest message in view without a scroll script. */}
-      <div className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto px-6 pt-10 pb-3 max-[760px]:px-3 max-[760px]:pt-12">
+      <div className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto px-6 pt-10 pb-3 max-[760px]:px-3 max-[760px]:pt-2">
         <div className={`${CHAT_COLUMN} flex flex-col gap-3.5`}>
           <header className="flex flex-col items-center gap-1.5 pb-2 text-center">
             <Avatar name={character.name} src={character.src} size={64} />

@@ -47,11 +47,11 @@ export function MyCharactersView() {
           <span className="relative z-[1] -mt-12 rounded-full shadow-[0_0_0_4px_#000]">
             <Avatar name={me?.name ?? ""} src={me?.pictureUrl ?? null} size={96} />
           </span>
-          <h1 className="m-0 mt-3 text-2xl leading-[1.2] font-extrabold tracking-[-0.01em]">My characters</h1>
-          <span className="mt-0.5 text-xs text-subtle">
+          <h1 className="m-0 mt-3 text-2xl leading-[1.2] font-extrabold tracking-[-0.01em]">
             {me?.name}
-            {me?.handle && ` · @${me.handle}`}
-          </span>
+            <span className="sr-only">: My characters</span>
+          </h1>
+          {me?.handle && <span className="mt-0.5 text-xs text-subtle">@{me.handle}</span>}
           <div className="mt-[18px] flex justify-center gap-7">
             <Stat value={compactCount(cards.length)} label="Characters" />
             <Stat value={sum((card) => card.chatCount)} label="Chats" />

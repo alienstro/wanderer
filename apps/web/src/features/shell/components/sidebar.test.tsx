@@ -96,7 +96,7 @@ describe("sidebar", () => {
     pathname = "/my-characters";
     stubApi(null);
     renderWithClient(<SidebarNav />);
-    expect(screen.getByRole("link", { name: "Create" })).toHaveAttribute("href", "/create");
+    expect(screen.getByRole("link", { name: "Create a character" })).toHaveAttribute("href", "/create");
     expect(screen.getByRole("link", { name: "Discover" })).toHaveAttribute("href", "/discover");
     expect(screen.getByRole("link", { name: "Discover" })).not.toHaveAttribute("aria-current");
     expect(screen.getByRole("link", { name: "My characters" })).toHaveAttribute("aria-current", "page");

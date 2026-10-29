@@ -71,7 +71,7 @@ export function SidebarDrawer({ children, defaultRail = false }: { children: Rea
             <path d="M4 7h16M4 12h16M4 17h16" />
           </svg>
         </button>
-        <Logo />
+        <Logo compact />
       </header>
       {open && <div className="fixed inset-0 z-30 bg-black/60 min-[761px]:hidden" aria-hidden="true" onClick={close} />}
       <aside

@@ -24,7 +24,7 @@ function ChatRow({ chat, onDeleted }: { chat: ChatSummary; onDeleted: () => void
   }
 
   return (
-    <li className="flex flex-col gap-2 rounded-[16px] border border-line bg-surface px-4 py-3">
+    <li className="flex flex-col gap-2 rounded-[14px] bg-[#0f0f11] px-3.5 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-col">
           <span className="truncate [&_em]:text-muted">
