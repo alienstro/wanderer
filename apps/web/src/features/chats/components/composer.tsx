@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 
 export interface ComposerProps {
+  /** The name of the character, for the fiction notice under the text box. */
+  characterName: string;
   value: string;
   onChange: (value: string) => void;
   /** True when the user cannot send now, for example with no active proxy. */
@@ -16,7 +18,7 @@ export interface ComposerProps {
 }
 
 /** The text box of the chat. Enter sends, and Shift+Enter makes a new line. */
-export function Composer({ value, onChange, disabled, streaming, onSend, onStop, toolbar }: ComposerProps) {
+export function Composer({ characterName, value, onChange, disabled, streaming, onSend, onStop, toolbar }: ComposerProps) {
   const text = value.trim();
   const canSend = !disabled && !streaming && text.length > 0;
 
@@ -62,7 +64,7 @@ export function Composer({ value, onChange, disabled, streaming, onSend, onStop,
         </div>
       </div>
       <p className="m-0 text-center text-[12px] text-subtle">
-        Characters are AI, not real people. Treat everything they say as fiction.
+        {characterName} is an AI character, not a real person. Treat everything they say as fiction.
       </p>
     </div>
   );
