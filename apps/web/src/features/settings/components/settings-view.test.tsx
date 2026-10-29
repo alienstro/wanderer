@@ -21,18 +21,24 @@ const me: MeResponse = {
   suggestedHandle: null,
 };
 
-/** Answers each call with the status and body, and keeps the calls. */
+/** The lists that the Model and Personas boxes load for themselves. They answer an empty list. */
+const LIST_URLS = ["/personas", "/proxies", "/free-models"];
+
+/** Answers each call with the status and body, and keeps the calls. The box lists answer an empty list. */
 function stubFetch(status = 200, body: unknown = me) {
-  const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) =>
-    status === 204 ? new Response(null, { status }) : Response.json(body, { status }),
-  );
+  const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
+    if (LIST_URLS.includes(url)) {
+      return Response.json([]);
+    }
+    return status === 204 ? new Response(null, { status }) : Response.json(body, { status });
+  });
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }
 
-/** The calls of the profile forms. The Personas section loads its own list, so its call is left out. */
+/** The calls of the profile forms. The Model and Personas boxes load their own lists, so those calls are left out. */
 function meCalls(fetchMock: ReturnType<typeof stubFetch>) {
-  return fetchMock.mock.calls.filter(([url]) => url !== "/personas");
+  return fetchMock.mock.calls.filter(([url]) => !LIST_URLS.includes(url));
 }
 
 function lastCall(fetchMock: ReturnType<typeof stubFetch>) {

@@ -10,7 +10,7 @@ import { likesLabel } from "@/lib/format";
 import { useMe } from "@/lib/query-provider";
 import { characterQueryKey } from "./query-key";
 
-const PILL = "pill pill-soft min-h-8 px-3 text-[13px]";
+const PILL = "pill pill-soft min-h-[38px] px-4 text-[13px]";
 
 /**
  * The heart and the like count. A tap changes the heart at once and puts it back when the request fails.

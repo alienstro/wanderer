@@ -30,9 +30,9 @@ export function EditCharacterView() {
     );
   }
   return (
-    <div className="flex flex-col gap-[22px] px-7 pt-7 pb-20 max-[760px]:px-4">
-      <h1 className="page-title">Edit {query.data.title}</h1>
+    <div className="px-8 pt-6 pb-14 max-[760px]:px-4">
       <CharacterForm
+        header={<h1 className="m-0 text-2xl font-extrabold tracking-[-0.01em]">Edit {query.data.title}</h1>}
         creatorHandle={me.handle ?? "you"}
         key={query.data.id}
         initial={query.data}

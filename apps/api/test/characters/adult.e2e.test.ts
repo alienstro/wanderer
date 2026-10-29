@@ -54,6 +54,12 @@ describe("an old 18+ character", () => {
     expect(res.body.items.map((card: { id: string }) => card.id)).not.toContain(adultId);
   });
 
+  it("is not in the liked list, also when the user liked it before", async () => {
+    await prisma.characterLike.create({ data: { userId: viewer.user.id, characterId: adultId } });
+    const res = await http().get("/me/characters/liked").set("Cookie", viewer.cookie).expect(200);
+    expect(res.body.items.map((card: { id: string }) => card.id)).not.toContain(adultId);
+  });
+
   it("a user cannot start a chat with it", async () => {
     await http()
       .post("/chats")

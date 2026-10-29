@@ -8,7 +8,7 @@ import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/query-provider";
 import { Avatar } from "@/components/ui/avatar";
 
-/** The foot of the sidebar: the user row with the account menu, or a "Log in" pill for a visitor. The rail shows only the avatar. */
+/** The foot of the sidebar: the user row with the account menu, or a white "Log in" pill and the 18+ note for a visitor. The rail shows only the avatar. */
 export function UserRow() {
   const { data: me, isPending } = useMe();
   const queryClient = useQueryClient();
@@ -20,12 +20,24 @@ export function UserRow() {
   }
   if (!me) {
     return (
-      <Link href="/login" className="pill pill-accent relative rail:w-10 rail:self-center rail:px-0">
-        <svg className="hidden rail:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3" />
-        </svg>
-        <span className="side-label">Log in</span>
-      </Link>
+      <div className="flex flex-col items-center gap-2.5">
+        <Link href="/login" className="pill pill-light relative min-h-11 w-full rail:w-10 rail:self-center rail:px-0">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3" />
+          </svg>
+          <span className="side-label">Log in</span>
+        </Link>
+        <span className="text-xs text-subtle rail:hidden">
+          18+ only.{" "}
+          <Link href="/terms" className="text-muted">
+            Terms
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="text-muted">
+            Privacy
+          </Link>
+        </span>
+      </div>
     );
   }
 

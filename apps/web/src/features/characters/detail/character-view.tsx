@@ -1,109 +1,148 @@
+"use client";
+
 import type { CharacterDetail } from "@wanderer/shared";
+import { type ReactNode, useId, useState } from "react";
 import { Markdown } from "@/components/ui/markdown";
+import { ShareButton } from "@/components/ui/share-button";
+import { TabBar, type TabBarItem } from "@/components/ui/tab-bar";
 import { fileSrc } from "@/lib/api";
-import { chatsLabel, statusLabel } from "@/lib/format";
+import { compactCount, statusLabel } from "@/lib/format";
+import { useMe } from "@/lib/query-provider";
 import { CharacterComments } from "@/features/comments";
 import { LikeButton } from "./like-button";
 import { StartChat } from "./start-chat";
-import { YourChats } from "./your-chats";
+import { useCharacterChats, YourChats } from "./your-chats";
+
+type TabId = "chats" | "comments" | "definition";
+
+/** One count under the bio, such as "412 Chats". */
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="flex flex-col items-center">
+      <span className="text-base font-bold">{value}</span>
+      <span className="text-[11px] text-subtle">{label}</span>
+    </div>
+  );
+}
+
+function Definition({ detail }: { detail: CharacterDetail }) {
+  if (!detail.definition) {
+    return <p className="m-0 text-muted">The creator keeps the definition of this character hidden.</p>;
+  }
+  const parts: [string, string][] = [
+    ["Personality", detail.definition.personality],
+    ["Scenario", detail.definition.scenario],
+    ["Example dialogs", detail.definition.exampleDialogs],
+  ];
+  return (
+    <div className="flex flex-col gap-2">
+      {parts
+        .filter(([, text]) => text)
+        .map(([label, text]) => (
+          <div key={label} className="rounded-[14px] bg-[#0f0f11] px-4 py-3.5">
+            <div className="mb-1 text-xs font-bold">{label}</div>
+            <p className="m-0 whitespace-pre-wrap text-[#a1a1aa] [overflow-wrap:anywhere]">{text}</p>
+          </div>
+        ))}
+    </div>
+  );
+}
 
 /**
- * The character page body in the prototype style. It has the banner, the openings with Start, Your chats,
- * the definition, and the comments.
+ * The character page body in the v2 Joyland profile layout: a blurred banner, the round avatar, the name, the bio, the
+ * counts and the buttons in the center, then the tabs "Your chats", "Comments" and "Definition".
+ * `actions` goes in the row of buttons, such as Report. `children` goes under the buttons, such as the owner panel.
+ * All tab panels stay in the page, and only the picked one is visible, so the comments do not load again on each pick.
  */
-export function CharacterView({ detail }: { detail: CharacterDetail }) {
+export function CharacterView({ detail, actions, children }: { detail: CharacterDetail; actions?: ReactNode; children?: ReactNode }) {
+  const id = useId();
   const image = detail.avatarUrl ? fileSrc(detail.avatarUrl) : null;
+  const { data: me } = useMe();
+  const chatTotal = useCharacterChats(detail.id).data?.items.length ?? 0;
+  const hasChats = Boolean(me) && chatTotal > 0;
+  const [picked, setPicked] = useState<TabId | null>(null);
+  const tab = picked === "chats" && !hasChats ? "comments" : (picked ?? (hasChats ? "chats" : "comments"));
+  const tabs: TabBarItem<TabId>[] = [
+    ...(hasChats ? [{ id: "chats" as const, label: "Your chats", count: chatTotal }] : []),
+    { id: "comments", label: "Comments" },
+    { id: "definition", label: "Definition" },
+  ];
 
   return (
-    <div className="flex min-w-0 flex-[999_1_520px] flex-col gap-8">
-      <section className="relative overflow-hidden panel">
-        {image && (
+    <div className="mx-auto flex w-full max-w-[980px] flex-col items-center">
+      <section aria-label={`About ${detail.title}`} className="flex w-full flex-col items-center text-center">
+        <div aria-hidden="true" className="relative h-[200px] w-full overflow-hidden rounded-[18px] bg-surface max-[760px]:h-[140px]">
+          {image && (
+            <img src={image} alt="" className="absolute -top-[40%] -left-[10%] h-[180%] w-[120%] object-cover blur-[28px] brightness-[0.7] saturate-[1.3]" />
+          )}
+        </div>
+        {image ? (
           <img
             src={image}
-            alt=""
-            aria-hidden="true"
-            className="absolute -inset-[60px] h-[calc(100%+120px)] w-[calc(100%+120px)] object-cover opacity-50 blur-[40px] saturate-[1.25]"
+            alt={detail.title}
+            width={112}
+            height={112}
+            className="relative z-[1] -mt-14 size-28 rounded-full object-cover object-[50%_15%] shadow-[0_0_0_4px_#000]"
           />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="relative z-[1] -mt-14 flex size-28 items-center justify-center rounded-full bg-[#26262b] text-[44px] font-bold text-[#5a5a64] shadow-[0_0_0_4px_#000]"
+          >
+            {detail.title.charAt(0).toUpperCase()}
+          </span>
         )}
-        <div className="relative flex flex-wrap items-end gap-7 bg-[linear-gradient(180deg,rgba(14,14,16,0.25)_0%,rgba(14,14,16,0.9)_100%)] p-7 max-[760px]:p-5">
-          {image ? (
-            <img
-              src={image}
-              alt={detail.title}
-              width={210}
-              height={280}
-              className="h-[280px] flex-[0_0_210px] rounded-[18px] object-cover shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
-            />
-          ) : (
-            <span
-              aria-hidden="true"
-              className="flex h-[280px] flex-[0_0_210px] items-center justify-center rounded-[18px] bg-[#26262b] text-[80px] font-bold text-[#5a5a64]"
-            >
-              {detail.title.charAt(0).toUpperCase()}
-            </span>
-          )}
-          <div className="flex min-w-0 flex-[1_1_340px] flex-col gap-3">
-            <h1 className="page-title [overflow-wrap:anywhere]">{detail.title}</h1>
-            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-[13px] text-[#c4c4cc]">
-              <span>
-                Chat with <strong className="text-text">{detail.chatName || detail.title}</strong>
+
+        <h1 className="m-0 mt-3 text-2xl leading-[1.2] font-extrabold tracking-[-0.01em] [overflow-wrap:anywhere]">{detail.title}</h1>
+        <span className="mt-0.5 text-xs text-subtle">
+          Chat with <strong className="text-text">{detail.chatName || detail.title}</strong> · Made by{" "}
+          <span className="font-semibold text-link">@{detail.creatorHandle}</span>
+        </span>
+        <div className="mt-2.5 max-w-[56ch] text-[14px] leading-[1.6] text-pretty text-[#c4c4cc] [&_strong]:text-white">
+          <Markdown text={detail.bio} />
+        </div>
+        {(detail.tags.length > 0 || detail.isOwner) && (
+          <div className="mt-2.5 flex flex-wrap justify-center gap-[5px]">
+            {detail.isOwner && <span className="inline-flex h-[22px] items-center rounded-full bg-surface-2 px-[9px] text-[11.5px] text-[#c4c4cc]">{statusLabel(detail)}</span>}
+            {detail.tags.map((tag) => (
+              <span key={tag.slug} className="inline-flex h-[22px] items-center rounded-full bg-surface-2 px-[9px] text-[11.5px] text-[#c4c4cc]">
+                {tag.label}
               </span>
-              <span>
-                By <span className="font-semibold text-link">@{detail.creatorHandle}</span>
-              </span>
-              <span>{chatsLabel(detail.chatCount)}</span>
-              <LikeButton characterId={detail.id} likeCount={detail.likeCount} likedByMe={detail.likedByMe} isOwner={detail.isOwner} />
-              {detail.isOwner && <span className="tag">{statusLabel(detail)}</span>}
-            </div>
-            <div className="max-w-[64ch] text-[15px] leading-[1.6] text-[#e4e4e7]">
-              <Markdown text={detail.bio} />
-            </div>
-            {detail.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {detail.tags.map((tag) => (
-                  <span key={tag.slug} className="tag px-2.5 py-[3px] text-xs">
-                    {tag.label}
-                  </span>
-                ))}
-              </div>
-            )}
+            ))}
           </div>
+        )}
+
+        <div className="mt-[18px] flex justify-center gap-7">
+          <Stat value={compactCount(detail.chatCount)} label="Chats" />
+          <Stat value={compactCount(detail.likeCount)} label="Likes" />
+          <Stat value={compactCount(detail.commentCount)} label="Comments" />
+        </div>
+
+        <div className="mt-[18px] flex flex-wrap items-start justify-center gap-2">
+          <StartChat characterId={detail.id} />
+          <LikeButton characterId={detail.id} likeCount={detail.likeCount} likedByMe={detail.likedByMe} isOwner={detail.isOwner} />
+          <ShareButton title={detail.title} path={`/characters/${detail.id}`} />
+          {actions}
         </div>
       </section>
 
-      <StartChat characterId={detail.id} />
+      {children && <div className="mt-6 w-full max-w-[640px]">{children}</div>}
 
-      <YourChats characterId={detail.id} />
+      <TabBar label="Character sections" idPrefix={id} tabs={tabs} current={tab} onPick={setPicked} />
 
-      <section aria-labelledby="def-h" className="flex flex-col gap-3">
-        <h2 id="def-h" className="m-0 text-lg font-bold">
-          Definition
-        </h2>
-        {detail.definition ? (
-          <details className="disclosure rounded-[16px] border border-line bg-surface">
-            <summary className="flex min-h-[46px] cursor-pointer items-center px-4 font-semibold">Show the personality and scenario</summary>
-            <div className="flex flex-col gap-2.5 px-4 pb-4 whitespace-pre-wrap text-[#c4c4cc] [overflow-wrap:anywhere]">
-              <p className="m-0">
-                <strong className="text-text">Personality:</strong> {detail.definition.personality}
-              </p>
-              {detail.definition.scenario && (
-                <p className="m-0">
-                  <strong className="text-text">Scenario:</strong> {detail.definition.scenario}
-                </p>
-              )}
-              {detail.definition.exampleDialogs && (
-                <p className="m-0">
-                  <strong className="text-text">Example dialogs:</strong> {detail.definition.exampleDialogs}
-                </p>
-              )}
-            </div>
-          </details>
-        ) : (
-          <p className="m-0 text-muted">The creator keeps the definition of this character hidden.</p>
+      <div className="w-full max-w-[640px] pt-[18px] [&_section>h2]:sr-only">
+        {hasChats && (
+          <div role="tabpanel" id={`${id}-chats`} aria-labelledby={`${id}-chats-tab`} hidden={tab !== "chats"}>
+            <YourChats characterId={detail.id} />
+          </div>
         )}
-      </section>
-
-      <CharacterComments characterId={detail.id} />
+        <div role="tabpanel" id={`${id}-comments`} aria-labelledby={`${id}-comments-tab`} hidden={tab !== "comments"}>
+          <CharacterComments characterId={detail.id} />
+        </div>
+        <div role="tabpanel" id={`${id}-definition`} aria-labelledby={`${id}-definition-tab`} hidden={tab !== "definition"}>
+          <Definition detail={detail} />
+        </div>
+      </div>
     </div>
   );
 }

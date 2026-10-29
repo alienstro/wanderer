@@ -8,6 +8,7 @@ import { type FormEvent, type ReactNode, useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
 import { Field, Switch } from "@/components/ui/form-field";
 import { PersonasSection } from "@/features/personas";
+import { ModelTiles } from "./model-tiles";
 
 const DELETE_WORD = "DELETE";
 
@@ -21,16 +22,17 @@ function handleErrorText(error: unknown): string {
   return "The handle was not saved. Try again.";
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+/** One box of Settings. `className` changes the box, such as the full width and the red ground of Delete account. */
+function Section({ title, className = "", children }: { title: string; className?: string; children: ReactNode }) {
   return (
-    <section className="flex flex-col gap-3 panel p-5">
-      <h2 className="m-0 text-lg font-bold">{title}</h2>
+    <section className={`flex flex-col gap-3 panel p-5 ${className}`}>
+      <h2 className="m-0 text-center text-[15px] font-bold">{title}</h2>
       {children}
     </section>
   );
 }
 
-/** The account settings: the handle, Reply choices and their instructions, the models link, and Delete account. */
+/** The account settings: the model tiles, the handle, Reply choices and their instructions, the models link, and Delete account. */
 export function SettingsView({ me }: { me: MeResponse }) {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -98,7 +100,11 @@ export function SettingsView({ me }: { me: MeResponse }) {
   }
 
   return (
-    <div className="flex max-w-[720px] flex-col gap-5">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] items-start gap-3.5 max-[760px]:grid-cols-1">
+      <Section title="Model" className="col-span-full">
+        <ModelTiles />
+      </Section>
+
       <Section title="Profile">
         <form className="flex flex-col gap-3" onSubmit={(event) => void saveHandle(event)}>
           <Field name="handle" label="Handle" error={handleError ?? undefined}>
@@ -113,7 +119,7 @@ export function SettingsView({ me }: { me: MeResponse }) {
             )}
           </Field>
           <div className="flex items-center gap-3">
-            <button type="submit" className="pill pill-accent">
+            <button type="submit" className="pill pill-light">
               Save handle
             </button>
             {handleSaved && <span className="text-[13px] text-muted">Saved.</span>}
@@ -152,7 +158,7 @@ export function SettingsView({ me }: { me: MeResponse }) {
             )}
           </Field>
           <div className="flex items-center gap-3">
-            <button type="submit" className="pill pill-accent">
+            <button type="submit" className="pill pill-light">
               Save instructions
             </button>
             {choicesPromptSaved && <span className="text-[13px] text-muted">Saved.</span>}
@@ -169,7 +175,7 @@ export function SettingsView({ me }: { me: MeResponse }) {
         </p>
       )}
 
-      <Section title="Delete account">
+      <Section title="Delete account" className="col-span-full bg-[#120a0c]">
         <p className="m-0 text-muted">
           This removes your account, your characters, your chats, your models, and your uploads. You cannot undo it.
           Your reports stay for the admin, without your name.

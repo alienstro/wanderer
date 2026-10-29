@@ -19,7 +19,9 @@ const detail: CharacterDetail = {
   chatCount: 3,
   likeCount: 0,
   creatorHandle: "tian",
+  bioPreview: "A ship mechanic.",
   bio: "A **ship** mechanic.",
+  commentCount: 7,
   status: "published",
   isPublic: true,
   definitionVisible: true,
@@ -66,6 +68,27 @@ describe("character page", () => {
     expect(screen.queryByText("The lights go out.")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "How the story starts" })).not.toBeInTheDocument();
     expect(screen.getByText(/Calm and dry\./)).toBeInTheDocument();
+  });
+
+  it("the tabs show one section at a time: Comments first for a visitor, then Definition after a click", async () => {
+    stubFetch(() => undefined);
+    withClient(<CharacterView detail={detail} />);
+    expect(screen.queryByRole("tab", { name: /Your chats/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Comments" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("tabpanel", { name: "Definition" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Definition" }));
+
+    expect(screen.getByRole("tab", { name: "Definition" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel", { name: "Definition" })).toHaveTextContent(/Calm and dry\./);
+    expect(screen.queryByRole("tabpanel", { name: "Comments" })).not.toBeInTheDocument();
+  });
+
+  it("the counts show the chats, the likes and the comments, and a Share button is next to Like", () => {
+    stubFetch(() => undefined);
+    withClient(<CharacterView detail={detail} />);
+    expect(screen.getByText("Comments", { selector: "span.text-subtle" }).previousSibling).toHaveTextContent("7");
+    expect(screen.getByRole("button", { name: "Share this character" })).toBeInTheDocument();
   });
 
   it('definition null shows "The creator keeps the definition of this character hidden."', () => {

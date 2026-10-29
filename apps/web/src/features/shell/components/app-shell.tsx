@@ -8,7 +8,7 @@ import { UserRow } from "./user-row";
 
 /**
  * The sidebar (links, Recent chats, the model card, and the user row) and the main area.
- * The sidebar floats with round corners, as the header bar of the landing page.
+ * The sidebar is a black column with the full height of the window, as in the v2 design.
  * On a phone a thin top bar opens the sidebar as a drawer, so each page starts with its own content.
  * The backdrop is on the shell, not on main, so it also shows behind and around the sidebar and the rail.
  */
@@ -16,7 +16,7 @@ export function AppShell({ children, defaultRail }: { children: ReactNode; defau
   return (
     <div className="app-backdrop flex min-h-dvh max-[760px]:flex-col">
       <SidebarDrawer defaultRail={defaultRail}>
-        <Logo />
+        <Logo compact />
         <SidebarNav />
         <RecentChats />
         <div className="side-foot">

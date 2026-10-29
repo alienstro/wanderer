@@ -2,14 +2,13 @@
 
 import type { MessageView } from "@wanderer/shared";
 import { useState } from "react";
-import { Avatar } from "@/components/ui/avatar";
 import { PencilIcon, RefreshIcon, TrashIcon } from "@/components/ui/icons";
 import { Markdown } from "@/components/ui/markdown";
 
 export interface MessageItemProps {
   message: Pick<MessageView, "role" | "content">;
-  /** The name and the image of the speaker. */
-  speaker: { name: string; src: string | null };
+  /** The name of the speaker. Only a screen reader reads it. */
+  speaker: { name: string };
   /** True for the user's own messages: they get Edit and Delete. */
   editable?: boolean;
   /** True for the last AI reply when no stream runs. */
@@ -55,11 +54,12 @@ export function MessageItem({ message, speaker, editable, canRegenerate, onSave,
   }
 
   return (
-    <article className={`flex gap-3 max-[760px]:gap-2 ${mine ? "flex-row-reverse" : ""}`}>
-      <Avatar name={speaker.name} src={speaker.src} size={36} />
-      {/* An AI reply fills the chat column. The user's box fits its text, up to 82% of the column (the full width on a phone), and the edit box takes that width. */}
-      <div className={`flex min-w-0 flex-col gap-1.5 ${mine ? `max-w-[82%] items-end max-[760px]:max-w-full ${editing ? "w-full" : ""}` : "flex-1"}`}>
-        <span className="text-[13px] font-semibold text-muted">{speaker.name}</span>
+    <article className={`msg flex ${mine ? "justify-end" : ""}`}>
+      {/* Each box fits its text: the user's box up to 78% of the column, an AI reply up to 92%. The edit box takes that width. */}
+      <div
+        className={`flex min-w-0 flex-col gap-1 ${mine ? "max-w-[78%] items-end max-[760px]:max-w-[88%]" : "max-w-[92%] items-start"} ${editing ? "w-full" : ""}`}
+      >
+        <span className="sr-only">{speaker.name}</span>
         {editing ? (
           <div className="flex w-full flex-col gap-2">
             <textarea
@@ -87,9 +87,9 @@ export function MessageItem({ message, speaker, editable, canRegenerate, onSave,
           </div>
         ) : (
           <div
-            className={`px-4 text-[15px] leading-[1.65] max-[760px]:px-3 max-[760px]:text-[14px] max-[760px]:leading-[1.55] [overflow-wrap:anywhere] [&_em]:text-muted [&_p+p]:mt-3 ${
-              mine ? "rounded-[20px_6px_20px_20px] bg-[#26262b] py-2.5" : "rounded-[6px_20px_20px_20px] border border-line bg-surface py-3 text-[#ececee]"
-            } ${typing ? "self-start" : ""}`}
+            className={`text-[14.5px] max-[760px]:text-[14px] max-[760px]:leading-[1.55] [overflow-wrap:anywhere] [&_em]:text-muted [&_p+p]:mt-3 ${
+              mine ? "rounded-[16px_16px_4px_16px] bg-[#26262b] px-3.5 py-2.5 leading-[1.6]" : "rounded-[16px_16px_16px_4px] bg-white/[0.07] px-[15px] py-[11px] leading-[1.65] text-[#ececef]"
+            }`}
           >
             {typing ? (
               // The message list is a live region, so the text below is announced. A second live region here would repeat it.
@@ -106,7 +106,7 @@ export function MessageItem({ message, speaker, editable, canRegenerate, onSave,
         )}
         {!editing && (editable || canRegenerate) && (
           // The negative margin lines the first icon up with the edge of the bubble.
-          <div className={`flex gap-0.5 ${mine ? "-mr-2.5" : "-ml-2.5"}`}>
+          <div className={`msg-actions flex gap-0.5 ${mine ? "-mr-2.5" : "-ml-2.5"}`}>
             {editable && (
               <>
                 <button type="button" className="msg-action" onClick={() => setEditing(true)}>

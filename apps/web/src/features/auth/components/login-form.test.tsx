@@ -42,7 +42,11 @@ describe("LoginForm", () => {
 
   it("the checkbox confirms that the user is 18 or older", () => {
     render(<LoginForm />);
-    expect(screen.getByRole("checkbox", { name: /^I am 18 or older, and I agree to the Terms/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", {
+        name: /^I am 18 or older\. I understand that the characters are AI, and that the chats are fiction\. I agree to the Terms/,
+      }),
+    ).toBeInTheDocument();
   });
 
   it('error="banned" shows "This account is banned."', () => {

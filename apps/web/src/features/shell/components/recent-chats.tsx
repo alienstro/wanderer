@@ -22,17 +22,17 @@ export function RecentChats() {
     return null;
   }
   return (
-    <section aria-labelledby="recent-h" className="flex flex-col gap-1 rail:hidden">
-      <h2 id="recent-h" className="m-0 px-3 text-xs font-semibold tracking-wide text-subtle uppercase">
-        Recent
+    <section aria-labelledby="recent-h" className="flex flex-col gap-1 border-t border-line pt-3 rail:hidden">
+      <h2 id="recent-h" className="m-0 px-3 pb-1 text-xs font-semibold text-subtle">
+        Recent chats
       </h2>
       <ul className="m-0 flex list-none flex-col p-0">
         {items.map((chat) => {
           const href = `/chats/${chat.id}`;
           return (
             <li key={chat.id}>
-              <Link href={href} className="nav" aria-current={pathname === href ? "page" : undefined}>
-                <Avatar name={chat.title} src={chat.character.avatarUrl ? fileSrc(chat.character.avatarUrl) : null} size={24} />
+              <Link href={href} className="nav min-h-[38px] rounded-[10px] px-2.5" aria-current={pathname === href ? "page" : undefined}>
+                <Avatar name={chat.title} src={chat.character.avatarUrl ? fileSrc(chat.character.avatarUrl) : null} size={26} />
                 <span className="truncate">{chat.title}</span>
               </Link>
             </li>

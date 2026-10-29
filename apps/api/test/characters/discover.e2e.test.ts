@@ -172,6 +172,24 @@ describe("Discover list, search, and tags", () => {
     }
   });
 
+  it("GET /me/characters/liked lists the liked characters that the user can see, newest like first", async () => {
+    const reader = await userWithSession(app, 9);
+    const first = await seed("First like", { minute: 1 });
+    const second = await seed("Second like", { minute: 2 });
+    const hidden = await seed("Now private", { minute: 3 });
+    await seed("Not liked", { minute: 4 });
+    for (const [index, character] of [first, second, hidden].entries()) {
+      await prisma.characterLike.create({
+        data: { userId: reader.user.id, characterId: character.id, createdAt: new Date(BASE_TIME + index * 60_000) },
+      });
+    }
+    await prisma.character.update({ where: { id: hidden.id }, data: { isPublic: false } });
+
+    const res = await request(app.getHttpServer()).get("/me/characters/liked").set("Cookie", reader.cookie).expect(200);
+    expect(titles((res.body as { items: CharacterCard[] }).items)).toEqual(["Second like", "First like"]);
+    await request(app.getHttpServer()).get("/me/characters/liked").expect(401);
+  });
+
   it("drafts and private characters are not in the list, but GET /me/characters shows them to their creator", async () => {
     await seed("Public", { minute: 1 });
     await seed("Draft", { status: "draft", minute: 2 });

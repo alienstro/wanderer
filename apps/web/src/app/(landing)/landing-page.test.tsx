@@ -21,7 +21,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/query-provider", () => ({ useMe: () => ({ data: undefined }) }));
 
 function card(n: number): CharacterCard {
-  return { id: `c${n}`, title: `Character ${n}`, chatName: "", avatarUrl: null, tags: [], chatCount: n, likeCount: 0, creatorHandle: "tian" };
+  return { id: `c${n}`, title: `Character ${n}`, chatName: "", avatarUrl: null, tags: [], chatCount: n, likeCount: 0, creatorHandle: "tian", bioPreview: "" };
 }
 
 async function renderPage(searchParams: Record<string, string> = {}) {

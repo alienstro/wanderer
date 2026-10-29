@@ -140,4 +140,9 @@ export class MyCharactersController {
   list(@CurrentUser() user: User): Promise<MyCharacterCard[]> {
     return this.lists.mine(user);
   }
+
+  @Get("liked")
+  liked(@CurrentUser() user: User): Promise<{ items: CharacterCard[] }> {
+    return this.lists.liked(user);
+  }
 }

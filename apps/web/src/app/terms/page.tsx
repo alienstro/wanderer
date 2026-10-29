@@ -63,6 +63,7 @@ const sections: LegalSection[] = [
         items={[
           "Sexual content of any kind. Wanderer is safe for work. This includes content with a character that looks or acts like a minor, and content about a real person.",
           "Content that is illegal.",
+          "Content that encourages, praises, or gives instructions for suicide, self-harm, or eating disorders.",
           "Hate, harassment, and threats against real people.",
           "Private information about another person, such as an address or a phone number.",
           "Characters, images, or text copied from other people without permission.",
@@ -72,13 +73,43 @@ const sections: LegalSection[] = [
     ),
   },
   {
-    id: "ai-replies",
-    title: "AI replies",
+    id: "fiction",
+    title: "Characters are AI, and the chats are fiction",
     body: (
-      <p>
-        The AI model of your proxy writes the replies, not Wanderer. The replies are fiction, and they can be wrong,
-        offensive, or strange. Do not use them as medical, legal, financial, or other professional advice.
-      </p>
+      <>
+        <p>
+          Each character on Wanderer is an AI character, not a real person. An AI model writes each reply: a free model
+          through OpenRouter, or the model of your own proxy. Wanderer and the creators of characters do not write the
+          replies, and do not check them before you see them.
+        </p>
+        <p>
+          Everything that a character says is fiction. A reply can be wrong, offensive, upsetting, or strange. Do not
+          believe a reply as a fact, and do not do in real life what a character tells you to do.
+        </p>
+        <p>The replies are not medical, mental-health, legal, financial, or other professional advice.</p>
+      </>
+    ),
+  },
+  {
+    id: "safety",
+    title: "Your safety",
+    body: (
+      <>
+        <p>
+          Wanderer is not a crisis service, a therapy service, or a medical service. A character cannot help you in an
+          emergency, and nobody watches the chats.
+        </p>
+        <p>
+          If you think about suicide or self-harm, or if you are in danger, stop the chat and get help now. Call your
+          local emergency number. In the United States, call or text 988. In the Philippines, call the NCMH crisis line
+          at 1553. For other countries, find a free helpline at{" "}
+          <a href="https://findahelpline.com" rel="noopener noreferrer" target="_blank">
+            findahelpline.com
+          </a>
+          .
+        </p>
+        <p>Take breaks. If the chats make you feel worse, stop using Wanderer, and talk to a person that you trust.</p>
+      </>
     ),
   },
   {
@@ -137,11 +168,40 @@ const sections: LegalSection[] = [
           Wanderer is a free service, and it comes &ldquo;as is&rdquo;. It can have bugs, lose data, or stop at any
           time, with or without notice.
         </p>
+        <p>You use Wanderer at your own risk. You are responsible for your decisions and your actions.</p>
+      </>
+    ),
+  },
+  {
+    id: "liability",
+    title: "Limits of responsibility",
+    body: (
+      <>
         <p>
-          As far as the law allows, {OPERATOR_NAME} is not responsible for indirect loss, or for loss that comes from
-          your proxy, your AI provider, or the content of other users.
+          As far as the law allows, {OPERATOR_NAME} is not responsible for harm that comes from your use of Wanderer,
+          from the replies of an AI model, from your proxy or your AI provider, from the content of other users, or from
+          what you do after a chat. This includes personal injury, self-harm, emotional distress, and the loss of data
+          or money.
+        </p>
+        <p>
+          As far as the law allows, the total responsibility of {OPERATOR_NAME} for all claims about Wanderer is 50 US
+          dollars.
+        </p>
+        <p>
+          Some laws do not let a service limit its responsibility in these ways. Where such a law applies to you, these
+          limits apply only as far as that law allows.
         </p>
       </>
+    ),
+  },
+  {
+    id: "claims",
+    title: "Claims about your content",
+    body: (
+      <p>
+        If another person makes a claim against {OPERATOR_NAME} because of your characters, your content, or your misuse
+        of Wanderer, you agree to pay the costs of that claim, as far as the law allows.
+      </p>
     ),
   },
   {
