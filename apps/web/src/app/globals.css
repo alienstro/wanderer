@@ -785,10 +785,10 @@
   }
 
   /* A box of content on an app page: a surface with a thin line, as the cards of the landing page. */
+  /* A box of the v2 design: a dark ground with no line around it. */
   .panel {
-    border: 1px solid var(--color-line);
-    border-radius: 22px;
-    background: var(--color-surface);
+    border-radius: 20px;
+    background: #0d0d0f;
   }
 
   /* The main area of each app page. The ground is plain black, as in the v2 design. */

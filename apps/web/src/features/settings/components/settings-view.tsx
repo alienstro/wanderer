@@ -24,7 +24,7 @@ function handleErrorText(error: unknown): string {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-3 panel p-5">
-      <h2 className="m-0 text-lg font-bold">{title}</h2>
+      <h2 className="m-0 text-center text-[15px] font-bold">{title}</h2>
       {children}
     </section>
   );
@@ -115,7 +115,7 @@ export function SettingsView({ me }: { me: MeResponse }) {
   }
 
   return (
-    <div className="flex max-w-[720px] flex-col gap-5">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] items-start gap-3.5 max-[760px]:grid-cols-1">
       <Section title="Profile">
         <form className="flex flex-col gap-3" onSubmit={(event) => void saveHandle(event)}>
           <Field name="handle" label="Handle" error={handleError ?? undefined}>
@@ -130,7 +130,7 @@ export function SettingsView({ me }: { me: MeResponse }) {
             )}
           </Field>
           <div className="flex items-center gap-3">
-            <button type="submit" className="pill pill-accent">
+            <button type="submit" className="pill pill-light">
               Save handle
             </button>
             {handleSaved && <span className="text-[13px] text-muted">Saved.</span>}
@@ -152,7 +152,7 @@ export function SettingsView({ me }: { me: MeResponse }) {
           <div className="flex flex-col items-start gap-2 rounded-xl border border-field-line p-3.5">
             <p className="m-0 text-muted">18+ characters have adult content. You must be 18 or older to see them.</p>
             <div className="flex gap-2">
-              <button type="button" className="pill pill-accent" onClick={() => void confirmAge()}>
+              <button type="button" className="pill pill-light" onClick={() => void confirmAge()}>
                 I am 18 or older. Show 18+ content.
               </button>
               <button type="button" className="pill pill-soft" onClick={() => setAskAge(false)}>
@@ -192,7 +192,7 @@ export function SettingsView({ me }: { me: MeResponse }) {
             )}
           </Field>
           <div className="flex items-center gap-3">
-            <button type="submit" className="pill pill-accent">
+            <button type="submit" className="pill pill-light">
               Save instructions
             </button>
             {choicesPromptSaved && <span className="text-[13px] text-muted">Saved.</span>}
