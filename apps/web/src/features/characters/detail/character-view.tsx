@@ -3,6 +3,7 @@
 import type { CharacterDetail } from "@wanderer/shared";
 import { type ReactNode, useId, useState } from "react";
 import { Markdown } from "@/components/ui/markdown";
+import { TabBar, type TabBarItem } from "@/components/ui/tab-bar";
 import { fileSrc } from "@/lib/api";
 import { compactCount, statusLabel } from "@/lib/format";
 import { useMe } from "@/lib/query-provider";
@@ -60,7 +61,7 @@ export function CharacterView({ detail, actions, children }: { detail: Character
   const hasChats = Boolean(me) && chatTotal > 0;
   const [picked, setPicked] = useState<TabId | null>(null);
   const tab = picked === "chats" && !hasChats ? "comments" : (picked ?? (hasChats ? "chats" : "comments"));
-  const tabs: { id: TabId; label: string; count?: number }[] = [
+  const tabs: TabBarItem<TabId>[] = [
     ...(hasChats ? [{ id: "chats" as const, label: "Your chats", count: chatTotal }] : []),
     { id: "comments", label: "Comments" },
     { id: "definition", label: "Definition" },
@@ -126,30 +127,7 @@ export function CharacterView({ detail, actions, children }: { detail: Character
 
       {children && <div className="mt-6 w-full max-w-[640px]">{children}</div>}
 
-      <div role="tablist" aria-label="Character sections" className="mt-8 flex w-full justify-center gap-8 border-b border-surface-2">
-        {tabs.map((item) => {
-          const on = item.id === tab;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              id={`${id}-${item.id}-tab`}
-              aria-selected={on}
-              aria-controls={`${id}-${item.id}`}
-              onClick={() => setPicked(item.id)}
-              className={`relative inline-flex h-11 cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 ${on ? "text-[15px] font-bold text-white" : "text-sm font-medium text-subtle"}`}
-            >
-              {item.label}
-              {item.count !== undefined && <span className="text-xs font-medium text-subtle">{item.count}</span>}
-              <span
-                aria-hidden="true"
-                className={`absolute bottom-1.5 left-1/2 -ml-[11px] h-[3px] w-[22px] -skew-x-[20deg] rounded-sm ${on ? "bg-accent" : "bg-transparent"}`}
-              />
-            </button>
-          );
-        })}
-      </div>
+      <TabBar label="Character sections" idPrefix={id} tabs={tabs} current={tab} onPick={setPicked} />
 
       <div className="w-full max-w-[640px] pt-[18px] [&_section>h2]:sr-only">
         {hasChats && (

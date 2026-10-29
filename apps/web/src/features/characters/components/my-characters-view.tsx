@@ -1,12 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { MyCharacterCard } from "@wanderer/shared";
+import type { CharacterCard as CharacterCardData, MyCharacterCard } from "@wanderer/shared";
 import Link from "next/link";
+import { useId, useState } from "react";
 import { CharacterCard } from "@/features/characters/card/character-card";
 import { apiFetch, fileSrc } from "@/lib/api";
 import { compactCount, statusLabel } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
+import { TabBar } from "@/components/ui/tab-bar";
 import { useRequireLogin } from "@/lib/use-require-login";
 
 /** One count of the profile, such as "3 Characters". */
@@ -21,7 +23,7 @@ function Stat({ value, label }: { value: string; label: string }) {
 
 /**
  * All characters of the user, drafts and private ones too, newest first, in the v2 profile layout: a banner of up to 3
- * character images, the round avatar, the name, the counts, then the "Created" tab with the cards and a dashed Create card.
+ * character images, the round avatar, the name, the counts, then the tabs "Created", with the cards and a dashed Create card, and "Liked".
  */
 export function MyCharactersView() {
   const me = useRequireLogin();
@@ -31,7 +33,16 @@ export function MyCharactersView() {
     queryFn: () => apiFetch<MyCharacterCard[]>("/me/characters"),
     enabled: me !== undefined,
   });
+  const liked = useQuery({
+    // The key starts with "characters", so a like or an unlike elsewhere loads this list again.
+    queryKey: ["characters", "liked", me?.id ?? null],
+    queryFn: () => apiFetch<{ items: CharacterCardData[] }>("/me/characters/liked"),
+    enabled: me !== undefined,
+  });
+  const [tab, setTab] = useState<"created" | "liked">("created");
+  const id = useId();
   const cards = list.data ?? [];
+  const likedCards = liked.data?.items ?? [];
   const banner = cards.flatMap((card) => (card.avatarUrl ? [fileSrc(card.avatarUrl)] : [])).slice(0, 3);
   const sum = (pick: (card: MyCharacterCard) => number) => compactCount(cards.reduce((total, card) => total + pick(card), 0));
 
@@ -64,15 +75,19 @@ export function MyCharactersView() {
           </div>
         </section>
 
-        <div role="tablist" aria-label="Your lists" className="mt-8 flex w-full justify-center border-b border-surface-2">
-          <button type="button" role="tab" aria-selected="true" className="relative inline-flex h-11 items-center gap-1.5 border-0 bg-transparent p-0 text-[15px] font-bold text-white">
-            Created
-            <span className="text-xs font-medium text-subtle">{cards.length}</span>
-            <span aria-hidden="true" className="absolute bottom-1.5 left-1/2 -ml-[11px] h-[3px] w-[22px] -skew-x-[20deg] rounded-sm bg-accent" />
-          </button>
-        </div>
+        <TabBar
+          label="Your lists"
+          idPrefix={id}
+          tabs={[
+            { id: "created", label: "Created", count: cards.length },
+            { id: "liked", label: "Liked", count: likedCards.length },
+          ]}
+          current={tab}
+          onPick={setTab}
+        />
 
-        <div role="tabpanel" aria-label="Created" className="flex w-full flex-col gap-3 pt-[18px]">
+        <div role="tabpanel" id={`${id}-created`} aria-labelledby={`${id}-created-tab`} hidden={tab !== "created"} className="w-full pt-[18px]">
+          <div className="flex flex-col gap-3">
           {list.isError && <p className="m-0 text-center text-error">Your characters did not load. Reload the page.</p>}
           {list.data && list.data.length === 0 && (
             <div className="flex flex-col items-center gap-1 text-center">
@@ -101,6 +116,23 @@ export function MyCharactersView() {
                 <span className="font-semibold text-white">Create a character</span>
               </Link>
             </div>
+          )}
+          </div>
+        </div>
+
+        <div role="tabpanel" id={`${id}-liked`} aria-labelledby={`${id}-liked-tab`} hidden={tab !== "liked"} className="w-full pt-[18px]">
+          {liked.isError && <p className="m-0 text-center text-error">Your liked characters did not load. Reload the page.</p>}
+          {liked.data && likedCards.length === 0 && (
+            <p className="m-0 text-center text-muted">You like no characters yet. Tap Like on a character page to keep it here.</p>
+          )}
+          {likedCards.length > 0 && (
+            <ul className="m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(180px,220px))] justify-center gap-3 p-0 max-[760px]:grid-cols-2">
+              {likedCards.map((card) => (
+                <li key={card.id} className="flex">
+                  <CharacterCard card={card} />
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </div>
