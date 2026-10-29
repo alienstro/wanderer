@@ -42,10 +42,10 @@ function StartButton({ characterId }: { characterId: string }) {
 export function FeaturedBanner({ items }: { items: CharacterCard[] }) {
   const [slide, setSlide] = useState(0);
   const slides = items.slice(0, SLIDES);
-  if (slides.length === 0) {
+  const current = slides[Math.min(slide, slides.length - 1)];
+  if (!current) {
     return null;
   }
-  const current = slides[Math.min(slide, slides.length - 1)];
   const images = items.flatMap((item) => (item.avatarUrl ? [fileSrc(item.avatarUrl)] : []));
   const columns = images.length === 0 ? [] : Array.from({ length: WALL_COLUMNS }, (_, i) => [0, 3, 5].map((step) => images[(i + step) % images.length]));
 

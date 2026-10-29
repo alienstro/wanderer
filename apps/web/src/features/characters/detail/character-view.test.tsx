@@ -69,6 +69,20 @@ describe("character page", () => {
     expect(screen.getByText(/Calm and dry\./)).toBeInTheDocument();
   });
 
+  it("the tabs show one section at a time: Comments first for a visitor, then Definition after a click", async () => {
+    stubFetch(() => undefined);
+    withClient(<CharacterView detail={detail} />);
+    expect(screen.queryByRole("tab", { name: /Your chats/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Comments" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("tabpanel", { name: "Definition" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Definition" }));
+
+    expect(screen.getByRole("tab", { name: "Definition" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel", { name: "Definition" })).toHaveTextContent(/Calm and dry\./);
+    expect(screen.queryByRole("tabpanel", { name: "Comments" })).not.toBeInTheDocument();
+  });
+
   it('definition null shows "The creator keeps the definition of this character hidden."', () => {
     stubFetch(() => undefined);
     withClient(<CharacterView detail={{ ...detail, definitionVisible: false, definition: null }} />);

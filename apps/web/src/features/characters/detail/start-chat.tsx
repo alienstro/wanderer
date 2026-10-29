@@ -48,20 +48,20 @@ export function StartChat({ characterId }: { characterId: string }) {
     return null;
   }
   return (
-    <section aria-label="Start a chat" className="flex flex-col gap-2">
+    <section aria-label="Start a chat" className="flex flex-col items-center gap-2">
       {me ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap justify-center gap-2">
           {latest && (
-            <Link href={`/chats/${latest.id}`} className="pill pill-accent">
+            <Link href={`/chats/${latest.id}`} className="pill pill-light min-h-[38px]">
               Continue latest chat
             </Link>
           )}
-          <button type="button" className={`pill ${latest ? "pill-soft" : "pill-accent"}`} disabled={starting} onClick={() => void start()}>
+          <button type="button" className={`pill min-h-[38px] ${latest ? "pill-soft" : "pill-light"}`} disabled={starting} onClick={() => void start()}>
             Start a new chat
           </button>
         </div>
       ) : (
-        <Link href="/login" className="pill pill-accent self-start">
+        <Link href="/login" className="pill pill-light min-h-[38px]">
           Log in to chat
         </Link>
       )}
