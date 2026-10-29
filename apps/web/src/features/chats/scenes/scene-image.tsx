@@ -47,23 +47,32 @@ interface GenerateSceneProps {
 }
 
 /**
- * The "Generate scene" button in the bar of the text box, with the price. It is disabled while a job runs, so a second
+ * The "Generate scene" icon button in the message bar, with a small price badge. It is disabled while a job runs, so a second
  * click starts nothing. A low balance does not disable it: a click shows the reason.
  */
 export function GenerateSceneButton({ busy, disabled, price, onClick }: GenerateSceneProps) {
   return (
-    <button type="button" className="msg-action" disabled={busy || disabled} aria-busy={busy} onClick={onClick}>
+    <button
+      type="button"
+      className="composer-tool"
+      title={price === undefined ? "Generate scene" : `Generate scene: ${price} energy`}
+      disabled={busy || disabled}
+      aria-busy={busy}
+      onClick={onClick}
+    >
       <ImageIcon />
-      {busy ? "Making the scene…" : "Generate scene"}
+      <span className="sr-only">{busy ? "Making the scene…" : "Generate scene"}</span>
       {!busy && price !== undefined && (
         <>
-          <span aria-hidden="true" className="inline-flex items-center gap-0.5 text-muted">
-            · {price}
+          {/* The price shows before the click, so the user knows the cost. */}
+          <span aria-hidden="true" className="absolute right-0.5 bottom-0.5 inline-flex items-center rounded-full bg-[#2a2a2f] px-1 text-[9.5px] leading-[14px] text-muted">
+            {price}
             <BoltIcon />
           </span>
           <span className="sr-only">, {price} energy</span>
         </>
       )}
+      {busy && <span aria-hidden="true" className="absolute inset-1.5 animate-spin rounded-full border-2 border-white/20 border-t-white" />}
     </button>
   );
 }

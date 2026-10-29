@@ -346,9 +346,9 @@ export function ChatView({ chatId }: { chatId: string }) {
                   streaming={live !== null && !live.stopped}
                   onSend={(content) => send(content, true)}
                   onStop={() => abortRef.current?.abort()}
+                  leading={<ReplyChoicesSwitch me={me} />}
                   toolbar={
                     <>
-                      <ReplyChoicesSwitch me={me} />
                       <NewChoicesButton state={choices} />
                       <GenerateSceneButton
                         busy={sceneJob.isPending}
