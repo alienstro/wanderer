@@ -39,7 +39,7 @@ export function LoginForm({ error }: { error?: LoginError }) {
         </p>
       ) : null}
 
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2.5 rounded-xl bg-[#18181c] p-3">
         <input
           id={checkboxId}
           type="checkbox"
@@ -47,14 +47,14 @@ export function LoginForm({ error }: { error?: LoginError }) {
           onChange={(event) => setAgreed(event.target.checked)}
           className="mt-0.5 size-[18px] flex-none accent-accent"
         />
-        <label htmlFor={checkboxId} className="text-[14px] text-muted">
+        <label htmlFor={checkboxId} className="text-[13px] leading-[1.55] text-[#d4d4d8]">
           I am 18 or older. I understand that the characters are AI, and that the chats are fiction. I agree to the{" "}
           <Link href="/terms">Terms of Service</Link> and the <Link href="/privacy">Privacy Policy</Link>.
         </label>
       </div>
 
       <a
-        className="pill w-full border border-[#8e918f] bg-[#131314] text-[#e3e3e3] hover:bg-[#1e1e22]"
+        className="pill min-h-11 w-full border border-[#747775] bg-white text-[#1f1f1f] hover:bg-[#f2f2f2]"
         href={agreed ? googleUrl : undefined}
         aria-disabled={agreed ? undefined : "true"}
         role={agreed ? undefined : "link"}
