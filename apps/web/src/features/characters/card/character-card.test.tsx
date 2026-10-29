@@ -18,6 +18,7 @@ const card: Card = {
   chatCount: 1234,
   likeCount: 0,
   creatorHandle: "tian",
+  bioPreview: "",
 };
 
 describe("CharacterCard", () => {
@@ -41,6 +42,12 @@ describe("CharacterCard", () => {
     rerender(<CharacterCard card={{ ...card, isAdult: true, avatarUrl: "/files/f1" }} />);
     expect(screen.getByText("18+")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Mira Vale" })).toHaveAttribute("src", "/files/f1");
+  });
+
+  it("a card shows the bio preview over @creator", () => {
+    render(<CharacterCard card={{ ...card, bioPreview: "A ship mechanic who fixes old engines." }} />);
+    expect(screen.getByText("A ship mechanic who fixes old engines.")).toBeInTheDocument();
+    expect(screen.getByText("@tian")).toBeInTheDocument();
   });
 
   it("a status badge shows next to the title, not on the image, so it does not push the image badges to a second line", () => {

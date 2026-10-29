@@ -29,6 +29,13 @@ describe("CharacterForm", () => {
     vi.unstubAllGlobals();
   });
 
+  it("Publish with an empty form moves the focus to the first field with an error, because the buttons are at the top", async () => {
+    stubFetch();
+    render(<CharacterForm onSaved={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Publish" }));
+    expect(screen.getByRole("textbox", { name: /^Title/ })).toHaveFocus();
+  });
+
   it("the fields come in the spec order", () => {
     const { container } = render(<CharacterForm onSaved={vi.fn()} />);
     const fields = [...container.querySelectorAll("[data-field]")].map((node) => node.getAttribute("data-field"));
@@ -132,7 +139,9 @@ describe("CharacterForm", () => {
       chatCount: 0,
       likeCount: 0,
       creatorHandle: "tian",
+      bioPreview: "",
       bio: "Bio",
+      commentCount: 0,
       status: "published" as const,
       isPublic: true,
       definitionVisible: true,

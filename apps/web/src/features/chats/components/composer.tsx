@@ -30,10 +30,10 @@ export function Composer({ characterName, value, onChange, disabled, streaming, 
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex flex-col gap-2 rounded-[18px] border border-field-line bg-surface p-3 max-[760px]:gap-1.5 max-[760px]:p-2.5">
+      <div className="flex flex-col gap-2 rounded-[22px] bg-surface-2 p-2 max-[760px]:gap-1.5">
         <textarea
           aria-label="Message"
-          className="min-h-[52px] w-full resize-y bg-transparent leading-[1.6] outline-none max-[760px]:min-h-[44px] max-[760px]:text-base max-[760px]:leading-[1.4]"
+          className="min-h-[52px] w-full resize-y rounded-[16px] bg-[#2a2a2f] px-3.5 py-2.5 text-[14px] leading-[1.6] outline-none max-[760px]:min-h-[44px] max-[760px]:text-base max-[760px]:leading-[1.4]"
           rows={2}
           value={value}
           placeholder="Write a message. Use *asterisks* for an action."
@@ -45,8 +45,8 @@ export function Composer({ characterName, value, onChange, disabled, streaming, 
             }
           }}
         />
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-3">{toolbar}</div>
+        <div className="flex items-center justify-between gap-2 px-1">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">{toolbar}</div>
           {streaming ? (
             <button type="button" className="pill pill-soft pill-sm-phone tap-target" onClick={onStop}>
               Stop
@@ -54,16 +54,19 @@ export function Composer({ characterName, value, onChange, disabled, streaming, 
           ) : (
             <button
               type="button"
-              className="pill pill-accent pill-sm-phone tap-target"
+              className="grid size-[38px] flex-none cursor-pointer place-items-center rounded-full border-0 bg-accent text-black hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
               disabled={!canSend}
               onClick={send}
             >
-              Send
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 19V5M5 12l7-7 7 7" />
+              </svg>
+              <span className="sr-only">Send</span>
             </button>
           )}
         </div>
       </div>
-      <p className="m-0 text-center text-[12px] text-subtle">
+      <p className="m-0 text-center text-[11.5px] text-subtle">
         {characterName} is an AI character, not a real person. Treat everything they say as fiction.
       </p>
     </div>

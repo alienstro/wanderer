@@ -49,12 +49,11 @@ export function CharacterPage({
 
   if (detail) {
     return (
-      <Layout detail={detail}>
-        {detail.isOwner ? (
-          <OwnerPanel detail={detail} onSaved={(saved) => queryClient.setQueryData(queryKey, saved)} />
-        ) : (
-          viewer && <ReportButton characterId={detail.id} />
-        )}
+      <Layout
+        detail={detail}
+        actions={!detail.isOwner && viewer && <ReportButton characterId={detail.id} className="pill pill-soft min-h-[38px] px-4 text-[13px]" />}
+      >
+        {detail.isOwner && <OwnerPanel detail={detail} onSaved={(saved) => queryClient.setQueryData(queryKey, saved)} />}
       </Layout>
     );
   }
@@ -76,11 +75,12 @@ export function CharacterPage({
   return null;
 }
 
-function Layout({ detail, children }: { detail: CharacterDetail; children?: ReactNode }) {
+function Layout({ detail, actions, children }: { detail: CharacterDetail; actions?: ReactNode; children?: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-start gap-7 px-7 pt-7 pb-20 max-[760px]:px-4">
-      <CharacterView detail={detail} />
-      {children}
+    <div className="px-8 pt-6 pb-14 max-[760px]:px-4">
+      <CharacterView detail={detail} actions={actions}>
+        {children}
+      </CharacterView>
     </div>
   );
 }

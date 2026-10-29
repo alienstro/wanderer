@@ -61,7 +61,7 @@ export function ReplyChoices({ state, onPick }: { state: ReplyChoicesState; onPi
   }
   return (
     <div
-      className="grid grid-cols-2 gap-2 max-[640px]:grid-cols-1"
+      className="flex flex-col gap-1.5"
       role="group"
       aria-label="Reply choices"
       aria-busy={state.loading}

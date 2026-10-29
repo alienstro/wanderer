@@ -10,6 +10,8 @@ export const PAGE_SIZE = 24;
 /** For you uses the tags that occur most on the characters of the user's chats. */
 const FOR_YOU_TAGS = 3;
 const FOR_YOU_SIZE = 12;
+/** The liked list shows this many characters. */
+const LIKED_SIZE = 60;
 
 interface KeyRow {
   id: string;
@@ -138,6 +140,23 @@ export class CharacterListService {
       take: FOR_YOU_SIZE,
     });
     return { items: rows.map(toCharacterCard) };
+  }
+
+  /**
+   * The characters that the user likes, newest like first. A liked character that is now a draft, private, hidden, or
+   * 18+ for a user who does not see 18+ is not in the list. The user's own characters follow the same rule as Discover.
+   */
+  async liked(user: User): Promise<{ items: CharacterCard[] }> {
+    const likes = await this.prisma.characterLike.findMany({
+      where: {
+        userId: user.id,
+        character: { status: "published", isPublic: true, ...(canSeeAdult(user) ? {} : { isAdult: false }) },
+      },
+      include: { character: { include: characterCardInclude } },
+      orderBy: [{ createdAt: "desc" }, { characterId: "desc" }],
+      take: LIKED_SIZE,
+    });
+    return { items: likes.map((like) => toCharacterCard(like.character)) };
   }
 
   /** All characters of one user, newest first: drafts, private, and hidden too. */

@@ -16,7 +16,7 @@ const iconProps = {
 } as const;
 
 /**
- * The sidebar of the app. On a computer it is a floating column on the left.
+ * The sidebar of the app. On a computer it is a black column of 224 px on the left, with the full height of the window.
  * The toggle button changes it to a rail of icons (64 px) and back. `defaultRail` is the saved choice from the cookie.
  * z-10 puts the account menu and the rail tooltips above the page, and keeps them below the dialogs of the page (z-30).
  * On a phone (760 px or less) a thin top bar with a menu button opens it as a drawer from the left.
@@ -71,7 +71,7 @@ export function SidebarDrawer({ children, defaultRail = false }: { children: Rea
             <path d="M4 7h16M4 12h16M4 17h16" />
           </svg>
         </button>
-        <Logo />
+        <Logo compact />
       </header>
       {open && <div className="fixed inset-0 z-30 bg-black/60 min-[761px]:hidden" aria-hidden="true" onClick={close} />}
       <aside
@@ -80,7 +80,7 @@ export function SidebarDrawer({ children, defaultRail = false }: { children: Rea
         data-rail={rail}
         onClick={closeOnLink}
         onKeyDown={(event) => open && event.key === "Escape" && close()}
-        className="sticky top-2 z-10 m-2 mr-0 flex h-[calc(100vh-16px)] flex-[0_0_256px] flex-col gap-[18px] self-start overflow-y-auto rounded-[20px] border border-line bg-sidebar px-3 pt-[18px] pb-3.5 max-[760px]:fixed max-[760px]:inset-y-0 max-[760px]:left-0 max-[760px]:z-40 max-[760px]:m-0 max-[760px]:h-dvh max-[760px]:w-[min(300px,85vw)] max-[760px]:overscroll-contain max-[760px]:rounded-l-none max-[760px]:border-l-0 max-[760px]:transition-[translate,visibility] max-[760px]:data-[open=false]:invisible max-[760px]:data-[open=false]:-translate-x-full min-[761px]:motion-safe:transition-[flex-basis] rail:flex-[0_0_64px] rail:overflow-visible rail:px-[11px]"
+        className="sticky top-0 z-10 flex h-screen flex-[0_0_224px] flex-col gap-4 self-start overflow-y-auto bg-sidebar px-3 pt-3.5 pb-3.5 max-[760px]:fixed max-[760px]:inset-y-0 max-[760px]:left-0 max-[760px]:z-40 max-[760px]:h-dvh max-[760px]:w-[min(300px,85vw)] max-[760px]:overscroll-contain max-[760px]:border-r max-[760px]:border-line max-[760px]:transition-[translate,visibility] max-[760px]:data-[open=false]:invisible max-[760px]:data-[open=false]:-translate-x-full min-[761px]:motion-safe:transition-[flex-basis] rail:flex-[0_0_64px] rail:overflow-visible rail:px-[11px]"
       >
         <button
           type="button"

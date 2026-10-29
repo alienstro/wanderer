@@ -7,6 +7,11 @@ export function statusLabel(card: { status: "draft" | "published" | "hidden"; is
   return card.isPublic ? "Published" : "Private";
 }
 
+/** "1", "12", "1.2K". */
+export function compactCount(count: number): string {
+  return compact.format(count);
+}
+
 /** "1 chat", "12 chats", "1.2K chats". */
 export function chatsLabel(count: number): string {
   return `${compact.format(count)} ${count === 1 ? "chat" : "chats"}`;

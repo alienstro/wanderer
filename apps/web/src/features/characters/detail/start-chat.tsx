@@ -9,15 +9,10 @@ import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/query-provider";
 import { useCharacterChats } from "./your-chats";
 
-/**
- * "Continue latest chat" and "Start a new chat". A new chat starts with the first opening.
- * The user picks the opening in the chat, so this page shows no opening text.
- */
-export function StartChat({ characterId }: { characterId: string }) {
+/** Starts a new chat with the character and opens it. `error` is true when the start failed. */
+export function useStartChat(characterId: string) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { data: me, isPending } = useMe();
-  const latest = useCharacterChats(characterId).data?.items[0];
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState(false);
 
@@ -37,24 +32,36 @@ export function StartChat({ characterId }: { characterId: string }) {
     }
   }
 
+  return { start, starting, error };
+}
+
+/**
+ * "Continue latest chat" and "Start a new chat". A new chat starts with the first opening.
+ * The user picks the opening in the chat, so this page shows no opening text.
+ */
+export function StartChat({ characterId }: { characterId: string }) {
+  const { data: me, isPending } = useMe();
+  const latest = useCharacterChats(characterId).data?.items[0];
+  const { start, starting, error } = useStartChat(characterId);
+
   if (isPending) {
     return null;
   }
   return (
-    <section aria-label="Start a chat" className="flex flex-col gap-2">
+    <section aria-label="Start a chat" className="flex flex-col items-center gap-2">
       {me ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap justify-center gap-2">
           {latest && (
-            <Link href={`/chats/${latest.id}`} className="pill pill-accent">
+            <Link href={`/chats/${latest.id}`} className="pill pill-light min-h-[38px]">
               Continue latest chat
             </Link>
           )}
-          <button type="button" className={`pill ${latest ? "pill-soft" : "pill-accent"}`} disabled={starting} onClick={start}>
+          <button type="button" className={`pill min-h-[38px] ${latest ? "pill-soft" : "pill-light"}`} disabled={starting} onClick={() => void start()}>
             Start a new chat
           </button>
         </div>
       ) : (
-        <Link href="/login" className="pill pill-accent self-start">
+        <Link href="/login" className="pill pill-light min-h-[38px]">
           Log in to chat
         </Link>
       )}

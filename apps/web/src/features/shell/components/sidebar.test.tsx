@@ -96,7 +96,7 @@ describe("sidebar", () => {
     pathname = "/my-characters";
     stubApi(null);
     renderWithClient(<SidebarNav />);
-    expect(screen.getByRole("link", { name: "Create" })).toHaveAttribute("href", "/create");
+    expect(screen.getByRole("link", { name: "Create a character" })).toHaveAttribute("href", "/create");
     expect(screen.getByRole("link", { name: "Discover" })).toHaveAttribute("href", "/discover");
     expect(screen.getByRole("link", { name: "Discover" })).not.toHaveAttribute("aria-current");
     expect(screen.getByRole("link", { name: "My characters" })).toHaveAttribute("aria-current", "page");
@@ -159,7 +159,7 @@ describe("sidebar", () => {
     stubApi();
     renderWithClient(<RecentChats />);
     expect(await screen.findByRole("link", { name: /Onnit/ })).toHaveAttribute("href", "/chats/chat1");
-    expect(screen.getByRole("heading", { name: "Recent" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Recent chats" })).toBeInTheDocument();
   });
 
   it("Recent shows one row for each character, which opens the newest chat with that character", async () => {
