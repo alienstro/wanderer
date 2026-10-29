@@ -66,18 +66,18 @@ describe("chat memory", () => {
     expect((await get()).body.memory).toEqual({ text: "Mira owes {{user}} a sword.", throughPosition: 0 });
   });
 
-  it("the reply prompt and the choices prompt have the memory as the last system section", async () => {
+  it("the reply prompt and the choices prompt have the memory just before the content rule", async () => {
     await prisma.chat.update({ where: { id: chatId }, data: { memory: "Mira owes {{user}} a sword." } });
     fake.next({ pieces: ["Hello!"] });
     await postStream(app, user, `/chats/${chatId}/messages`, { content: "Hi" }).expect(200);
-    expect(systemSent().endsWith("## Memory\nMira owes User 1 a sword.")).toBe(true);
+    expect(systemSent()).toMatch(/## Memory\nMira owes User 1 a sword\.\n\n## Content rules\n[^#]+$/);
     fake.next({ pieces: ['["a", "b", "c", "d"]'] });
     await request(app.getHttpServer())
       .post(`/chats/${chatId}/choices`)
       .set("Origin", WEB_ORIGIN)
       .set("Cookie", user.cookie)
       .expect(200);
-    expect(systemSent().endsWith("## Memory\nMira owes User 1 a sword.")).toBe(true);
+    expect(systemSent()).toMatch(/## Memory\nMira owes User 1 a sword\.\n\n## Content rules\n[^#]+$/);
   });
 
   it("PATCH /chats/:id/memory saves the trimmed text and the marker, and a save without a marker keeps the old one", async () => {

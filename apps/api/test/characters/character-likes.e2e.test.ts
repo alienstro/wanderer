@@ -3,7 +3,7 @@ import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaService } from "../../src/prisma/prisma.service.js";
 import { createTestApp } from "../support/app.js";
-import { createCharacter } from "../support/characters.js";
+import { createCharacter, createOldAdultCharacter } from "../support/characters.js";
 import { WEB_ORIGIN } from "../support/env.js";
 import { type TestUser, userWithSession } from "../support/users.js";
 
@@ -98,11 +98,11 @@ describe("character likes", () => {
     await unlike(hiddenId, fan.cookie).expect(404);
   });
 
-  it("PUT on an 18+ character without Show 18+ gives 403", async () => {
-    const adultId = await createCharacter(app, owner.cookie, { title: "Night", isAdult: true });
+  it("PUT on an old 18+ character gives 404", async () => {
+    const adultId = await createOldAdultCharacter(app, owner.cookie, { title: "Night" });
 
-    const res = await like(adultId, fan.cookie).expect(403);
-    expect(res.body).toEqual({ error: "adult_content" });
+    const res = await like(adultId, fan.cookie).expect(404);
+    expect(res.body).toEqual({ error: "not_found" });
   });
 
   it("PUT with an ID that is not a UUID gives 404", async () => {

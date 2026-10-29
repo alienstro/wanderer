@@ -2,7 +2,6 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import type { CharacterCard, CharacterListQuery, CharacterListResponse, MyCharacterCard } from "@wanderer/shared";
 import { Prisma, type User } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-import { canSeeAdult } from "./adult.js";
 import { type CharacterCardRow, characterCardInclude, toCharacterCard } from "./character-mapper.js";
 import { type CursorKey, decodeCursor, encodeCursor } from "./cursor.js";
 
@@ -27,17 +26,15 @@ export function likePattern(text: string): string {
 export class CharacterListService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** The Discover list: published, public characters. Postgres applies every filter, the 18+ filter too. */
-  async discover(query: CharacterListQuery, viewer: User | null): Promise<CharacterListResponse> {
+  /** The Discover list: published, public characters. Postgres applies every filter. */
+  async discover(query: CharacterListQuery): Promise<CharacterListResponse> {
     const after = query.cursor === undefined ? null : decodeCursor(query.cursor);
     if (query.cursor !== undefined && after === null) {
       throw new BadRequestException({ error: "invalid_cursor" });
     }
 
-    const conditions: Prisma.Sql[] = [Prisma.sql`c.status = 'published'`, Prisma.sql`c.is_public`];
-    if (!canSeeAdult(viewer)) {
-      conditions.push(Prisma.sql`NOT c.is_adult`);
-    }
+    // An old 18+ character stays out of each list until the delete command removes it.
+    const conditions: Prisma.Sql[] = [Prisma.sql`c.status = 'published'`, Prisma.sql`c.is_public`, Prisma.sql`NOT c.is_adult`];
     if (query.tag) {
       conditions.push(
         Prisma.sql`EXISTS (SELECT 1 FROM character_tags ct WHERE ct.character_id = c.id AND ct.tag_slug = ${query.tag})`,
@@ -128,7 +125,7 @@ export class CharacterListService {
         // The same visibility rule as Discover.
         status: "published",
         isPublic: true,
-        ...(canSeeAdult(user) ? {} : { isAdult: false }),
+        isAdult: false,
         creatorId: { not: user.id },
         tags: { some: { tagSlug: { in: tags.map((tag) => tag.tag_slug) } } },
         chats: { none: { userId: user.id } },
@@ -143,7 +140,7 @@ export class CharacterListService {
   /** All characters of one user, newest first: drafts, private, and hidden too. */
   async mine(user: User): Promise<MyCharacterCard[]> {
     const rows = await this.prisma.character.findMany({
-      where: { creatorId: user.id },
+      where: { creatorId: user.id, isAdult: false },
       include: characterCardInclude,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     });

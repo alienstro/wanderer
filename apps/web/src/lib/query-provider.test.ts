@@ -5,7 +5,7 @@ import { SIGNED_IN_HINT_COOKIE } from "./signed-in-hint";
 
 describe("shouldRetry", () => {
   it("does not retry a 4xx answer, because the same request gets the same answer", () => {
-    expect(shouldRetry(0, new ApiError(403, "adult_content"))).toBe(false);
+    expect(shouldRetry(0, new ApiError(403, "forbidden"))).toBe(false);
     expect(shouldRetry(0, new ApiError(404, "not_found"))).toBe(false);
   });
 

@@ -53,7 +53,6 @@ export function CharacterView({ detail }: { detail: CharacterDetail }) {
               </span>
               <span>{chatsLabel(detail.chatCount)}</span>
               <LikeButton characterId={detail.id} likeCount={detail.likeCount} likedByMe={detail.likedByMe} isOwner={detail.isOwner} />
-              {detail.isAdult && <span className="tag bg-[rgba(194,65,75,0.9)] text-white">18+</span>}
               {detail.isOwner && <span className="tag">{statusLabel(detail)}</span>}
             </div>
             <div className="max-w-[64ch] text-[15px] leading-[1.6] text-[#e4e4e7]">

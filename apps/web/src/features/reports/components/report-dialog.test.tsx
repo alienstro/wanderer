@@ -88,10 +88,10 @@ describe("ReportButton for a comment", () => {
     return screen.getByRole("dialog", { name: "Report this comment" });
   }
 
-  it("shows only the 3 reasons that apply to a comment", async () => {
+  it("shows only the 4 reasons that apply to a comment", async () => {
     stubFetch();
     await openCommentDialog();
-    expect(screen.getAllByRole("radio").map((radio) => radio.getAttribute("value"))).toEqual(["minors", "hate", "other"]);
+    expect(screen.getAllByRole("radio").map((radio) => radio.getAttribute("value"))).toEqual(["minors", "sexual_content", "hate", "other"]);
   });
 
   it("sends the report to the comment route", async () => {

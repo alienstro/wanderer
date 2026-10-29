@@ -40,7 +40,6 @@ export function initialFormState(detail?: CharacterDetail): FormState {
     chatName: detail?.chatName ?? "",
     bio: detail?.bio ?? "",
     tags: detail?.tags.map((tag) => tag.slug) ?? [],
-    isAdult: detail?.isAdult ?? false,
     personality: detail?.definition?.personality ?? "",
     scenario: detail?.definition?.scenario ?? "",
     openings: detail?.openings.length ? detail.openings : [""],
@@ -93,7 +92,6 @@ function PreviewCard({ state, creatorHandle }: { state: FormState; creatorHandle
           title: state.title.trim() || "Untitled",
           chatName: state.chatName,
           avatarUrl: state.avatarFileId ? `/files/${state.avatarFileId}` : null,
-          isAdult: state.isAdult,
           tags: TAGS.filter((tag) => state.tags.includes(tag.slug)),
           chatCount: 0,
           likeCount: 0,
@@ -223,8 +221,6 @@ export function CharacterForm({ initial, onSaved, creatorHandle = "you" }: Chara
             {state.tags.length} of {TAGS_MAX} tags.
           </span>
         </div>
-
-        <Switch name="isAdult" label="18+" hint="Turn this on for adult content. Only users who confirm their age see it." checked={state.isAdult} onChange={(isAdult) => set({ isAdult })} />
 
         <div className="flex flex-col gap-1 border-t border-line pt-3.5">
           <h2 className="m-0 text-xl font-bold">Definition</h2>

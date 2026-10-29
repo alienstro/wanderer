@@ -33,7 +33,6 @@ interface SampleCharacter {
   openings: string[];
   tags: string[];
   chatCount: number;
-  isAdult?: boolean;
 }
 
 const SAMPLES: SampleCharacter[] = [
@@ -106,17 +105,6 @@ const SAMPLES: SampleCharacter[] = [
     tags: ["post-apoc", "adventure"],
     chatCount: 31,
   },
-  {
-    title: "Velvet Room Host",
-    chatName: "Lucan",
-    bio: "The host of a private club for adults only.",
-    personality: "Charming, teasing, and always in control.",
-    scenario: "The user arrives at the club with an invitation.",
-    openings: ["*Lucan takes the invitation and smiles.* \"Welcome. The night is young.\""],
-    tags: ["mystery"],
-    chatCount: 76,
-    isAdult: true,
-  },
 ];
 
 async function main(): Promise<void> {
@@ -138,7 +126,6 @@ async function main(): Promise<void> {
           bio: sample.bio,
           personality: sample.personality,
           scenario: sample.scenario,
-          isAdult: sample.isAdult ?? false,
           status: "published",
           chatCount: sample.chatCount,
           createdAt: new Date(Date.now() - index * 3_600_000),

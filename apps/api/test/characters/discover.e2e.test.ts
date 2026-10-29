@@ -158,27 +158,18 @@ describe("Discover list, search, and tags", () => {
     await request(app.getHttpServer()).get("/characters").query({ q: "a".repeat(101) }).expect(400);
   });
 
-  it("a visitor, and a user with showAdult false, get no 18+ character from the list, a search, or a tag filter", async () => {
+  it("no user gets an old 18+ character from the list, a search, or a tag filter", async () => {
     await seed("Lilith", { isAdult: true, tags: ["horror"] });
     await seed("Ghost", { tags: ["horror"] });
     const plain = await userWithSession(app, 2);
-    const unconfirmed = await userWithSession(app, 3, { showAdult: true, adultConfirmedAt: null });
+    // The old "Show 18+" setting has no effect now.
+    const oldSetting = await userWithSession(app, 3, { showAdult: true, adultConfirmedAt: new Date() });
 
-    for (const cookie of ["", plain.cookie, unconfirmed.cookie]) {
+    for (const cookie of ["", plain.cookie, oldSetting.cookie]) {
       expect(titles((await list({}, cookie)).items)).toEqual(["Ghost"]);
       expect((await list({ q: "lilith" }, cookie)).items).toEqual([]);
       expect(titles((await list({ tag: "horror" }, cookie)).items)).toEqual(["Ghost"]);
     }
-  });
-
-  it("a user with showAdult true gets the 18+ characters", async () => {
-    await seed("Lilith", { isAdult: true, minute: 2 });
-    await seed("Ghost", { minute: 1 });
-    const adult = await userWithSession(app, 2, { showAdult: true, adultConfirmedAt: new Date() });
-
-    const result = await list({ sort: "newest" }, adult.cookie);
-    expect(titles(result.items)).toEqual(["Lilith", "Ghost"]);
-    expect(result.items[0]?.isAdult).toBe(true);
   });
 
   it("drafts and private characters are not in the list, but GET /me/characters shows them to their creator", async () => {

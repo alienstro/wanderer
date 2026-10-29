@@ -14,7 +14,7 @@ function card(n: number): CharacterCard {
     title: `Character ${n}`,
     chatName: "",
     avatarUrl: null,
-    isAdult: false,
+   
     tags: [],
     chatCount: 0,
     likeCount: 0,
@@ -160,7 +160,7 @@ describe("DiscoverView", () => {
       "fetch",
       vi.fn(async (url: string) =>
         url.endsWith("/me")
-          ? Response.json({ id: "u1", name: "Tian", email: "t@e.com", pictureUrl: null, handle: "tian", role: "user", showAdult: false, suggestedHandle: null })
+          ? Response.json({ id: "u1", name: "Tian", email: "t@e.com", pictureUrl: null, handle: "tian", role: "user", suggestedHandle: null })
           : Response.json({ error: "server_error" }, { status: 500 }),
       ),
     );

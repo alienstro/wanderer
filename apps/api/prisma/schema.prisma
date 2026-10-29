@@ -319,7 +319,7 @@ model Message {
 
 enum ReportReason {
   minors
-  wrong_rating
+  sexual_content
   hate
   copied
   other

@@ -9,6 +9,7 @@ A decision stays true until a new ADR replaces it.
 | [0002](0002-api-keys-encrypted-at-rest.md) | The saved API keys are encrypted at rest | Accepted |
 | [0003](0003-secrets-in-env.md) | The server secrets are in the env, not in the database | Accepted |
 | [0004](0004-energy-in-hundredths.md) | Energy is stored as whole hundredths | Accepted |
+| [0005](0005-no-adult-content.md) | Wanderer has no 18+ content | Accepted |
 
 ## Add an ADR
 

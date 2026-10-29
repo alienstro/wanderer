@@ -20,8 +20,8 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/query-provider", () => ({ useMe: () => ({ data: undefined }) }));
 
-function card(n: number, isAdult = false): CharacterCard {
-  return { id: `c${n}`, title: `Character ${n}`, chatName: "", avatarUrl: null, isAdult, tags: [], chatCount: n, likeCount: 0, creatorHandle: "tian" };
+function card(n: number): CharacterCard {
+  return { id: `c${n}`, title: `Character ${n}`, chatName: "", avatarUrl: null, tags: [], chatCount: n, likeCount: 0, creatorHandle: "tian" };
 }
 
 async function renderPage(searchParams: Record<string, string> = {}) {
@@ -34,7 +34,7 @@ describe("the landing page", () => {
     cookieNames.clear();
   });
 
-  it("shows the headline, the definition, the two CTAs, 18+, and the Terms and Privacy links", async () => {
+  it("shows the headline, the definition, the two CTAs, the age rule, and the Terms and Privacy links", async () => {
     serverApiFetch.mockResolvedValue({ items: [], nextCursor: null });
     await renderPage();
 
@@ -43,7 +43,8 @@ describe("the landing page", () => {
     const hero = screen.getByRole("region", { name: "Talk with characters. Write the story together." });
     expect(within(hero).getByRole("link", { name: "Log in with Google" })).toHaveAttribute("href", "/login");
     expect(within(hero).getByRole("link", { name: "Browse characters" })).toHaveAttribute("href", "/discover");
-    expect(screen.getAllByText(/18\+ only/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/18 or older/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/for adults|adult themes/i)).not.toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Terms of Service" })[0]).toHaveAttribute("href", "/terms");
     expect(screen.getAllByRole("link", { name: "Privacy Policy" })[0]).toHaveAttribute("href", "/privacy");
   });
@@ -53,7 +54,7 @@ describe("the landing page", () => {
     await renderPage();
 
     const headings = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
-    expect(headings).toEqual(["How it works", "Built for long stories", "Made for adults, with clear rules", "Questions", "Start your first story"]);
+    expect(headings).toEqual(["How it works", "Built for long stories", "Safe for work, with clear rules", "Questions", "Start your first story"]);
     const features = screen.getByRole("region", { name: "Built for long stories" });
     expect(within(features).getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual([
       "Make your own character",
@@ -62,13 +63,13 @@ describe("the landing page", () => {
     ]);
   });
 
-  it("the hero shows the public characters from the API and no 18+ character", async () => {
-    serverApiFetch.mockResolvedValue({ items: [card(1), card(2, true), card(3)], nextCursor: null });
+  it("the hero shows the public characters from the API", async () => {
+    serverApiFetch.mockResolvedValue({ items: [card(1), card(2), card(3)], nextCursor: null });
     await renderPage();
 
     expect(serverApiFetch).toHaveBeenCalledWith("/characters?sort=most_chats");
     const row = screen.getByRole("region", { name: "Popular characters" });
-    expect(within(row).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual(["/characters/c1", "/characters/c3"]);
+    expect(within(row).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual(["/characters/c1", "/characters/c2", "/characters/c3"]);
   });
 
   it("still renders, with no character row, when the API fails", async () => {

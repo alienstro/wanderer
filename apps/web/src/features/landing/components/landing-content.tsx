@@ -47,9 +47,9 @@ export const FEATURES = {
 
 export const TRUST: { title: string; icon: ReactNode; body: ReactNode }[] = [
   {
-    title: "18+ only",
+    title: "Safe for work",
     icon: <path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z" />,
-    body: "Wanderer is for people who are 18 or older. You confirm your age when you log in. 18+ characters stay hidden until you turn them on in Settings.",
+    body: "Wanderer has no sexual content. The AI follows this rule in each chat. You must be 18 or older, and you confirm your age when you log in.",
   },
   {
     title: "Report a character",
@@ -95,8 +95,8 @@ export const FAQ: { question: string; answer: string }[] = [
       "The key stays on the Wanderer server, encrypted with AES-256-GCM. The server uses it only to send your chats to your model. The browser never gets the full key back.",
   },
   {
-    question: "Why is Wanderer 18+ only?",
+    question: "Can a story have sexual content?",
     answer:
-      "Roleplay can go to adult themes, and creators can mark a character 18+. So Wanderer is for adults only, and you confirm your age before you log in.",
+      "No. Wanderer is safe for work. The AI does not write sexual content, and you can report a character or a comment that has it.",
   },
 ];

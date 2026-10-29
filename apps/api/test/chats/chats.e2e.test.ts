@@ -3,7 +3,7 @@ import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaService } from "../../src/prisma/prisma.service.js";
 import { createTestApp } from "../support/app.js";
-import { createCharacter } from "../support/characters.js";
+import { createCharacter, createOldAdultCharacter } from "../support/characters.js";
 import { WEB_ORIGIN } from "../support/env.js";
 import { type TestUser, userWithSession } from "../support/users.js";
 
@@ -84,12 +84,12 @@ describe("chats", () => {
     expect(res.body.error).toBe("invalid_opening");
   });
 
-  it("POST /chats for a private character of another user gives 404, and for a blocked 18+ character 403", async () => {
+  it("POST /chats for a private character of another user and for an old 18+ character gives 404", async () => {
     const hidden = await createCharacter(app, creator.cookie, { title: "Hidden", isPublic: false });
     await startChat(reader, 0, hidden).expect(404);
-    const adult = await createCharacter(app, creator.cookie, { title: "Adult", isAdult: true });
-    const res = await startChat(reader, 0, adult).expect(403);
-    expect(res.body).toEqual({ error: "adult_content" });
+    const adult = await createOldAdultCharacter(app, creator.cookie, { title: "Adult" });
+    const res = await startChat(reader, 0, adult).expect(404);
+    expect(res.body).toEqual({ error: "not_found" });
     await startChat(creator, 0, hidden).expect(201);
   });
 

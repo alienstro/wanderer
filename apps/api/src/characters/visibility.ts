@@ -1,39 +1,34 @@
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import { NotFoundException } from "@nestjs/common";
 import type { User } from "../generated/prisma/client.js";
-import { canSeeAdult } from "./adult.js";
 
-export type CharacterAccess = "ok" | "not_found" | "adult_content";
+export type CharacterAccess = "ok" | "not_found";
 
 /**
- * Says if the viewer can see a character. The creator and the admin always can. Another user sees only a
- * published, public character, and an 18+ character only with "Show 18+" on. The character page, the chats,
- * and the reports use this rule.
+ * Says if the viewer can see a character. The admin always can. An old 18+ character is hidden from all other
+ * users until the delete command removes it. The creator sees each own character. Another user sees only a
+ * published, public character. The character page, the chats, and the reports use this rule.
  */
 export function characterAccess(
   row: { creatorId: string; status: string; isPublic: boolean; isAdult: boolean },
   viewer: User | null,
 ): CharacterAccess {
-  if (viewer?.id === row.creatorId || viewer?.role === "admin") {
+  if (viewer?.role === "admin") {
     return "ok";
   }
-  if (row.status !== "published" || !row.isPublic) {
+  if (row.isAdult) {
     return "not_found";
   }
-  return row.isAdult && !canSeeAdult(viewer) ? "adult_content" : "ok";
+  if (viewer?.id === row.creatorId) {
+    return "ok";
+  }
+  return row.status === "published" && row.isPublic ? "ok" : "not_found";
 }
 
 type AccessRow = Parameters<typeof characterAccess>[0];
 
-/**
- * Throws when the viewer cannot see the character: 404 for a missing or private character, and 403 with only
- * the error code for an 18+ character, so that the web can show the 18+ warning.
- */
+/** Throws 404 when the viewer cannot see the character. */
 export function assertCharacterAccess<T extends AccessRow>(row: T | null, viewer: User | null): asserts row is T {
-  const access = row ? characterAccess(row, viewer) : "not_found";
-  if (access === "not_found") {
+  if (!row || characterAccess(row, viewer) === "not_found") {
     throw new NotFoundException({ error: "not_found" });
-  }
-  if (access === "adult_content") {
-    throw new ForbiddenException({ error: "adult_content" });
   }
 }

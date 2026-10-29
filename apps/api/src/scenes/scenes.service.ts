@@ -19,11 +19,9 @@ const BASE_NEGATIVE = "text, watermark, blurry";
 const SAFE_SUFFIX = "Safe for work, everyone fully clothed.";
 const SAFE_NEGATIVE = "nudity, nsfw, sexual content, gore";
 
-/** The request for the image model. A chat that is not 18+ also asks for a safe image. */
-export function sceneImageRequest(model: SceneModelKey, prompt: string, adult: boolean): SceneImageRequest {
-  return adult
-    ? { model, prompt, negativePrompt: BASE_NEGATIVE, adult }
-    : { model, prompt: `${prompt} ${SAFE_SUFFIX}`, negativePrompt: `${BASE_NEGATIVE}, ${SAFE_NEGATIVE}`, adult };
+/** The request for the image model. Each scene asks for a safe image. */
+export function sceneImageRequest(model: SceneModelKey, prompt: string): SceneImageRequest {
+  return { model, prompt: `${prompt} ${SAFE_SUFFIX}`, negativePrompt: `${BASE_NEGATIVE}, ${SAFE_NEGATIVE}` };
 }
 
 /**
@@ -81,9 +79,9 @@ export class ScenesService {
   }
 
   private async draw(user: User, context: ReplyContext, loaded: LoadedTarget, model: SceneModelKey): Promise<SceneView> {
-    const { chat, character, history } = context;
+    const { chat, history } = context;
     const prompt = await this.writePrompt(user, context, loaded);
-    const image = await this.images.generate(sceneImageRequest(model, prompt, character.isAdult)).catch((error: unknown) => {
+    const image = await this.images.generate(sceneImageRequest(model, prompt)).catch((error: unknown) => {
       if (error instanceof SceneImageError) {
         this.logger.warn(`The scene image failed: ${error.message}`);
         throw new HttpException({ error: error.code }, error.code === "scene_timeout" ? 504 : 502);
@@ -109,7 +107,6 @@ export class ScenesService {
     const { character, history } = chat;
     const messages = buildScenePrompt(
       { character, customPrompt, contextTokens, memory: chat.chat.memory, ...promptUser(chat.chat, user), history },
-      { adult: character.isAdult },
     );
     let text: string;
     try {

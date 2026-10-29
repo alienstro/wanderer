@@ -40,7 +40,6 @@ export function CharacterCard({ card, statusBadge, linked = true }: { card: Card
             {card.title.charAt(0).toUpperCase()}
           </span>
         )}
-        {/* One row that wraps: on a narrow card the 18+ badge goes to a second line, so it does not cover the counts. */}
         <span className="absolute inset-x-2.5 top-2.5 flex flex-wrap gap-1.5">
           <span className="flex gap-1.5">
             <CountBadge
@@ -53,7 +52,6 @@ export function CharacterCard({ card, statusBadge, linked = true }: { card: Card
             />
             <CountBadge label={likesLabel(card.likeCount)} icon={<HeartIcon size={12} />} />
           </span>
-          {card.isAdult && <span className={`ml-auto ${BADGE} bg-[rgba(194,65,75,0.9)]`}>18+</span>}
         </span>
       </span>
       <span className="flex flex-col gap-1.5 px-0.5">

@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
+import { ConflictException, Injectable } from "@nestjs/common";
 import { type MeResponse, suggestHandle, type UpdateMeRequest } from "@wanderer/shared";
 import { deleteCommentsOf } from "../comments/comments.service.js";
 import { Prisma, type User } from "../generated/prisma/client.js";
@@ -18,7 +18,6 @@ export function toMeResponse(user: User, activeProxy: ActiveProxy): MeResponse {
     pictureUrl: user.pictureUrl,
     handle: user.handle,
     role: user.role,
-    showAdult: user.showAdult,
     replyChoicesOn: user.replyChoicesOn,
     replyChoicesPrompt: user.replyChoicesPrompt,
     activeProxy,
@@ -74,19 +73,15 @@ export class MeService {
   }
 
   /**
-   * Saves the handle, "Show 18+", the "Reply choices" switch, and the reply choices instructions. "Show 18+" can turn on only after the 18+ confirm.
+   * Saves the handle, the "Reply choices" switch, and the reply choices instructions.
    * The unique index decides a race between two users, so a taken handle gives 409, not 500.
    */
   async update(current: User, request: UpdateMeRequest): Promise<MeResponse> {
-    if (request.showAdult === true && current.adultConfirmedAt === null) {
-      throw new BadRequestException({ error: "adult_not_confirmed" });
-    }
     try {
       const user = await this.prisma.user.update({
         where: { id: current.id },
         data: {
           handle: request.handle,
-          showAdult: request.showAdult,
           replyChoicesOn: request.replyChoicesOn,
           replyChoicesPrompt: request.replyChoicesPrompt,
         },
@@ -99,15 +94,5 @@ export class MeService {
       }
       throw error;
     }
-  }
-
-  /** Keeps the time of the first confirm, so that a second confirm does not change it. */
-  async confirmAdult(current: User): Promise<MeResponse> {
-    const user = await this.prisma.user.update({
-      where: { id: current.id },
-      data: { showAdult: true, adultConfirmedAt: current.adultConfirmedAt ?? new Date() },
-      include: { activeProxy: activeProxySelect },
-    });
-    return toMeResponse(user, user.activeProxy);
   }
 }

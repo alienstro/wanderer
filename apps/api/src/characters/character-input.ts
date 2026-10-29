@@ -19,7 +19,6 @@ export function rowToInput(row: CharacterDetailRow): CharacterInput {
     chatName: row.chatName,
     bio: row.bio,
     tags: row.tags.map((tag) => tag.tagSlug) as CharacterInput["tags"],
-    isAdult: row.isAdult,
     personality: row.personality,
     scenario: row.scenario,
     openings: row.openings.map((opening) => opening.text),

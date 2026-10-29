@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import {
   type ChatDetail,
   type ChatListResponse,
@@ -111,7 +111,7 @@ function toChatSummary(chat: ChatWithCharacter, last: Message | undefined, messa
 /** The chat, the character, and the history for a call to the proxy. */
 export interface ReplyContext {
   chat: Chat;
-  character: PromptCharacter & { isAdult: boolean };
+  character: PromptCharacter;
   history: Message[];
 }
 
@@ -138,9 +138,6 @@ export class ChatsService {
     const access = character ? characterAccess(character, user) : "not_found";
     if (!character || access === "not_found") {
       throw new NotFoundException(NOT_FOUND);
-    }
-    if (access === "adult_content") {
-      throw new ForbiddenException({ error: "adult_content" });
     }
     const opening = character.openings[openingIndex];
     if (!opening) {

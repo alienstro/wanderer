@@ -82,9 +82,8 @@ describe("scene images", () => {
     expect(images.requests).toEqual([
       {
         model: "flux-schnell",
-        prompt: expect.stringContaining("A misty forest at dawn."),
+        prompt: expect.stringContaining("A misty forest at dawn. Safe for work, everyone fully clothed."),
         negativePrompt: expect.stringContaining("nudity"),
-        adult: false,
       },
     ]);
     expect(fake.requests.at(-1)!.body.messages?.at(-1)?.content).toContain("Describe the current scene");

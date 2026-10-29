@@ -15,7 +15,7 @@ export const commentListQuerySchema = z.object({
 });
 
 /** The report reasons that apply to a comment. They are a subset of the character report reasons. */
-export const COMMENT_REPORT_REASONS = ["minors", "hate", "other"] as const;
+export const COMMENT_REPORT_REASONS = ["minors", "sexual_content", "hate", "other"] as const;
 
 export const createCommentReportRequestSchema = z.object({
   reason: z.enum(COMMENT_REPORT_REASONS),

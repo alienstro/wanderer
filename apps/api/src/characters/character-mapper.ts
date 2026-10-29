@@ -29,7 +29,6 @@ export function toCharacterCard(row: CharacterCardRow): CharacterCard {
     title: row.title,
     chatName: row.chatName,
     avatarUrl: row.avatarFileId ? fileUrl(row.avatarFileId) : null,
-    isAdult: row.isAdult,
     tags: toTags(row.tags),
     chatCount: row.chatCount,
     likeCount: row.likeCount,

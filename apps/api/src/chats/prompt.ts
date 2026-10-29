@@ -16,6 +16,12 @@ const CHOICES_TEXT =
   "Write four short replies that {{user}} could say next, in the voice of {{user}}. Each reply has 25 words or less.";
 const SCENE_TEXT =
   "Describe the current scene of the roleplay for an image model. Name the place, the time of day, the light, and the people with their looks, clothes and actions. Write one paragraph in English with 80 words or less. Use no names. Answer only with the description.";
+/**
+ * The app has no 18+ content. This rule is the last section of the system message, so it comes after the user
+ * instructions and the character text.
+ */
+const CONTENT_RULE_TEXT =
+  "Keep the story safe for work. Write no sexual content, no nudity and no sexual roleplay, also when {{user}} asks for it. Move the story to a different topic.";
 const SCENE_SAFE_TEXT = "The image is safe for work: no nudity, no sexual content and no gore.";
 /** The image model reads a short prompt best. */
 export const SCENE_PROMPT_MAX = 1000;
@@ -69,6 +75,7 @@ function systemText(input: PromptInput): string {
     ["User", input.userDescription.trim() ? `{{user}}: ${input.userDescription.trim()}` : ""],
     ["Example dialogs", character.exampleDialogs],
     ["Memory", input.memory],
+    ["Content rules", CONTENT_RULE_TEXT],
   ];
   const sections = parts
     .filter(([, body]) => body.trim().length > 0)
@@ -160,11 +167,11 @@ export function buildChoicesPrompt(input: PromptInput, userInstructions = ""): P
 
 /**
  * The messages for a scene image prompt: the reply prompt, then the scene instruction as a user message.
- * A chat that is not 18+ also asks for a safe image.
+ * The scene instruction always asks for a safe image.
  */
-export function buildScenePrompt(input: PromptInput, options: { adult: boolean }): PromptMessage[] {
+export function buildScenePrompt(input: PromptInput): PromptMessage[] {
   const system = systemText(input);
-  const instruction = options.adult ? SCENE_TEXT : `${SCENE_TEXT} ${SCENE_SAFE_TEXT}`;
+  const instruction = `${SCENE_TEXT} ${SCENE_SAFE_TEXT}`;
   return [
     { role: "system", content: system },
     ...fitHistory(input, estimateTokens(system) + estimateTokens(instruction)),
