@@ -24,13 +24,13 @@ interface MemoryProps {
   onSaved: (memory: ChatMemory) => void;
 }
 
-/** The Memory button of the chat header. It opens a panel where the user reads, edits and saves the memory. */
-export function MemoryButton(props: MemoryProps) {
+/** The Memory button. It opens a panel where the user reads, edits and saves the memory. `label` is the button text. */
+export function MemoryButton({ label = "Memory", ...props }: MemoryProps & { label?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className="pill pill-soft pill-sm-phone tap-target ml-auto" onClick={() => setOpen(true)}>
-        Memory
+      <button type="button" className="pill pill-soft pill-sm-phone tap-target" onClick={() => setOpen(true)}>
+        {label}
       </button>
       {open && (
         <Modal title="Memory" variant="sheet" onClose={() => setOpen(false)}>

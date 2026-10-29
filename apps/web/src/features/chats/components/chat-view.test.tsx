@@ -315,18 +315,28 @@ describe("chat page", () => {
     expect(await within(log).findByText("Hello again")).toBeInTheDocument();
   });
 
-  it("the Memory button shows the saved memory, and a save updates the copy of the page", async () => {
+  it("Edit memory in the Memory tab of the panel shows the saved memory, and a save updates the tab", async () => {
     stubApi({ ...detail, memory: { text: "Old fact.", throughPosition: null } });
     withClient(<ChatView chatId="chat1" />);
-    await userEvent.click(await screen.findByRole("button", { name: "Memory" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Memory" }));
+    await userEvent.click(screen.getByRole("button", { name: "Edit memory" }));
     const box = screen.getByLabelText("Memory text");
     expect(box).toHaveValue("Old fact.");
     await userEvent.clear(box);
     await userEvent.type(box, "New fact.");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Memory" })).not.toBeInTheDocument());
-    await userEvent.click(screen.getByRole("button", { name: "Memory" }));
-    expect(screen.getByLabelText("Memory text")).toHaveValue("New fact.");
+    expect(screen.getByRole("tabpanel", { name: "Memory" })).toHaveTextContent("New fact.");
+  });
+
+  it("the panel button hides the character panel, and a second click shows it again", async () => {
+    stubApi();
+    withClient(<ChatView chatId="chat1" />);
+    expect(await screen.findByRole("complementary", { name: "About the character" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Hide the character panel" }));
+    expect(screen.queryByRole("complementary", { name: "About the character" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Show the character panel" }));
+    expect(screen.getByRole("complementary", { name: "About the character" })).toBeInTheDocument();
   });
 
   it('canSend false shows "This character is no longer available." and no text box', async () => {
@@ -342,7 +352,7 @@ describe("chat page", () => {
       if (url.endsWith("/me")) {
         return Response.json(me);
       }
-      if (url.endsWith("/energy")) {
+      if (url.endsWith("/energy") || url.includes("/characters/")) {
         return Response.json({ error: "not_found" }, { status: 404 });
       }
       const messages = saved ? [...detail.messages, message("m3", "assistant", "Half a reply", 3)] : detail.messages;
