@@ -40,12 +40,4 @@ test.describe("as the reader", () => {
     await expect(page).toHaveURL(/\/chats\/[0-9a-f-]+$/);
     await expect(page.getByText("Bram waves from the gate.")).toBeVisible();
   });
-
-  test('a user without "Show 18+" sees the 18+ warning, not the definition', async ({ page }) => {
-    const id = await createCharacter(E2E_USERS.creator, { title: "Night Club", isAdult: true });
-    await page.goto(`/characters/${id}`);
-    await expect(page.getByRole("heading", { level: 1, name: "This character is 18+." })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Definition" })).toHaveCount(0);
-    await expect(page.getByRole("heading", { level: 1, name: "Night Club" })).toHaveCount(0);
-  });
 });

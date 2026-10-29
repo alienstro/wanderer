@@ -4,7 +4,7 @@ import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaService } from "../../src/prisma/prisma.service.js";
 import { createTestApp } from "../support/app.js";
-import { createCharacter } from "../support/characters.js";
+import { createCharacter, createOldAdultCharacter } from "../support/characters.js";
 import { WEB_ORIGIN } from "../support/env.js";
 import { type TestUser, userWithSession } from "../support/users.js";
 
@@ -135,10 +135,10 @@ describe("character comments", () => {
     await list(privateId, creator.cookie).expect(200);
   });
 
-  it("gives 403 adult_content for the comments of an 18+ character without Show 18+", async () => {
-    const adultId = await createCharacter(app, creator.cookie, { title: "Adult", isAdult: true });
-    expect((await list(adultId, reader.cookie).expect(403)).body).toEqual({ error: "adult_content" });
-    await post(adultId, reader.cookie).expect(403);
+  it("gives 404 not_found for the comments of an old 18+ character", async () => {
+    const adultId = await createOldAdultCharacter(app, creator.cookie, { title: "Adult" });
+    expect((await list(adultId, reader.cookie).expect(404)).body).toEqual({ error: "not_found" });
+    await post(adultId, reader.cookie).expect(404);
   });
 
   describe("DELETE /comments/:id", () => {

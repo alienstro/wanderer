@@ -25,7 +25,6 @@ function characterColumns(input: CharacterInput) {
     personality: input.personality,
     scenario: input.scenario,
     exampleDialogs: input.exampleDialogs,
-    isAdult: input.isAdult,
     isPublic: input.isPublic,
     definitionVisible: input.definitionVisible,
     avatarFileId: input.avatarFileId,
@@ -96,7 +95,7 @@ export class CharactersService {
     return toCharacterDetail(row, user, false);
   }
 
-  /** Gives the character when the viewer can see it. assertCharacterAccess gives the 404 and the 403. */
+  /** Gives the character when the viewer can see it. assertCharacterAccess gives the 404. */
   async findVisible(id: string, viewer: User | null): Promise<CharacterDetail> {
     const row = await this.findRow(id);
     assertCharacterAccess(row, viewer);
@@ -169,6 +168,33 @@ export class CharactersService {
     } catch (error) {
       this.logger.warn(`The old avatar file ${fileId} was not removed: ${String(error)}`);
     }
+  }
+
+  /**
+   * Deletes each old 18+ character with its chats, its scene images and its avatar, for the one-time command
+   * `delete-adult-characters`. A dry run only counts. The rows go in one transaction, then the bytes go. A storage
+   * error goes to the log, because the rows are already deleted. A second run finds nothing.
+   */
+  async removeAdultCharacters(options: { dryRun: boolean }): Promise<{ characters: number; chats: number; files: number }> {
+    const characters = await this.prisma.character.findMany({ where: { isAdult: true }, select: { id: true, avatarFileId: true } });
+    const ids = characters.map((character) => character.id);
+    const avatarIds = characters.flatMap((character) => (character.avatarFileId ? [character.avatarFileId] : []));
+    const files = await this.prisma.file.findMany({
+      where: { OR: [{ id: { in: avatarIds } }, { sceneImage: { chat: { characterId: { in: ids } } } }] },
+      select: { id: true, path: true },
+    });
+    const chats = await this.prisma.chat.count({ where: { characterId: { in: ids } } });
+    const counts = { characters: ids.length, chats, files: files.length };
+    if (options.dryRun || ids.length === 0) {
+      return counts;
+    }
+    // The chats, the messages and the likes of each character go by the cascade of the character row.
+    await this.prisma.$transaction([
+      this.prisma.character.deleteMany({ where: { id: { in: ids } } }),
+      this.files.deleteRows(files.map((file) => file.id)),
+    ]);
+    await this.files.removeBytes(files.map((file) => file.path));
+    return counts;
   }
 
   /** A character can use only an avatar that its creator uploaded and that no other character uses. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { characterInputSchema, characterListQuerySchema } from "./characters.js";
+import { BIO_PREVIEW_MAX, bioPreview, characterInputSchema, characterListQuerySchema } from "./characters.js";
 import { characterTokenCounts, estimateTokens } from "./tokens.js";
 
 const minimal = {
@@ -16,7 +16,6 @@ describe("characterInputSchema", () => {
       title: "Mira",
       chatName: "",
       tags: [],
-      isAdult: false,
       scenario: "",
       exampleDialogs: "",
       avatarFileId: null,
@@ -36,6 +35,10 @@ describe("characterInputSchema", () => {
 
   it('rejects the tag "romance"', () => {
     expect(characterInputSchema.safeParse({ ...minimal, tags: ["romance"] }).success).toBe(false);
+  });
+
+  it("drops an isAdult field, because the app has no 18+ characters", () => {
+    expect(characterInputSchema.parse({ ...minimal, isAdult: true })).not.toHaveProperty("isAdult");
   });
 
   it("drops a duplicate tag", () => {
@@ -67,5 +70,19 @@ describe("token estimate", () => {
       exampleDialogs: "",
     });
     expect(counts).toEqual({ permanent: 2, total: 5 });
+  });
+});
+
+describe("bioPreview", () => {
+  it("removes the Markdown marks and joins the lines with one space", () => {
+    expect(bioPreview("The captain of a **salvage ship**.\n\n> *Quiet* and [kind](https://example.com).\n# Notes")).toBe(
+      "The captain of a salvage ship. Quiet and kind. Notes",
+    );
+  });
+
+  it(`cuts a long bio at a word, to ${BIO_PREVIEW_MAX} characters or less with the ellipsis`, () => {
+    const preview = bioPreview("word ".repeat(100));
+    expect(preview.length).toBeLessThanOrEqual(BIO_PREVIEW_MAX);
+    expect(preview.endsWith("word…")).toBe(true);
   });
 });

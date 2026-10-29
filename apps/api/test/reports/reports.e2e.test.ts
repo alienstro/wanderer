@@ -53,19 +53,24 @@ describe("POST /characters/:id/report", () => {
     });
   });
 
+  it("saves a sexual_content report", async () => {
+    const res = await report(characterId, reporter.cookie, { reason: "sexual_content", note: "" }).expect(201);
+    const row = await prisma.report.findUniqueOrThrow({ where: { id: (res.body as { id: string }).id } });
+    expect(row.reason).toBe("sexual_content");
+  });
+
   it("gives 400 invalid_request for a note of 501 characters and for an unknown reason", async () => {
     const long = await report(characterId, reporter.cookie, { reason: "hate", note: "a".repeat(501) }).expect(400);
     expect(long.body).toEqual({ error: "invalid_request" });
     await report(characterId, reporter.cookie, { reason: "spam" }).expect(400);
   });
 
-  it("gives 404 for a private, a draft, a hidden, and a blocked 18+ character", async () => {
+  it("gives 404 for a private, a draft and a hidden character", async () => {
     const privateId = await createCharacter(app, creator.cookie, { title: "Private", isPublic: false });
     const draftId = await createCharacter(app, creator.cookie, { title: "Draft", publish: false });
     const hiddenId = await createCharacter(app, creator.cookie, { title: "Hidden" });
     await prisma.character.update({ where: { id: hiddenId }, data: { status: "hidden" } });
-    const adultId = await createCharacter(app, creator.cookie, { title: "Adult", isAdult: true });
-    for (const id of [privateId, draftId, hiddenId, adultId, "not-a-uuid"]) {
+    for (const id of [privateId, draftId, hiddenId, "not-a-uuid"]) {
       const res = await report(id, reporter.cookie).expect(404);
       expect(res.body).toEqual({ error: "not_found" });
     }

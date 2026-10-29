@@ -6,13 +6,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Avatar } from "@/components/ui/avatar";
 import { ApiError, apiFetch, fileSrc } from "@/lib/api";
 import { streamChat } from "@/features/chats/chat-stream";
 import { ENERGY_LOW_TITLE, energyLowText, useEnergy, useRefreshEnergy } from "@/features/energy";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { useRequireLogin } from "@/lib/use-require-login";
+import { AI_ERROR_STEP, sendErrorText } from "./chat-errors";
+import { ChatGlow, ChatIntro } from "./chat-intro";
+import { PanelAside, PanelToggle } from "./chat-panel";
 import { Composer } from "./composer";
-import { MemoryButton } from "@/features/chats/memory/memory-panel";
 import { MessageItem } from "./message-item";
 import { OpeningSwitcher } from "./opening-switcher";
 import { GenerateSceneButton, SceneImage, sceneErrorText, scenesAfter, useSceneJob } from "@/features/chats/scenes/scene-image";
@@ -44,34 +46,8 @@ const STOP_SETTLE_MS = 500;
 const ERROR_TOAST_PREFIX = "chat-error";
 
 /** The centred column of the messages and the text box, so the text box lines up with the messages. */
-const CHAT_COLUMN = "mx-auto w-full max-w-[832px]";
+const CHAT_COLUMN = "mx-auto w-full max-w-[712px]";
 
-/** The next step for each AI error. "settings" adds a button that opens the model page. */
-const AI_ERROR_STEP: Record<AiErrorCode, { text: string; settings?: boolean }> = {
-  no_active_proxy: { text: "Add a model, then send your message again.", settings: true },
-  invalid_key: { text: "Check the API key of your model in Settings.", settings: true },
-  model_not_found: { text: "Check the model name in Settings.", settings: true },
-  no_credit: { text: "Add credit on the proxy site, then try again." },
-  usage_limit: { text: "Add credit or a plan on the proxy site, or pick a different model.", settings: true },
-  rate_limited: { text: "Wait a minute, then try again." },
-  timeout: { text: "Try again. If the problem continues, use a faster model." },
-  blocked_url: { text: "Use a different proxy URL in Settings.", settings: true },
-  provider_unreachable: { text: "Check the proxy URL in Settings, or try again later.", settings: true },
-  provider_error: { text: "This problem is usually short. Try again in a moment." },
-  free_model_busy: { text: "Try again in a few minutes, or pick your own model in Settings.", settings: true },
-};
-
-/** The text for an error before the stream starts, such as a busy chat or a rate limit. */
-function sendErrorText(error: unknown): string {
-  const code = error instanceof ApiError ? error.code : null;
-  if (code === "chat_busy") {
-    return "A reply is already on its way. Wait for it, then send again.";
-  }
-  if (error instanceof ApiError && error.status === 429) {
-    return "You sent many messages in a short time. Wait a minute, then try again.";
-  }
-  return "The message did not send. Try again.";
-}
 
 /** The chat page: the character at the top, the messages, and the text box. The AI reply streams in. */
 export function ChatView({ chatId }: { chatId: string }) {
@@ -90,6 +66,10 @@ export function ChatView({ chatId }: { chatId: string }) {
     enabled: me !== undefined,
   });
   const [text, setText] = useState("");
+  // The character panel shows at the start on a computer, and stays closed on a phone, where it covers the chat.
+  const isPhone = useMediaQuery("(max-width: 760px)");
+  const [panelPicked, setPanelPicked] = useState<boolean | null>(null);
+  const panelOpen = panelPicked ?? !isPhone;
   const [live, setLive] = useState<LiveReply | null>(null);
   // Goes up after each full reply, so the reply choices ask for a new set.
   const [replyRound, setReplyRound] = useState(0);
@@ -291,112 +271,115 @@ export function ChatView({ chatId }: { chatId: string }) {
 
   return (
     // On a phone the chat fills the screen under the 56 px top bar of SidebarDrawer.
-    <div className="flex h-screen flex-col max-[760px]:h-[calc(100dvh-56px)]">
-      <header className="flex items-center gap-3 border-b border-line px-7 py-3.5 max-[760px]:gap-2.5 max-[760px]:px-3 max-[760px]:py-2">
-        <Avatar name={character.name} src={character.src} size={44} />
-        <div className="flex min-w-0 flex-col">
-          <h1 className="m-0 truncate text-lg font-bold max-[760px]:text-base">{summary.title}</h1>
-          <div className="truncate text-sm">
-            <Link href={`/characters/${summary.character.id}`} className="text-link">
-              Character page
-            </Link>
-            {chat.data.personaName && (
-              <span className="text-muted">
-                {" · You play as "}
-                <strong>{chat.data.personaName}</strong>
-              </span>
-            )}
+    <div className="flex h-screen max-[760px]:h-[calc(100dvh-56px)]">
+      <section aria-label="Chat" className="relative isolate flex min-w-0 flex-1 flex-col overflow-hidden bg-[#0b0b0d]">
+        <ChatGlow src={character.src} />
+        <PanelToggle open={panelOpen} onToggle={() => setPanelPicked(!panelOpen)} />
+
+        {/* column-reverse keeps the newest message in view without a scroll script. */}
+        <div className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto px-6 pt-10 pb-3 max-[760px]:px-3 max-[760px]:pt-2">
+          <div className={`${CHAT_COLUMN} flex flex-col gap-3.5`}>
+            <ChatIntro
+              name={character.name}
+              src={character.src}
+              title={summary.title}
+              characterId={summary.character.id}
+              personaName={chat.data.personaName}
+            />
+            <div role="log" aria-label="Messages" aria-live="polite" className="flex flex-col gap-3.5">
+              {shown.map((message, index) => (
+                <Fragment key={message.id}>
+                  <MessageItem
+                    message={message}
+                    speaker={message.role === "user" ? user : character}
+                    editable={message.role === "user" && idle}
+                    canRegenerate={canSend && idle && message.id === last?.id && message.role === "assistant" && message.position > 0}
+                    onSave={(content) => saveEdit(message.id, content)}
+                    onDelete={() => remove(message.id)}
+                    onRegenerate={regenerate}
+                  />
+                  {scenesAfter(scenes, message.position, shown[index + 1]?.position).map((scene) => (
+                    <SceneImage key={scene.id} scene={scene} />
+                  ))}
+                </Fragment>
+              ))}
+              {/* The user picks the opening until the first message. The server refuses a change after it. */}
+              {canSend && idle && messages.length === 1 && opening.count > 1 && (
+                <OpeningSwitcher
+                  chatId={chatId}
+                  index={opening.index}
+                  count={opening.count}
+                  onChanged={(next) => queryClient.setQueryData<ChatDetail>(queryKey, next)}
+                  onLocked={() => void queryClient.invalidateQueries({ queryKey })}
+                />
+              )}
+              {live?.sending && <MessageItem message={{ role: "user", content: live.sending }} speaker={user} />}
+              {live && <MessageItem message={{ role: "assistant", content: live.text }} speaker={character} typing={!live.text && !live.stopped} />}
+              {canSend && idle && last?.role === "user" && (
+                <button type="button" className="pill pill-soft pill-sm self-start" onClick={regenerate}>
+                  Get a reply
+                </button>
+              )}
+            </div>
           </div>
         </div>
-        <MemoryButton
+
+        <footer className="px-6 pt-2 pb-5 max-[760px]:px-3 max-[760px]:pb-3">
+          <div className={`${CHAT_COLUMN} flex flex-col gap-2`}>
+            {canSend ? (
+              <>
+                {noModel && (
+                  <p className="m-0 text-muted">
+                    You have no model yet.{" "}
+                    <Link href="/settings/models" className="text-link">
+                      Add a model
+                    </Link>{" "}
+                    to start chatting.
+                  </p>
+                )}
+                <ReplyChoices state={choices} onPick={(choice) => send(choice, false)} />
+                <Composer
+                  characterName={character.name}
+                  value={text}
+                  onChange={setText}
+                  disabled={!hasModel || Boolean(live?.stopped)}
+                  streaming={live !== null && !live.stopped}
+                  onSend={(content) => send(content, true)}
+                  onStop={() => abortRef.current?.abort()}
+                  leading={<ReplyChoicesSwitch me={me} />}
+                  toolbar={
+                    <>
+                      <NewChoicesButton state={choices} />
+                      <GenerateSceneButton
+                        busy={sceneJob.isPending}
+                        disabled={!hasModel}
+                        price={energy.data?.prices.scene}
+                        onClick={() => {
+                          clearErrorToast();
+                          sceneJob.mutate();
+                        }}
+                      />
+                    </>
+                  }
+                />
+              </>
+            ) : (
+              <p className="m-0 rounded-[16px] border border-line bg-surface px-4 py-3 text-muted">This character is no longer available.</p>
+            )}
+          </div>
+        </footer>
+      </section>
+      {panelOpen && (
+        <PanelAside
+          onClose={() => setPanelPicked(false)}
           chatId={chatId}
+          characterId={summary.character.id}
+          personaName={chat.data.personaName}
           memory={chat.data.memory}
-          onSaved={(memory) => patchChat((detail) => ({ ...detail, memory }))}
+          scenes={scenes}
+          onMemorySaved={(memory) => patchChat((detail) => ({ ...detail, memory }))}
         />
-      </header>
-
-      {/* column-reverse keeps the newest message in view without a scroll script. */}
-      <div className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto px-7 py-5 max-[760px]:px-3 max-[760px]:py-3">
-        <div role="log" aria-label="Messages" aria-live="polite" className={`${CHAT_COLUMN} flex flex-col gap-5 max-[760px]:gap-4`}>
-          {shown.map((message, index) => (
-            <Fragment key={message.id}>
-              <MessageItem
-                message={message}
-                speaker={message.role === "user" ? user : character}
-                editable={message.role === "user" && idle}
-                canRegenerate={canSend && idle && message.id === last?.id && message.role === "assistant" && message.position > 0}
-                onSave={(content) => saveEdit(message.id, content)}
-                onDelete={() => remove(message.id)}
-                onRegenerate={regenerate}
-              />
-              {scenesAfter(scenes, message.position, shown[index + 1]?.position).map((scene) => (
-                <SceneImage key={scene.id} scene={scene} />
-              ))}
-            </Fragment>
-          ))}
-          {/* The user picks the opening until the first message. The server refuses a change after it. */}
-          {canSend && idle && messages.length === 1 && opening.count > 1 && (
-            <OpeningSwitcher
-              chatId={chatId}
-              index={opening.index}
-              count={opening.count}
-              onChanged={(next) => queryClient.setQueryData<ChatDetail>(queryKey, next)}
-              onLocked={() => void queryClient.invalidateQueries({ queryKey })}
-            />
-          )}
-          {live?.sending && <MessageItem message={{ role: "user", content: live.sending }} speaker={user} />}
-          {live && <MessageItem message={{ role: "assistant", content: live.text }} speaker={character} typing={!live.text && !live.stopped} />}
-          {canSend && idle && last?.role === "user" && (
-            <button type="button" className="pill pill-soft pill-sm self-start" onClick={regenerate}>
-              Get a reply
-            </button>
-          )}
-        </div>
-      </div>
-
-      <footer className="px-7 pb-5 max-[760px]:px-3 max-[760px]:pb-3">
-        <div className={`${CHAT_COLUMN} flex flex-col gap-2`}>
-          {canSend ? (
-            <>
-              {noModel && (
-                <p className="m-0 text-muted">
-                  You have no model yet.{" "}
-                  <Link href="/settings/models" className="text-link">
-                    Add a model
-                  </Link>{" "}
-                  to start chatting.
-                </p>
-              )}
-              <ReplyChoices state={choices} onPick={(choice) => send(choice, false)} />
-              <Composer
-                value={text}
-                onChange={setText}
-                disabled={!hasModel || Boolean(live?.stopped)}
-                streaming={live !== null && !live.stopped}
-                onSend={(content) => send(content, true)}
-                onStop={() => abortRef.current?.abort()}
-                toolbar={
-                  <>
-                    <ReplyChoicesSwitch me={me} />
-                    <NewChoicesButton state={choices} />
-                    <GenerateSceneButton
-                      busy={sceneJob.isPending}
-                      disabled={!hasModel}
-                      price={energy.data?.prices.scene}
-                      onClick={() => {
-                        clearErrorToast();
-                        sceneJob.mutate();
-                      }}
-                    />
-                  </>
-                }
-              />
-            </>
-          ) : (
-            <p className="m-0 rounded-[16px] border border-line bg-surface px-4 py-3 text-muted">This character is no longer available.</p>
-          )}
-        </div>
-      </footer>
+      )}
     </div>
   );
 }

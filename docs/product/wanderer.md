@@ -40,7 +40,7 @@ their own AI model through an OpenAI-compatible proxy. So Wanderer pays for no A
 
 - An API key leaks to a browser, a log, or another user.
 - A proxy URL lets a user reach the owner's private network (SSRF).
-- A user sees 18+ content before they confirm that they are 18 or older.
+- A chat or a scene image has sexual content.
 - One user can read the private chats or private characters of another user.
 - A lost disk deletes all the data because no backup exists.
 
@@ -75,8 +75,8 @@ their own AI model through an OpenAI-compatible proxy. So Wanderer pays for no A
 
 The Terms must include at least:
 
-- A user must be 18 or older to see 18+ content.
-- Sexual content with minors is forbidden. A character marked 18+ must be an adult.
+- A user must be 18 or older.
+- Sexual content of any kind is forbidden, also with a character that looks or acts like a minor.
 - What is not allowed, such as hate, harassment, and copied characters.
 - The owner can hide or delete characters and ban accounts.
 - Each user is responsible for their own proxy, key, and the rules of their AI provider.
@@ -112,7 +112,6 @@ The Privacy Policy must include at least:
 - **Owner panel:** Public or Private, Definition visible or hidden, Edit, and Delete with a confirm
   step on the page.
 - **Report** button for other users (section 4.8).
-- An 18+ badge on 18+ characters.
 
 ### 4.4 Create and edit a character
 
@@ -125,7 +124,6 @@ Fields, in the order of the prototype:
 | Chat name | Optional. Empty means the title. The AI uses this name. |
 | Bio | Required. Markdown with the B, I, U, and link buttons. |
 | Tags | Up to 10, from the tag list. |
-| 18+ | A switch. Off is the default. |
 | Personality | Required. Shows a token count. |
 | Scenario | Optional. Shows a token count. |
 | Initial messages | 1 to 10. Tabs, add, reorder, delete, and Write or Preview. |
@@ -164,21 +162,20 @@ Fields, in the order of the prototype:
   back to the browser.
 - A change applies at once. There is no "refresh the page" step.
 
-### 4.7 18+ content
+### 4.7 Safe-for-work content
 
-- Creators mark each character 18+ or not 18+.
-- 18+ characters stay hidden for each user until the user turns on "Show 18+" in their settings.
-- The first time, the user confirms that they are 18 or older. The backend saves the time.
-- Visitors without a login never see 18+ characters.
-- Discover, search, For you, and tags all obey the setting. The backend applies the filter, not
-  only the frontend.
-- A direct link to an 18+ character shows a warning page first.
+- Wanderer has no 18+ category. Paddle, the payment provider, does not allow adult content
+  ([ADR 0005](../decisions/0005-no-adult-content.md)).
+- The chat system prompt ends with a content rule: no sexual content, no nudity and no sexual
+  roleplay. It comes after the user instructions and the memory.
+- Each scene image asks for a safe image, and the image model uses its safety checker.
+- The one-time command `delete-adult-characters` deleted the old 18+ characters.
 
 ### 4.8 Reports and admin
 
 - Each character page has a **Report** button. The user picks a reason and can add a note of
   500 characters or less.
-- Reasons: sexual content with minors, wrongly marked 18+, hate or harassment, copied character,
+- Reasons: sexual content with minors, sexual content, hate or harassment, copied character,
   and other.
 - A user can report one character only one time. A limit of 10 reports each day stops spam.
 - The owner has the `admin` role. The admin page lists open reports. Reports about minors go to
@@ -190,7 +187,7 @@ Fields, in the order of the prototype:
 
 ### 4.9 Account settings
 
-- Show 18+ (with the age confirmation), the Reply choices default, and the handle.
+- The Reply choices default and the handle.
 - **Delete account** removes the user, their characters, chats, proxies, sessions, and uploads.
   Their reports stay for the admin, without the reporter's identity.
 
@@ -218,7 +215,7 @@ One repository with pnpm workspaces:
 
 - The login cookie belongs to `wanderer-api.alienstro.xyz` only. The Next.js server cannot read it.
 - **Public pages** (Discover for visitors, character pages, Terms, Privacy) render on the Next.js
-  server. It calls the API with no cookie, so 18+ content never shows there.
+  server. It calls the API with no cookie.
 - **Pages that need a login** (chat, create, settings, admin, and Discover for a logged-in user)
   load their data in the browser with `credentials: "include"`. TanStack Query keeps the data.
 
@@ -302,7 +299,7 @@ schemas from `packages/shared`.
 | Area | Endpoints |
 |---|---|
 | Auth | `GET /auth/google`, `GET /auth/google/callback`, `POST /auth/logout`, `GET /me` |
-| Profile | `PATCH /me` (handle, settings), `POST /me/adult-confirm`, `DELETE /me` |
+| Profile | `PATCH /me` (handle, settings), `DELETE /me` |
 | Discover | `GET /characters?q=&tag=&sort=&cursor=`, `GET /characters/for-you`, `GET /tags` |
 | Characters | `GET /characters/:id`, `POST /characters`, `PATCH /characters/:id`, `DELETE /characters/:id`, `POST /characters/import-png` |
 | Files | `POST /files` (avatar upload), `GET /files/:id` |
@@ -411,7 +408,7 @@ Environment variables:
 - The API address `wanderer-api.alienstro.xyz`.
 - A few free users, with no payments.
 - Google as the only login.
-- The 18+ category.
+- No 18+ category. All content is safe for work.
 - The Terms and Privacy checkbox before the login.
 - A Report button for users, and the owner as the admin.
 - The approved prototype: its screens, its look, and its features.

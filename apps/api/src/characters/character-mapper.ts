@@ -1,4 +1,4 @@
-import { type CharacterCard, type CharacterDetail, type Tag, TAGS } from "@wanderer/shared";
+import { bioPreview, type CharacterCard, type CharacterDetail, type Tag, TAGS } from "@wanderer/shared";
 import type { Prisma, User } from "../generated/prisma/client.js";
 import { fileUrl } from "../files/files.service.js";
 
@@ -29,11 +29,11 @@ export function toCharacterCard(row: CharacterCardRow): CharacterCard {
     title: row.title,
     chatName: row.chatName,
     avatarUrl: row.avatarFileId ? fileUrl(row.avatarFileId) : null,
-    isAdult: row.isAdult,
     tags: toTags(row.tags),
     chatCount: row.chatCount,
     likeCount: row.likeCount,
     creatorHandle: row.creator.handle ?? "",
+    bioPreview: bioPreview(row.bio),
   };
 }
 
@@ -46,6 +46,7 @@ export function toCharacterDetail(row: CharacterDetailRow, viewer: User | null, 
   return {
     ...toCharacterCard(row),
     bio: row.bio,
+    commentCount: row.commentCount,
     status: row.status,
     isPublic: row.isPublic,
     definitionVisible: row.definitionVisible,

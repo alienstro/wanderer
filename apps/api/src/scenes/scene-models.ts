@@ -25,14 +25,14 @@ export const SCENE_MODELS: Record<SceneModelKey, SceneModelAdapter> = {
       height: IMAGE_SIZE,
     }),
   },
-  // Z-Image Turbo has no negative prompt. The safe words of a chat that is not 18+ are in the prompt.
+  // Z-Image Turbo has no negative prompt. The safe words are in the prompt.
   "z-image-turbo": {
     endpointId: "z-image-turbo",
     input: (request) => ({
       prompt: request.prompt,
       size: `${IMAGE_SIZE}*${IMAGE_SIZE}`,
       seed: -1,
-      enable_safety_checker: !request.adult,
+      enable_safety_checker: true,
     }),
   },
 };

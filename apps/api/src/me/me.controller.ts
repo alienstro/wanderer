@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Patch, Post, Res, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Patch, Res, UseGuards } from "@nestjs/common";
 import { type MeResponse, updateMeRequestSchema } from "@wanderer/shared";
 import type { Response } from "express";
 import { CurrentUser } from "../auth/current-user.decorator.js";
@@ -25,12 +25,6 @@ export class MeController {
       throw new BadRequestException({ error: badHandle ? "invalid_handle" : "invalid_request" });
     }
     return this.me.update(user, parsed.data);
-  }
-
-  /** The 18+ confirm. It saves the time of the first confirm and turns on "Show 18+". */
-  @Post("adult-confirm")
-  confirmAdult(@CurrentUser() user: User): Promise<MeResponse> {
-    return this.me.confirmAdult(user);
   }
 
   /** Deletes the account and ends the session in this browser. */

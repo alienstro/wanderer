@@ -34,9 +34,10 @@ describe("commentListQuerySchema", () => {
 
 describe("createCommentReportRequestSchema", () => {
   it("accepts only the reasons that apply to a comment", () => {
-    expect(COMMENT_REPORT_REASONS).toEqual(["minors", "hate", "other"]);
+    expect(COMMENT_REPORT_REASONS).toEqual(["minors", "sexual_content", "hate", "other"]);
     expect(createCommentReportRequestSchema.parse({ reason: "hate" })).toEqual({ reason: "hate", note: "" });
     expect(createCommentReportRequestSchema.safeParse({ reason: "copied" }).success).toBe(false);
     expect(createCommentReportRequestSchema.safeParse({ reason: "wrong_rating" }).success).toBe(false);
+    expect(createCommentReportRequestSchema.parse({ reason: "sexual_content" }).reason).toBe("sexual_content");
   });
 });

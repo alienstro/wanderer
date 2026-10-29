@@ -8,7 +8,6 @@ const card: Card = {
   title: "Mira Vale",
   chatName: "",
   avatarUrl: null,
-  isAdult: false,
   tags: [
     { slug: "sci-fi", label: "SciFi" },
     { slug: "mystery", label: "Mystery" },
@@ -18,6 +17,7 @@ const card: Card = {
   chatCount: 1234,
   likeCount: 0,
   creatorHandle: "tian",
+  bioPreview: "",
 };
 
 describe("CharacterCard", () => {
@@ -28,7 +28,7 @@ describe("CharacterCard", () => {
     expect(screen.getByRole("link")).toHaveAttribute("href", "/characters/c1");
   });
 
-  it("a card shows the chat and like counts, up to 3 tags, @creator, and an 18+ badge only for an 18+ character", () => {
+  it("a card shows the chat and like counts, up to 3 tags, @creator, the avatar, and no 18+ badge", () => {
     const { rerender } = render(<CharacterCard card={card} />);
     expect(screen.getByText("1.2K")).toHaveTextContent("1.2K chats");
     expect(screen.getByText("0")).toHaveTextContent("0 likes");
@@ -38,16 +38,20 @@ describe("CharacterCard", () => {
     expect(screen.getByText("@tian")).toBeInTheDocument();
     expect(screen.queryByText("18+")).not.toBeInTheDocument();
 
-    rerender(<CharacterCard card={{ ...card, isAdult: true, avatarUrl: "/files/f1" }} />);
-    expect(screen.getByText("18+")).toBeInTheDocument();
+    rerender(<CharacterCard card={{ ...card, avatarUrl: "/files/f1" }} />);
     expect(screen.getByRole("img", { name: "Mira Vale" })).toHaveAttribute("src", "/files/f1");
   });
 
-  it("a status badge shows next to the title, not on the image, so it does not push the image badges to a second line", () => {
-    const { container } = render(<CharacterCard card={{ ...card, isAdult: true }} statusBadge="Private" />);
+  it("a card shows the bio preview over @creator", () => {
+    render(<CharacterCard card={{ ...card, bioPreview: "A ship mechanic who fixes old engines." }} />);
+    expect(screen.getByText("A ship mechanic who fixes old engines.")).toBeInTheDocument();
+    expect(screen.getByText("@tian")).toBeInTheDocument();
+  });
+
+  it("a status badge shows next to the title, not on the image", () => {
+    const { container } = render(<CharacterCard card={card} statusBadge="Private" />);
     const status = screen.getByText("Private");
     expect(status.parentElement).toBe(screen.getByText("Mira Vale").parentElement);
     expect(container.querySelector(".shot")).not.toContainElement(status);
-    expect(container.querySelector(".shot")).toContainElement(screen.getByText("18+"));
   });
 });

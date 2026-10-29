@@ -46,7 +46,6 @@ export const characterInputSchema = z.object({
     .max(TAGS_MAX)
     .default([])
     .transform((tags) => [...new Set(tags)]),
-  isAdult: z.boolean().default(false),
   personality: z.string().trim().min(1).max(PERSONALITY_MAX),
   scenario: z.string().trim().max(SCENARIO_MAX).default(""),
   openings: z.array(z.string().trim().min(1).max(OPENING_MAX)).min(1).max(OPENINGS_MAX),
@@ -75,21 +74,44 @@ export type CharacterListQuery = z.infer<typeof characterListQuerySchema>;
 
 export type CharacterStatus = "draft" | "published" | "hidden";
 
+/** The most characters of the bio preview on a card. */
+export const BIO_PREVIEW_MAX = 140;
+
+/**
+ * The short bio of a card: plain text with no Markdown marks, on one line, cut at a word to BIO_PREVIEW_MAX characters.
+ * The list answers send this preview, not the full bio, so they stay small.
+ */
+export function bioPreview(bio: string): string {
+  const text = bio
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[*_`~#>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (text.length <= BIO_PREVIEW_MAX) {
+    return text;
+  }
+  const cut = text.slice(0, BIO_PREVIEW_MAX - 1);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > 0 ? cut.slice(0, space) : cut).trimEnd()}…`;
+}
+
 export type CharacterCard = {
   id: string;
   title: string;
   chatName: string;
   /** A path such as `/files/<id>`, or null when the character has no avatar. */
   avatarUrl: string | null;
-  isAdult: boolean;
   tags: Tag[];
   chatCount: number;
   likeCount: number;
   creatorHandle: string;
+  /** The short plain-text bio of bioPreview(). */
+  bioPreview: string;
 };
 
 export type CharacterDetail = CharacterCard & {
   bio: string;
+  commentCount: number;
   status: CharacterStatus;
   isPublic: boolean;
   definitionVisible: boolean;

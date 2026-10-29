@@ -61,7 +61,7 @@ export function ReplyChoices({ state, onPick }: { state: ReplyChoicesState; onPi
   }
   return (
     <div
-      className="grid grid-cols-2 gap-2 max-[640px]:grid-cols-1"
+      className="flex flex-col gap-1.5"
       role="group"
       aria-label="Reply choices"
       aria-busy={state.loading}
@@ -96,14 +96,24 @@ export function NewChoicesButton({ state }: { state: ReplyChoicesState }) {
     return null;
   }
   return (
-    <button type="button" className="msg-action" onClick={state.refresh}>
+    <button type="button" className="composer-tool" title="New choices" onClick={state.refresh}>
       <RefreshIcon />
-      New choices
+      <span className="sr-only">New choices</span>
     </button>
   );
 }
 
-/** The "Reply choices" switch in the bar of the text box. The setting stays for the user. */
+/** A light bulb with a bolt, the icon of the Reply choices switch. */
+function BulbIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z" />
+      <path d="m12.5 7-2 3h3l-2 3" />
+    </svg>
+  );
+}
+
+/** The "Reply choices" switch on the left of the text box: a light bulb that is blue when the choices are on. The setting stays for the user. */
 export function ReplyChoicesSwitch({ me }: { me: MeResponse }) {
   const queryClient = useQueryClient();
   const on = me.replyChoicesOn;
@@ -120,13 +130,16 @@ export function ReplyChoicesSwitch({ me }: { me: MeResponse }) {
   }
 
   return (
-    <span className="flex items-center gap-2 text-sm text-muted">
-      <button type="button" role="switch" aria-checked={on} aria-label="Reply choices" className="switch tap-target" onClick={toggle}>
-        <span className="track">
-          <span className="knob" />
-        </span>
-      </button>
-      Reply choices
-    </span>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label="Reply choices"
+      title={on ? "Reply choices are on" : "Reply choices are off"}
+      className="composer-tool"
+      onClick={toggle}
+    >
+      <BulbIcon />
+    </button>
   );
 }

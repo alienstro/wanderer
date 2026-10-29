@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /** The version of the Terms of Service and the Privacy Policy that a user accepts at login. */
-export const TERMS_VERSION = "2026-10-23";
+export const TERMS_VERSION = "2026-10-29";
 
 export const HANDLE_MIN = 3;
 export const HANDLE_MAX = 20;
@@ -31,8 +31,6 @@ export const meResponseSchema = z.object({
   pictureUrl: z.string().nullable(),
   handle: z.string().nullable(),
   role: z.enum(["user", "admin"]),
-  /** True when the user sees 18+ characters. It can be true only after the 18+ confirm. */
-  showAdult: z.boolean(),
   /** True when the chat page shows four reply choices after each AI reply. */
   replyChoicesOn: z.boolean(),
   /** The user instructions for the style and the content of the reply choices. It is empty when the user has none. */
@@ -43,10 +41,9 @@ export const meResponseSchema = z.object({
   suggestedHandle: z.string().nullable(),
 });
 
-/** PATCH /me changes the handle, "Show 18+", the "Reply choices" switch, the reply choices instructions, or a mix. */
+/** PATCH /me changes the handle, the "Reply choices" switch, the reply choices instructions, or a mix. */
 export const updateMeRequestSchema = z.object({
   handle: handleSchema.optional(),
-  showAdult: z.boolean().optional(),
   replyChoicesOn: z.boolean().optional(),
   replyChoicesPrompt: z.string().trim().max(REPLY_CHOICES_PROMPT_MAX).optional(),
 });

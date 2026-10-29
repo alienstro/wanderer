@@ -4,7 +4,6 @@ import type { storageState } from "./users.js";
 
 export interface CharacterOptions {
   title: string;
-  isAdult?: boolean;
   opening?: string;
 }
 
@@ -40,7 +39,6 @@ export async function createCharacter(user: WithStorageState, options: Character
       bio: `The bio of ${options.title}.`,
       personality: "Calm and kind.",
       openings: [options.opening ?? `Hello from ${options.title}.`],
-      isAdult: options.isAdult ?? false,
       publish: true,
     });
     return character.id;

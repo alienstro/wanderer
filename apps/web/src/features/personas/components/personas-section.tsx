@@ -101,13 +101,15 @@ export function PersonasSection() {
 
   return (
     <section className="flex flex-col gap-3 panel p-5">
-      <h2 className="m-0 text-lg font-bold">
-        Personas{" "}
-        <span className="font-normal text-muted">
-          ({list.length} of {PERSONA_LIMIT})
-        </span>
-      </h2>
-      <p className="m-0 text-muted">A new chat uses your default persona as your name and facts.</p>
+      <div className="text-center">
+        <h2 className="m-0 text-[15px] font-bold">
+          Personas{" "}
+          <span className="font-normal text-muted">
+            ({list.length} of {PERSONA_LIMIT})
+          </span>
+        </h2>
+        <p className="m-0 text-xs text-subtle">A new chat uses your default persona as your name and facts.</p>
+      </div>
       {personas.isError && <p className="m-0 text-error">The personas did not load. Try again.</p>}
       {list.length > 0 && (
         <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
@@ -130,7 +132,7 @@ export function PersonasSection() {
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
-          className="pill pill-accent pill-sm"
+          className="pill pill-light pill-sm"
           disabled={full || personas.isPending}
           onClick={() => setEditing("new")}
         >

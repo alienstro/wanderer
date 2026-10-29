@@ -13,6 +13,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CharacterCard } from "@/features/characters";
 import { ContinueBanner } from "@/features/chats";
+import { FeaturedBanner } from "./featured-banner";
 import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/query-provider";
 
@@ -23,6 +24,10 @@ interface DiscoverQuery {
 }
 
 const SEARCH_PAUSE_MS = 300;
+
+/** A sort or tag tab of the filter row. The pressed tab is white on dark gray. */
+const TAB =
+  "h-9 flex-none cursor-pointer rounded-full border-0 bg-transparent px-3.5 text-[13px] font-medium whitespace-nowrap text-muted hover:text-white aria-pressed:bg-surface-2 aria-pressed:font-bold aria-pressed:text-white";
 
 /** The query string of the Discover URL. It leaves out the default values. */
 function discoverParams({ q, tag, sort }: DiscoverQuery, cursor: string | null = null): URLSearchParams {
@@ -41,7 +46,7 @@ function discoverHref(pathname: string, query: DiscoverQuery): string {
 
 /**
  * The Discover page. The server renders the visitor list into `initial`. In the browser, a logged-in user
- * gets the list again with the session, because the 18+ setting can change it.
+ * gets the list again with the session.
  */
 /** For you: characters with the tags of the user's chats. Nothing shows for a visitor or an empty list. */
 function ForYouRow() {
@@ -127,10 +132,55 @@ export function DiscoverView({ initial, q, tag, sort }: DiscoverQuery & { initia
   const items = pages.flatMap((page) => page.items);
 
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center justify-end gap-2 px-7 py-3.5 max-[760px]:px-4">
-        <label className="flex h-10 flex-[0_1_340px] items-center gap-2 rounded-full border border-line bg-surface px-3.5 text-subtle">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+    <div className="flex flex-col gap-5 px-6 pt-5 pb-12 max-[760px]:px-4">
+      <h1 className="sr-only">Discover</h1>
+      <FeaturedBanner items={items} />
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex min-w-0 flex-[1_1_520px] items-center gap-0.5 overflow-x-auto [scrollbar-width:none]">
+          <button
+            type="button"
+            aria-label="All tags"
+            aria-pressed={tag === null}
+            onClick={() => go({ q, tag: null, sort })}
+            className="grid size-[38px] flex-none cursor-pointer place-items-center rounded-full border border-[#26262b] bg-transparent text-[#c4c4cc] aria-pressed:border-[#3a3a40] aria-pressed:bg-surface-2 aria-pressed:text-white"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <rect x="4" y="4" width="6" height="6" rx="2" />
+              <rect x="14" y="4" width="6" height="6" rx="2" />
+              <rect x="4" y="14" width="6" height="6" rx="2" />
+              <rect x="14" y="14" width="6" height="6" rx="2" />
+            </svg>
+          </button>
+          <span aria-hidden="true" className="mx-2 h-[18px] w-px flex-none bg-field-line" />
+          <div role="group" aria-label="Sort by" className="flex flex-none gap-0.5">
+            <button type="button" className={TAB} aria-pressed={sort === "most_chats"} onClick={() => go({ q, tag, sort: "most_chats" })}>
+              Most chats
+            </button>
+            <button type="button" className={TAB} aria-pressed={sort === "most_liked"} onClick={() => go({ q, tag, sort: "most_liked" })}>
+              Most liked
+            </button>
+            <button type="button" className={TAB} aria-pressed={sort === "newest"} onClick={() => go({ q, tag, sort: "newest" })}>
+              Newest
+            </button>
+          </div>
+          <span aria-hidden="true" className="mx-2 h-[18px] w-px flex-none bg-field-line" />
+          <div role="group" aria-label="Filter by tag" className="flex flex-none gap-0.5">
+            {TAGS.map((item) => (
+              <button
+                key={item.slug}
+                type="button"
+                className={TAB}
+                aria-pressed={tag === item.slug}
+                onClick={() => go({ q, tag: tag === item.slug ? null : item.slug, sort })}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <label className="flex h-[38px] flex-[0_1_260px] items-center gap-2 rounded-full bg-surface px-3.5 text-subtle max-[760px]:flex-auto">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
             <circle cx="11" cy="11" r="7" />
             <path d="M20 20l-3.5-3.5" />
           </svg>
@@ -140,90 +190,49 @@ export function DiscoverView({ initial, q, tag, sort }: DiscoverQuery & { initia
             value={text}
             maxLength={100}
             onChange={(event) => setText(event.target.value)}
-            placeholder="Search"
+            placeholder="Search characters"
             className="min-w-0 flex-auto border-0 bg-transparent text-text outline-none"
           />
         </label>
       </div>
 
-      <div className="flex flex-col gap-9 px-7 pb-20 max-[760px]:px-4">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[15px] text-muted">{me ? `Welcome back, ${me.name}` : "Welcome to Wanderer"}</span>
-          <h1 className="page-title">Discover</h1>
-        </div>
+      <ContinueBanner />
+      <ForYouRow />
 
-        <ContinueBanner />
-        <ForYouRow />
-
-        <section aria-labelledby="grid-h" className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="grid-h" className="m-0 text-lg font-bold">
-              Characters
-            </h2>
-            <div role="group" aria-label="Sort by" className="flex gap-1 rounded-full bg-surface p-1">
-              <button type="button" className="seg" aria-pressed={sort === "most_chats"} onClick={() => go({ q, tag, sort: "most_chats" })}>
-                Most chats
-              </button>
-              <button type="button" className="seg" aria-pressed={sort === "most_liked"} onClick={() => go({ q, tag, sort: "most_liked" })}>
-                Most liked
-              </button>
-              <button type="button" className="seg" aria-pressed={sort === "newest"} onClick={() => go({ q, tag, sort: "newest" })}>
-                Newest
-              </button>
-            </div>
-          </div>
-
-          <div role="group" aria-label="Filter by tag" className="flex flex-wrap gap-2">
-            <button type="button" className="chip" aria-pressed={tag === null} onClick={() => go({ q, tag: null, sort })}>
-              All
-            </button>
-            {TAGS.map((item) => (
-              <button
-                key={item.slug}
-                type="button"
-                className="chip"
-                aria-pressed={tag === item.slug}
-                onClick={() => go({ q, tag: tag === item.slug ? null : item.slug, sort })}
-              >
-                {item.label}
-              </button>
+      <section aria-label="Characters" className="flex flex-col gap-4">
+        {failed ? (
+          <p role="alert" className="m-0 panel px-6 py-14 text-center text-error">
+            The characters did not load. Reload the page to try again.
+          </p>
+        ) : items.length > 0 ? (
+          <ul className="card-grid">
+            {items.map((card) => (
+              <li key={card.id} className="flex">
+                <CharacterCard card={card} />
+              </li>
             ))}
+          </ul>
+        ) : (
+          <div className="flex flex-col items-center gap-2.5 panel px-6 py-14 text-center">
+            <p className="m-0 text-[17px] font-semibold">No characters match your search.</p>
+            <p className="m-0 text-muted">Try a different word, or make the character yourself.</p>
+            <Link href="/create" className="pill pill-accent">
+              Create a character
+            </Link>
           </div>
+        )}
 
-          {failed ? (
-            <p role="alert" className="m-0 panel px-6 py-14 text-center text-error">
-              The characters did not load. Reload the page to try again.
-            </p>
-          ) : items.length > 0 ? (
-            <ul className="card-grid">
-              {items.map((card) => (
-                <li key={card.id} className="flex">
-                  <CharacterCard card={card} />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="flex flex-col items-center gap-2.5 panel px-6 py-14 text-center">
-              <p className="m-0 text-[17px] font-semibold">No characters match your search.</p>
-              <p className="m-0 text-muted">Try a different word, or make the character yourself.</p>
-              <Link href="/create" className="pill pill-accent">
-                Create a character
-              </Link>
-            </div>
-          )}
-
-          {list.hasNextPage && (
-            <button
-              type="button"
-              className="pill pill-soft self-center"
-              disabled={list.isFetchingNextPage}
-              onClick={() => void list.fetchNextPage()}
-            >
-              {list.isFetchingNextPage ? "Loading…" : "Load more"}
-            </button>
-          )}
-        </section>
-      </div>
+        {list.hasNextPage && (
+          <button
+            type="button"
+            className="pill pill-soft self-center"
+            disabled={list.isFetchingNextPage}
+            onClick={() => void list.fetchNextPage()}
+          >
+            {list.isFetchingNextPage ? "Loading…" : "Load more"}
+          </button>
+        )}
+      </section>
     </div>
   );
 }

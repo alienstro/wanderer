@@ -11,10 +11,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   try {
     initial = await serverApiFetch<CharacterDetail>(`/characters/${encodeURIComponent(id)}`);
   } catch (error) {
-    if (!(error instanceof ApiError) || (error.status !== 404 && error.status !== 403)) {
+    if (!(error instanceof ApiError) || error.status !== 404) {
       throw error;
     }
-    initialError = error.code === "adult_content" ? "adult_content" : "not_found";
+    initialError = "not_found";
   }
   return <CharacterPage id={id} initial={initial} initialError={initialError} />;
 }

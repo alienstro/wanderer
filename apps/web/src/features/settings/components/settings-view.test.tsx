@@ -15,25 +15,30 @@ const me: MeResponse = {
   pictureUrl: null,
   handle: "tian",
   role: "user",
-  showAdult: false,
   replyChoicesOn: true,
   replyChoicesPrompt: "",
   activeProxy: null,
   suggestedHandle: null,
 };
 
-/** Answers each call with the status and body, and keeps the calls. */
+/** The lists that the Model and Personas boxes load for themselves. They answer an empty list. */
+const LIST_URLS = ["/personas", "/proxies", "/free-models"];
+
+/** Answers each call with the status and body, and keeps the calls. The box lists answer an empty list. */
 function stubFetch(status = 200, body: unknown = me) {
-  const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) =>
-    status === 204 ? new Response(null, { status }) : Response.json(body, { status }),
-  );
+  const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
+    if (LIST_URLS.includes(url)) {
+      return Response.json([]);
+    }
+    return status === 204 ? new Response(null, { status }) : Response.json(body, { status });
+  });
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }
 
-/** The calls of the profile forms. The Personas section loads its own list, so its call is left out. */
+/** The calls of the profile forms. The Model and Personas boxes load their own lists, so those calls are left out. */
 function meCalls(fetchMock: ReturnType<typeof stubFetch>) {
-  return fetchMock.mock.calls.filter(([url]) => url !== "/personas");
+  return fetchMock.mock.calls.filter(([url]) => !LIST_URLS.includes(url));
 }
 
 function lastCall(fetchMock: ReturnType<typeof stubFetch>) {
@@ -67,20 +72,10 @@ describe("SettingsView", () => {
     expect(await screen.findByText("This handle is taken.")).toBeTruthy();
   });
 
-  it("asks for the age confirm before Show 18+ turns on, then sends POST /me/adult-confirm", async () => {
-    const fetchMock = stubFetch(200, { ...me, showAdult: true });
+  it("has no Show 18+ switch and no Content section", () => {
     renderView();
-    await userEvent.click(screen.getByRole("switch", { name: "Show 18+" }));
-    expect(meCalls(fetchMock)).toEqual([]);
-    await userEvent.click(screen.getByRole("button", { name: "I am 18 or older. Show 18+ content." }));
-    expect(lastCall(fetchMock)).toMatchObject({ url: "/me/adult-confirm", method: "POST" });
-  });
-
-  it("turns Show 18+ off with PATCH /me", async () => {
-    const fetchMock = stubFetch(200, { ...me, showAdult: false });
-    renderView({ ...me, showAdult: true });
-    await userEvent.click(screen.getByRole("switch", { name: "Show 18+" }));
-    expect(lastCall(fetchMock)).toMatchObject({ url: "/me", method: "PATCH", body: { showAdult: false } });
+    expect(screen.queryByRole("switch", { name: "Show 18+" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Content" })).not.toBeInTheDocument();
   });
 
   it("turns Reply choices off with PATCH /me", async () => {

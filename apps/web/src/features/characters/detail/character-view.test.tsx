@@ -15,12 +15,13 @@ const detail: CharacterDetail = {
   title: "Mira Vale",
   chatName: "Mira",
   avatarUrl: null,
-  isAdult: false,
   tags: [{ slug: "sci-fi", label: "SciFi" }],
   chatCount: 3,
   likeCount: 0,
   creatorHandle: "tian",
+  bioPreview: "A ship mechanic.",
   bio: "A **ship** mechanic.",
+  commentCount: 7,
   status: "published",
   isPublic: true,
   definitionVisible: true,
@@ -67,6 +68,27 @@ describe("character page", () => {
     expect(screen.queryByText("The lights go out.")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "How the story starts" })).not.toBeInTheDocument();
     expect(screen.getByText(/Calm and dry\./)).toBeInTheDocument();
+  });
+
+  it("the tabs show one section at a time: Comments first for a visitor, then Definition after a click", async () => {
+    stubFetch(() => undefined);
+    withClient(<CharacterView detail={detail} />);
+    expect(screen.queryByRole("tab", { name: /Your chats/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Comments" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("tabpanel", { name: "Definition" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Definition" }));
+
+    expect(screen.getByRole("tab", { name: "Definition" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel", { name: "Definition" })).toHaveTextContent(/Calm and dry\./);
+    expect(screen.queryByRole("tabpanel", { name: "Comments" })).not.toBeInTheDocument();
+  });
+
+  it("the counts show the chats, the likes and the comments, and a Share button is next to Like", () => {
+    stubFetch(() => undefined);
+    withClient(<CharacterView detail={detail} />);
+    expect(screen.getByText("Comments", { selector: "span.text-subtle" }).previousSibling).toHaveTextContent("7");
+    expect(screen.getByRole("button", { name: "Share this character" })).toBeInTheDocument();
   });
 
   it('definition null shows "The creator keeps the definition of this character hidden."', () => {
@@ -145,33 +167,5 @@ describe("character page", () => {
 
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/my-characters"));
     expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/characters\/c1$/), expect.objectContaining({ method: "DELETE" }));
-  });
-
-  it("the 18+ warning button calls POST /me/adult-confirm and then shows the character", async () => {
-    let confirmed = false;
-    const fetchMock = stubFetch((url, init) => {
-      if (url.endsWith("/me/adult-confirm") && init?.method === "POST") {
-        confirmed = true;
-        return Response.json({ ...me, showAdult: true }, { status: 201 });
-      }
-      if (url.endsWith("/me")) return Response.json({ ...me, showAdult: confirmed });
-      if (url.endsWith("/characters/c1")) {
-        return confirmed ? Response.json({ ...detail, isAdult: true }) : Response.json({ error: "adult_content" }, { status: 403 });
-      }
-      return undefined;
-    });
-    withClient(<CharacterPage id="c1" initial={null} initialError="adult_content" />);
-
-    expect(await screen.findByText("This character is 18+.")).toBeInTheDocument();
-    await userEvent.click(await screen.findByRole("button", { name: "I am 18 or older. Show 18+ content." }));
-
-    expect(await screen.findByRole("heading", { level: 1, name: "Mira Vale" })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/me\/adult-confirm$/), expect.objectContaining({ method: "POST" }));
-  });
-
-  it("a visitor on an 18+ character sees Log in to continue", async () => {
-    stubFetch((url) => (url.endsWith("/me") ? Response.json({ error: "unauthorized" }, { status: 401 }) : undefined));
-    withClient(<CharacterPage id="c1" initial={null} initialError="adult_content" />);
-    expect(await screen.findByRole("link", { name: "Log in to continue." })).toHaveAttribute("href", "/login");
   });
 });
