@@ -3,21 +3,21 @@
 
 /* The colors and fonts of the Wanderer prototype (Claude Design canvas, App.dc.html). */
 @theme {
-  --color-bg: #0e0e10;
-  --color-sidebar: #131316;
-  --color-surface: #18181b;
-  --color-surface-2: #1f1f23;
+  --color-bg: #000000;
+  --color-sidebar: #000000;
+  --color-surface: #141416;
+  --color-surface-2: #1c1c1f;
   --color-text: #f4f4f5;
   --color-muted: #a1a1aa;
   --color-subtle: #8c8c96;
-  --color-line: #222227;
+  --color-line: #1f1f24;
   --color-field-line: #2a2a30;
-  --color-hover: #1e1e22;
-  --color-current: #232329;
-  --color-accent: #632eff;
-  --color-accent-hover: #7a55ff;
-  --color-link: #b9a4ff;
-  --color-focus: #8f6bff;
+  --color-hover: #1c1c1f;
+  --color-current: #1c1c1f;
+  --color-accent: #5b9bff;
+  --color-accent-hover: #7cb0ff;
+  --color-link: #8db8ff;
+  --color-focus: #8db8ff;
   --color-error: #fca5a5;
   --color-gold: #f5c26b;
   --font-sans: var(--font-inter), system-ui, sans-serif;
@@ -80,7 +80,6 @@
     background: linear-gradient(180deg, #fbe3ae 0%, #f5c26b 55%, #d99a3e 100%);
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 10px rgb(99 46 255 / 0.55));
   }
 
   .logo-ring {
@@ -113,11 +112,10 @@
     cursor: not-allowed;
   }
 
-  /* The soft violet ring is the ring of the main button on the landing page. */
+  /* The accent is light, so the text on it is black. */
   .pill-accent {
     background: var(--color-accent);
-    color: #ffffff;
-    box-shadow: 0 0 0 4px rgb(99 46 255 / 0.14);
+    color: #000000;
   }
 
   .pill-accent:not([aria-disabled="true"]):hover {
@@ -130,7 +128,17 @@
   }
 
   .pill-soft:hover {
-    background: #2c2c33;
+    background: #26262b;
+  }
+
+  /* The white button is the main action of a page, such as "Start a chat". */
+  .pill-light {
+    background: #ffffff;
+    color: #000000;
+  }
+
+  .pill-light:not([aria-disabled="true"]):hover {
+    background: #e4e4e7;
   }
 
   .pill-ghost {
@@ -266,10 +274,14 @@
   .nav[aria-current="page"] {
     background: var(--color-current);
     color: var(--color-text);
+    font-weight: 600;
   }
 
-  .nav[aria-current="page"] svg {
-    color: var(--color-link);
+  /* The links of the sidebar are round pills. The items of the account menu keep the small radius. */
+  .nav:not([role="menuitem"]) {
+    gap: 11px;
+    padding: 0 14px;
+    border-radius: 999px;
   }
 
   .av {
@@ -617,7 +629,7 @@
   .field:focus {
     outline: none;
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px rgb(99 46 255 / 0.25);
+    box-shadow: 0 0 0 3px rgb(91 155 255 / 0.25);
   }
 
   /* A quiet button under a message or in the bar of the text box: icon, then a short word. */
@@ -777,23 +789,10 @@
     background: var(--color-surface);
   }
 
-  /* The top of each app page: the violet glow and the dot grid of the landing hero. They fade out below the title. */
+  /* The main area of each app page. The ground is plain black, as in the v2 design. */
   .app-backdrop {
     position: relative;
     isolation: isolate;
-  }
-
-  .app-backdrop::before {
-    content: "";
-    position: absolute;
-    inset: 0 0 auto;
-    z-index: -1;
-    height: 420px;
-    pointer-events: none;
-    background:
-      radial-gradient(60% 100% at 25% 0%, rgb(99 46 255 / 0.18), transparent 70%),
-      radial-gradient(rgb(255 255 255 / 0.06) 1px, transparent 1.4px) 0 0 / 22px 22px;
-    mask-image: linear-gradient(180deg, #000 30%, transparent);
   }
 
   /* The dot grid of the landing page sections, as on a node canvas. */

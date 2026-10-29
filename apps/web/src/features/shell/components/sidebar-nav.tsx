@@ -57,7 +57,7 @@ export function SidebarNav() {
   const { data: me } = useMe();
   return (
     <>
-      <Link href="/create" className="pill pill-soft relative justify-start px-3.5 rail:w-10 rail:justify-center rail:px-0">
+      <Link href="/create" className="pill pill-accent relative rail:w-10 rail:px-0">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
           <path d="M12 5v14M5 12h14" />
         </svg>

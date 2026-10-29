@@ -159,7 +159,7 @@ describe("sidebar", () => {
     stubApi();
     renderWithClient(<RecentChats />);
     expect(await screen.findByRole("link", { name: /Onnit/ })).toHaveAttribute("href", "/chats/chat1");
-    expect(screen.getByRole("heading", { name: "Recent" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Recent chats" })).toBeInTheDocument();
   });
 
   it("Recent shows one row for each character, which opens the newest chat with that character", async () => {

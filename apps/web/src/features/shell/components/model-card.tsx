@@ -18,7 +18,7 @@ export function ModelCard() {
   const freeModelName = energy?.model === "free" ? energy.freeModelName : null;
   return (
     <>
-      <Link href="/settings/models" className="flex flex-col gap-0.5 rounded-xl bg-surface px-3.5 py-2.5 transition-colors hover:bg-hover active:bg-(--color-current) rail:hidden">
+      <Link href="/settings/models" className="flex flex-col gap-0.5 rounded-[14px] border border-[#1e2c45] bg-[#0f1724] px-3 py-3 transition-colors hover:bg-[#13203a] active:bg-[#162440] rail:hidden">
         <span className="text-xs text-subtle">Model</span>
         {proxy ? (
           <>
