@@ -21,6 +21,8 @@ export interface FakeAiServer {
   requests: FakeRequest[];
   /** Puts behaviors in a queue, one for each next request. An empty queue answers "OK". */
   next(...behaviors: FakeBehavior[]): void;
+  /** Empties the queue and the request log, so that a behavior a test did not use does not answer the next test. */
+  reset(): void;
   close(): Promise<void>;
 }
 
@@ -97,6 +99,10 @@ export async function startFakeAiServer(): Promise<FakeAiServer> {
     url: `http://127.0.0.1:${port}/v1`,
     requests,
     next: (...behaviors) => queue.push(...behaviors),
+    reset: () => {
+      queue.length = 0;
+      requests.length = 0;
+    },
     close: () =>
       new Promise((resolve) => {
         server.closeAllConnections();
