@@ -369,6 +369,7 @@ export function ChatView({ chatId }: { chatId: string }) {
               )}
               <ReplyChoices state={choices} onPick={(choice) => send(choice, false)} />
               <Composer
+                characterName={character.name}
                 value={text}
                 onChange={setText}
                 disabled={!hasModel || Boolean(live?.stopped)}
