@@ -48,8 +48,8 @@ export function LoginForm({ error }: { error?: LoginError }) {
           className="mt-0.5 size-[18px] flex-none accent-accent"
         />
         <label htmlFor={checkboxId} className="text-[14px] text-muted">
-          I am 18 or older, and I agree to the <Link href="/terms">Terms of Service</Link> and the{" "}
-          <Link href="/privacy">Privacy Policy</Link>
+          I am 18 or older. I understand that the characters are AI, and that the chats are fiction. I agree to the{" "}
+          <Link href="/terms">Terms of Service</Link> and the <Link href="/privacy">Privacy Policy</Link>.
         </label>
       </div>
 
