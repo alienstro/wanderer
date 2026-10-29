@@ -93,7 +93,7 @@ describe("chat page", () => {
     vi.unstubAllGlobals();
   });
 
-  it("the messages show in order, and *waves* shows as an em element", async () => {
+  it("the messages show in order, *waves* shows as an em element, and the intro has a Share button", async () => {
     stubApi();
     withClient(<ChatView chatId="chat1" />);
     const log = await screen.findByRole("log");
@@ -104,6 +104,7 @@ describe("chat page", () => {
     expect(texts[1]).toContain("Hello");
     expect(within(log).getByText("waves").tagName).toBe("EM");
     expect(screen.getByRole("heading", { name: "Onnit" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Share this character" })).toBeInTheDocument();
   });
 
   it("shows You play as <name> when the chat has a persona", async () => {

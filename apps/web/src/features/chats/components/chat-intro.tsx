@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
+import { ShareButton } from "@/components/ui/share-button";
 
 /** The blurred image of the character that glows at the top of the chat, as in the v2 design. */
 export function ChatGlow({ src }: { src: string | null }) {
@@ -27,7 +28,7 @@ export interface ChatIntroProps {
   personaName: string | null;
 }
 
-/** The character at the start of the messages: the avatar, the title of the chat, the character page link and the persona. */
+/** The character at the start of the messages: the avatar, the title of the chat, the character page link, the persona, and a Share button. */
 export function ChatIntro({ name, src, title, characterId, personaName }: ChatIntroProps) {
   return (
     <header className="flex flex-col items-center gap-1.5 pb-2 text-center">
@@ -44,6 +45,9 @@ export function ChatIntro({ name, src, title, characterId, personaName }: ChatIn
           </span>
         )}
       </div>
+      <span className="mt-1.5">
+        <ShareButton title={name} path={`/characters/${characterId}`} small />
+      </span>
     </header>
   );
 }

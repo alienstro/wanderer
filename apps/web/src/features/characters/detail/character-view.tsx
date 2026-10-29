@@ -3,6 +3,7 @@
 import type { CharacterDetail } from "@wanderer/shared";
 import { type ReactNode, useId, useState } from "react";
 import { Markdown } from "@/components/ui/markdown";
+import { ShareButton } from "@/components/ui/share-button";
 import { TabBar, type TabBarItem } from "@/components/ui/tab-bar";
 import { fileSrc } from "@/lib/api";
 import { compactCount, statusLabel } from "@/lib/format";
@@ -121,6 +122,7 @@ export function CharacterView({ detail, actions, children }: { detail: Character
         <div className="mt-[18px] flex flex-wrap items-start justify-center gap-2">
           <StartChat characterId={detail.id} />
           <LikeButton characterId={detail.id} likeCount={detail.likeCount} likedByMe={detail.likedByMe} isOwner={detail.isOwner} />
+          <ShareButton title={detail.title} path={`/characters/${detail.id}`} />
           {actions}
         </div>
       </section>

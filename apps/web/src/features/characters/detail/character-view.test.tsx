@@ -85,10 +85,11 @@ describe("character page", () => {
     expect(screen.queryByRole("tabpanel", { name: "Comments" })).not.toBeInTheDocument();
   });
 
-  it("the counts show the chats, the likes and the comments of the character", () => {
+  it("the counts show the chats, the likes and the comments, and a Share button is next to Like", () => {
     stubFetch(() => undefined);
     withClient(<CharacterView detail={detail} />);
     expect(screen.getByText("Comments", { selector: "span.text-subtle" }).previousSibling).toHaveTextContent("7");
+    expect(screen.getByRole("button", { name: "Share this character" })).toBeInTheDocument();
   });
 
   it('definition null shows "The creator keeps the definition of this character hidden."', () => {
