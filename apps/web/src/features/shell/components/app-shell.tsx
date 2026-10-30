@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Logo } from "@/components/ui/logo";
 import { ModelCard } from "./model-card";
 import { RecentChats } from "./recent-chats";
 import { SidebarDrawer } from "./sidebar-drawer";
@@ -16,7 +15,6 @@ export function AppShell({ children, defaultRail }: { children: ReactNode; defau
   return (
     <div className="app-backdrop flex min-h-dvh max-[760px]:flex-col">
       <SidebarDrawer defaultRail={defaultRail}>
-        <Logo compact />
         <SidebarNav />
         <RecentChats />
         <div className="side-foot">

@@ -15,7 +15,8 @@ const PILL = "pill pill-soft min-h-[38px] px-4 text-[13px]";
 /**
  * The heart and the like count. A tap changes the heart at once and puts it back when the request fails.
  * A tap while a request runs does nothing, so the heart and the count always agree with the API.
- * A visitor gets a link to /login. The owner sees only the count, because a creator cannot like their own character.
+ * A visitor gets a link to /login. The owner sees nothing, because a creator cannot like their own character, and the
+ * Likes count above the buttons already shows the number.
  */
 export function LikeButton({
   characterId,
@@ -36,9 +37,13 @@ export function LikeButton({
   const running = useRef(false);
   const shown = local ?? { likeCount, likedByMe };
 
-  if (isOwner || me === undefined) {
+  if (isOwner) {
+    return null;
+  }
+  if (me === undefined) {
+    // The same pill as the button, so the row of buttons does not move when the user loads.
     return (
-      <span className="inline-flex items-center gap-1.5">
+      <span className={PILL}>
         <HeartIcon size={14} />
         {likesLabel(shown.likeCount)}
       </span>

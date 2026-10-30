@@ -82,30 +82,29 @@ export function SidebarDrawer({ children, defaultRail = false }: { children: Rea
         onKeyDown={(event) => open && event.key === "Escape" && close()}
         className="sticky top-0 z-10 flex h-screen flex-[0_0_224px] flex-col gap-4 self-start overflow-y-auto bg-sidebar px-3 pt-3.5 pb-3.5 max-[760px]:fixed max-[760px]:inset-y-0 max-[760px]:left-0 max-[760px]:z-40 max-[760px]:h-dvh max-[760px]:w-[min(300px,85vw)] max-[760px]:overscroll-contain max-[760px]:border-r max-[760px]:border-line max-[760px]:transition-[translate,visibility] max-[760px]:data-[open=false]:invisible max-[760px]:data-[open=false]:-translate-x-full min-[761px]:motion-safe:transition-[flex-basis] rail:flex-[0_0_64px] rail:overflow-visible rail:px-[11px]"
       >
-        <button
-          type="button"
-          className="icon-btn absolute top-[17px] right-2 max-[760px]:hidden rail:relative rail:inset-auto rail:self-center"
-          aria-expanded={!rail}
-          aria-controls={id}
-          onClick={toggleRail}
-        >
-          <svg {...iconProps}>
-            <rect x="3" y="4" width="18" height="16" rx="3" />
-            <path d="M9 4v16" />
-          </svg>
-          <span className={rail ? "side-label" : "sr-only"}>Toggle sidebar</span>
-        </button>
-        <button
-          ref={closeRef}
-          type="button"
-          className="icon-btn absolute top-3 right-2 hidden max-[760px]:inline-flex"
-          aria-label="Close menu"
-          onClick={close}
-        >
-          <svg {...iconProps}>
-            <path d="M6 6l12 12M18 6L6 18" />
-          </svg>
-        </button>
+        {/* One row centers the logo and the buttons, so they stay in line. The negative margin keeps the 26 px height
+            of the logo, so the 38 px buttons do not push the links down. The rail puts the toggle above the logo. */}
+        <div className="-my-1.5 flex items-center justify-between gap-2 rail:my-0 rail:flex-col-reverse rail:items-stretch rail:gap-4">
+          <Logo compact />
+          <button
+            type="button"
+            className="icon-btn max-[760px]:hidden rail:self-center"
+            aria-expanded={!rail}
+            aria-controls={id}
+            onClick={toggleRail}
+          >
+            <svg {...iconProps}>
+              <rect x="3" y="4" width="18" height="16" rx="3" />
+              <path d="M9 4v16" />
+            </svg>
+            <span className={rail ? "side-label" : "sr-only"}>Toggle sidebar</span>
+          </button>
+          <button ref={closeRef} type="button" className="icon-btn hidden max-[760px]:inline-flex" aria-label="Close menu" onClick={close}>
+            <svg {...iconProps}>
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
         {children}
       </aside>
     </>

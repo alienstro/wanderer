@@ -72,12 +72,13 @@ export function UserRow() {
           {me.handle && <span className="truncate text-xs text-subtle">@{me.handle}</span>}
         </span>
       </button>
-      {/* The menu stays on the page, so that it can fade out. `hidden` takes it out of the focus order. */}
+      {/* The menu stays on the page, so that it can fade out. `hidden` takes it out of the focus order.
+          The menu is as wide as the row, because the open sidebar cuts off what goes past its edge. The rail does not. */}
       <div
         role="menu"
         aria-label="Account"
         hidden={!open}
-        className="menu-pop absolute bottom-12 left-0 z-20 flex w-[220px] origin-bottom-left flex-col rounded-[14px] border border-field-line bg-surface p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.6)]"
+        className="menu-pop absolute right-0 bottom-12 left-0 z-20 flex origin-bottom-left rail:right-auto rail:w-[220px] flex-col rounded-[14px] border border-field-line bg-surface p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.6)]"
       >
         <Link role="menuitem" href="/my-characters" className="nav" onClick={() => setOpen(false)}>
           My characters
