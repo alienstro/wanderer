@@ -105,7 +105,7 @@ function MemoryForm({ chatId, memory, onSaved }: MemoryProps) {
     <>
       <p className="m-0 text-sm text-muted">
         The character keeps these facts after old messages leave the chat history. Summarize writes a draft from
-        the old messages. Nothing changes until you save.
+        the messages that the memory does not cover yet. Nothing changes until you save.
       </p>
       <div className="flex min-h-0 flex-1 flex-col gap-2">
         <label htmlFor={boxId} className="label">

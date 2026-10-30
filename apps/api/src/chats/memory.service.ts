@@ -27,7 +27,10 @@ function capSummaryInput(messages: Message[], cap: number): Message[] {
   return kept;
 }
 
-/** Writes a memory draft from the saved memory and the old messages that no saved summary covers. */
+/**
+ * Writes a memory draft from the saved memory and the messages that no saved summary covers: the old messages first,
+ * or the recent messages when no old message is new.
+ */
 @Injectable()
 export class MemoryService {
   private readonly logger = new Logger(MemoryService.name);
@@ -55,9 +58,11 @@ export class MemoryService {
     const memory = parsed.data.memory ?? chat.memory;
     const through = parsed.data.throughPosition === undefined ? chat.memoryThroughPosition : parsed.data.throughPosition;
     const input = { character, customPrompt, contextTokens, memory, ...promptUser(chat, user), history };
-    const uncovered = history
-      .slice(0, windowStart(input, 0))
-      .filter((message) => through === null || message.position > through);
+    const isNew = (message: (typeof history)[number]) => through === null || message.position > through;
+    // The old messages come first, because the reply prompt no longer has them. When the whole chat still fits in
+    // the history, the draft uses the recent messages, so a press on Summarize always has something to summarize.
+    const oldUncovered = history.slice(0, windowStart(input, 0)).filter(isNew);
+    const uncovered = oldUncovered.length > 0 ? oldUncovered : history.filter(isNew);
     const sent = capSummaryInput(uncovered, summaryInputTokens(input));
     const last = sent.at(-1);
     if (!last) {

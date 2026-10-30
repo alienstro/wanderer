@@ -22,7 +22,8 @@ and the user reads and edits the draft before the save.
 - The character knows the facts in memory after 100 or more new messages.
 - The prompt prefix (system part plus the oldest kept messages) stays the same between
   most replies, so the provider cache hits.
-- One "Summarize" click costs about one reply or less. It never sends the full chat.
+- One "Summarize" click costs about one reply or less. It sends at most half of the
+  context size, so it sends the full chat only when the chat is short.
 - A chat with an empty memory and a short history gives the same prompt as today.
 
 ## Non-goals
@@ -81,15 +82,18 @@ user gives 404.
 2. Take the messages with `position > memoryThroughPosition` (or all, when it is
    null) and `position <` the window start. These are the messages that left the
    window and that no saved summary covers.
-3. Keep the oldest of them up to a token cap (`summaryInputTokens`, half of
+3. When that list is empty, take the messages with `position > memoryThroughPosition`
+   (or all, when it is null) from the whole chat. A chat that still fits in the window
+   then gets a draft too, so a click on "Summarize" always has something to summarize.
+4. Keep the oldest of them up to a token cap (`summaryInputTokens`, half of
    `contextTokens`). The user can click again to cover the rest.
-4. When the list is empty, return the current memory and the current marker. Do not
-   call the proxy.
-5. Send one system message with the instruction, the current memory, and the
+5. When the list is still empty, return the current memory and the current marker. Do
+   not call the proxy.
+6. Send one system message with the instruction, the current memory, and the
    messages. The instruction asks for one updated memory text: keep the old facts,
    add the new facts (names, promises, debts, places, relations, open goals), remove
    facts that changed, use short lines, and stay under 2,000 characters.
-6. Return the answer as `memory` (trimmed and cut to `MEMORY_MAX`), and the position
+7. Return the answer as `memory` (trimmed and cut to `MEMORY_MAX`), and the position
    of the last message sent as `throughPosition`.
 
 So "Summarize" merges: the draft is the old memory plus the new facts. It does not
@@ -152,8 +156,8 @@ breaks the cache one time. This is acceptable.
   new messages come in; the window drops a full page when the budget is full; the
   newest message always goes in.
 - API: `PATCH` saves and gives 400 over the limit; the chat of another user gives 404;
-  summarize sends only the messages after the marker and before the window; an empty
-  list makes no proxy call.
+  summarize sends only the messages after the marker and before the window, or the recent
+  messages after the marker when no old message is new; an empty list makes no proxy call.
 - Web: the panel shows the saved text; "Summarize" fills the textarea and does not
   save; "Save" sends the marker only after a draft; the counter blocks "Save" over the
   limit.
