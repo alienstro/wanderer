@@ -48,6 +48,8 @@ describe("chat memory", () => {
   });
 
   beforeEach(async () => {
+    // A behavior that a test did not use must not answer the next test.
+    fake.reset();
     await prisma.user.deleteMany();
     user = await userWithSession(app, 1);
     chatId = await startChat(app, user, await createCharacter(app, user.cookie));
@@ -126,10 +128,29 @@ describe("chat memory", () => {
     expect([row.memory, row.memoryThroughPosition]).toEqual(["Mira owes {{user}} a sword.", 3]);
   });
 
-  it("summarize gives the saved memory and makes no proxy call when no old message is new", async () => {
-    await prisma.chat.update({ where: { id: chatId }, data: { memory: "Facts." } });
+  it("summarize sends the recent messages after the marker when the whole chat still fits in the history", async () => {
+    await prisma.message.createMany({
+      data: [1, 2, 3, 4].map((position) => ({
+        chatId,
+        role: position % 2 === 1 ? ("user" as const) : ("assistant" as const),
+        content: `r${position} short`,
+        position,
+      })),
+    });
+    await prisma.chat.update({ where: { id: chatId }, data: { memoryThroughPosition: 2 } });
+    fake.next({ pieces: ["Recent facts."] });
+    expect((await summarize().expect(200)).body).toEqual({ memory: "Recent facts.", throughPosition: 4 });
+    const sent = JSON.stringify(fake.requests.at(-1)!.body.messages);
+    expect(sent).toContain("r3 short");
+    expect(sent).toContain("r4 short");
+    expect(sent).not.toContain("r2 short");
+  });
+
+  it("summarize gives the saved memory and makes no proxy call when the memory covers each message", async () => {
+    await addLongMessages(2);
+    await prisma.chat.update({ where: { id: chatId }, data: { memory: "Facts.", memoryThroughPosition: 2 } });
     const count = fake.requests.length;
-    expect((await summarize().expect(200)).body).toEqual({ memory: "Facts.", throughPosition: null });
+    expect((await summarize().expect(200)).body).toEqual({ memory: "Facts.", throughPosition: 2 });
     expect(fake.requests.length).toBe(count);
   });
 
