@@ -101,11 +101,17 @@ describe("the like button", () => {
     expect(link).toHaveTextContent("1 like");
   });
 
-  it("the owner sees only the count", async () => {
+  it("the owner sees no like control, because the Likes count above already shows the number", () => {
     stubApi();
-    withClient(<LikeButton characterId="c1" likeCount={2} likedByMe={false} isOwner={true} />);
+    const { container } = withClient(<LikeButton characterId="c1" likeCount={2} likedByMe={false} isOwner={true} />);
 
-    expect(await screen.findByText("2 likes")).toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("while the user loads, the count has the pill shape, so the row does not move", () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
+    withClient(<LikeButton characterId="c1" likeCount={3} likedByMe={false} isOwner={false} />);
+
+    expect(screen.getByText("3 likes")).toHaveClass("pill");
   });
 });
